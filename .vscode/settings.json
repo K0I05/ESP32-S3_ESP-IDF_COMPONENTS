@@ -21,7 +21,9 @@
         "at24cxxx.h": "c",
         "ahtxx_task.h": "c",
         "pct2075_task.h": "c",
-        "at24cxxx_task.h": "c"
+        "at24cxxx_task.h": "c",
+        "muxuart4052a.h": "c",
+        "task.h": "c"
     },
     "sonarlint.pathToCompileCommands": "${workspaceFolder}\\.pio\\build\\esp32s3box\\compile_commands.json",
     "idf.customExtraVars": {

@@ -1,7 +1,7 @@
 {
   "name": "esp_at24cxxx",
-  "keywords": "esp32, espressif, espidf, eeprom, microchip, at24cxxx, at24c8, at24c16, at24c32, at24c64, at24c128, at24c256, at24c512",
-  "description": "ESP32 espressif IoT development framework (esp-idf) compatible component for Microchip AT24C8, AT24C16, AT24C32, AT24C64, AT24C128, AT24C256, AT24C512 I2C EEPROM.",
+  "keywords": "esp32, espressif, espidf, eeprom, microchip, at24cxxx, at24c32, at24c64, at24c128, at24c256, at24c512",
+  "description": "ESP32 espressif IoT development framework (esp-idf) compatible component for Microchip AT24C32, AT24C64, AT24C128, AT24C256, AT24C512 I2C EEPROM.",
   "authors": [
     {
       "name": "Eric Gionet",

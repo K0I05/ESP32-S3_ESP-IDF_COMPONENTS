@@ -59,9 +59,9 @@ void sch_time_into_interval_task( void *pvParameters ) {
     /* time-into-interval with a 1-min period */
     time_into_interval_handle_t tii_10sec_hdl;
     const time_into_interval_config_t tii_10sec_cfg = {
-        .name               = "tti_10sec",
+        .name               = "tti_60sec",
         .interval_type      = TIME_INTO_INTERVAL_SEC,
-        .interval_period    = 10,
+        .interval_period    = 60,
         .interval_offset    = 0
     };
 
@@ -80,9 +80,9 @@ void sch_time_into_interval_task( void *pvParameters ) {
         //ESP_LOGI(APP_TAG, "######################## TIME-INTO-INTERVAL - START #########################");
         
         /* print time when period has elapsed */
-        if(time_into_interval(tii_1min10sec_hdl) == true) {
-            print_system_time("tii_1min10sec_hdl conditional execution");
-        }
+        //if(time_into_interval(tii_1min10sec_hdl) == true) {
+        //    print_system_time("tii_1min10sec_hdl conditional execution");
+        //}
 
         /* delay task */
         time_into_interval_delay(tii_10sec_hdl);

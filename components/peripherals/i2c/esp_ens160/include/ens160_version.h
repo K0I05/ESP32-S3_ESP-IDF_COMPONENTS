@@ -43,7 +43,7 @@ extern "C" {
 
 #define ENS160_COMPONENT_NAME              "esp_ens160"
 /** Version release date  */
-#define ENS160_FW_VERSION_DATE             "2025-04-16"
+#define ENS160_FW_VERSION_DATE             "2025-04-17"
 /** Major version number (X.x.x) */
 #define ENS160_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -51,9 +51,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define ENS160_FW_VERSION_PATCH            6
 /** Semantic version number (X.X.X-X) */
-#define ENS160_FW_SEMANTIC_VERSION         "1.2.6-26"
+#define ENS160_FW_SEMANTIC_VERSION         "1.2.6-29"
 /** Git version hash */
-#define ENS160_FW_GIT_SHORT_SHA            "549ec5e"
+#define ENS160_FW_GIT_SHORT_SHA            "aecf5d0"
 
 
 /**

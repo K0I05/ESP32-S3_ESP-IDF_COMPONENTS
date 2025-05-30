@@ -1,0 +1,20 @@
+dependencies:
+  idf:
+    version: '>5.3.0'
+description: ESP32 espressif IoT development framework (esp-idf) compatible component for the MUX4052A UART port multiplexer.
+license: MIT
+maintainers:
+- Eric Gionet <gionet.c.eric@gmail.com>
+registry_url: https://components.espressif.com
+repository: https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS.git
+tags:
+- espidf
+- esp32
+- sn74lv4052a
+- uart
+- multiplexer
+targets:
+- esp32
+- esp32s3
+url: https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/utilities/esp_mux4052a
+version: 1.2.6

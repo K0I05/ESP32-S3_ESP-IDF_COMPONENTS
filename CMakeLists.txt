@@ -44,10 +44,13 @@ list(APPEND EXTRA_COMPONENT_DIRS
 
     "components/peripherals/spi/esp_max31865"
 
+    "components/peripherals/uart/esp_mux4052a"
+
     "components/schedule/esp_time_into_interval"
 
     "components/storage/esp_datalogger"
     "components/storage/esp_nvs_ext"
+
 )
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

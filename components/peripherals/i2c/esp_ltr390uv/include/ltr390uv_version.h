@@ -43,7 +43,7 @@ extern "C" {
 
 #define LTR390UV_COMPONENT_NAME              "esp_ltr390uv"
 /** Version release date  */
-#define LTR390UV_FW_VERSION_DATE             "2025-04-16"
+#define LTR390UV_FW_VERSION_DATE             "2025-04-17"
 /** Major version number (X.x.x) */
 #define LTR390UV_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -51,9 +51,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define LTR390UV_FW_VERSION_PATCH            6
 /** Semantic version number (X.X.X-X) */
-#define LTR390UV_FW_SEMANTIC_VERSION         "1.2.6-26"
+#define LTR390UV_FW_SEMANTIC_VERSION         "1.2.6-29"
 /** Git version hash */
-#define LTR390UV_FW_GIT_SHORT_SHA            "549ec5e"
+#define LTR390UV_FW_GIT_SHORT_SHA            "aecf5d0"
 
 
 /**
