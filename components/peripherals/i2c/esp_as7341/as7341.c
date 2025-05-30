@@ -453,9 +453,15 @@ esp_err_t as7341_get_led_register(as7341_handle_t handle, as7341_led_register_t 
     /* validate arguments */
     ESP_ARG_CHECK( handle );
 
+    /* attempt to enable low register bank */
+    as7341_enable_lo_register_bank(handle);
+
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_LED, &reg->reg), TAG, "read LED register failed" );
 
+    /* attempt to enable high register bank */
+    as7341_enable_hi_register_bank(handle);
+    
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
 
@@ -466,9 +472,15 @@ esp_err_t as7341_set_led_register(as7341_handle_t handle, const as7341_led_regis
     /* validate arguments */
     ESP_ARG_CHECK( handle );
 
+     /* attempt to enable low register bank */
+    as7341_enable_lo_register_bank(handle);
+    
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_LED, reg.reg), TAG, "write LED register failed" );
 
+    /* attempt to enable high register bank */
+    as7341_enable_hi_register_bank(handle);
+    
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
     
