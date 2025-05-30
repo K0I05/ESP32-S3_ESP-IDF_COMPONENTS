@@ -37,7 +37,7 @@ components
 
 ## Basic Example
 
-Once a driver instance is instantiated the multiplexer is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings, configures the MUX4052A's channel, transmits a message from UART_NUM_2 at user defined interval, and prints the message received from UART_NUM_0.  The MUX4052A is interfaced to the MCU on UART_NUM_2 and MUX4052A channels 0 and 2 are interfaced to the MCU on UART_NUM_0.  The uart transmit lines for channels 0 and 2 on the MUX4052A are connected to the MCU's receive lines on UART_NUM_0.  There is a 5 second delay between channel configuration and message transmission.
+Once a driver instance is instantiated the multiplexer is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings, configures the MUX4052A's channel, transmits a message from UART_NUM_2 at a user defined interval, and prints the message received from UART_NUM_0.  The MUX4052A is interfaced to the MCU on UART_NUM_2 and MUX4052A channels 0 and 2 are interfaced to the MCU on UART_NUM_0.  The uart transmit lines for channels 0 and 2 on the MUX4052A are connected to the MCU's receive lines on UART_NUM_0.  There is a 5 second delay between channel configuration and message transmissions.
 
 ```c
 #include <stdio.h>
