@@ -59,4 +59,10 @@ ESP-IDF component development status:
 
 - Analog Devices MAX31865: component development is work in progress (WIP).
 
+## UART
+
+ESP-IDF component development status:
+
+- MIKROE UART MUX Click: component is synchronized with the esp-idf component registry and platform io library registry.
+
 Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)

@@ -41,6 +41,8 @@ The folder structure for components, and associated example, are outlined as fol
 |  |  |
 |  |  |--owb
 |  |  |--spi
+|  |  |--uart
+|  |
 |  |
 |  |--utilities
 |  |--schedule
@@ -75,8 +77,6 @@ The component C header version, yml, and json files are automically generated fr
 
 If information must be updated, be sure to update the template and not the generated file.  Otherwise, files are overwritten when the version is updated.  See the component's `CMakeLists.txt` file for more details.
 
-Documentation for components was generated with `doxygen` and the html `alpha` version is available [here](/assets/html/index.html).
-
 To get started, locate and open the `app_config.h` file from the `include` folder and configure GPIO pins as needed.  Now, locate and open the `main.c` file from the `src` folder and go to the `void app_main( void )` subroutine to enable the device of interest.  The example code is located in the `[sensor]_task.h` and `[sensor]_task.c` files.
 
 ```c
@@ -108,9 +108,9 @@ void app_main( void ) {
 
 Once these initial steps are done, compile and upload the program, assuming your development board is equivalent to the `esp32s3box`.  Otherwise, you will have to configure the environment for your development board and recompile before uploading the program.
 
-## ESP Peripheral Components (ADC, I2C, OWB, SPI)
+## ESP Peripheral Components (ADC, I2C, OWB, SPI, UART)
 
-The ESP peripheral components accommodate ADC, I2C, OWB, and SPI device interfacing supported by various device manufacturers.
+The ESP peripheral components accommodate ADC, I2C, OWB, SPI, and UART device interfacing supported by various device manufacturers.
 
 Supported drivers include the following device peripherals:
 
@@ -142,6 +142,7 @@ Supported drivers include the following device peripherals:
 - I2C: [Vishay VEML7700](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_veml7700>)
 - OWB: [Maxim-Integrated DS18B20](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/owb/esp_ds18b20>)
 - SPI: Analog Devices MAX31865 - Work in Progress
+- UART: [MIKROE UART MUX Click](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/uart/esp_mux4052a>)
 
 The above peripheral drivers have been tested, and validated with a logic analyzer where applicable, and are still under development. With every ESP-IDF release there are bound to be quirks with the code base.  If any problems arise please feel free to log an issue and if you would to contribute please contact me.
 
