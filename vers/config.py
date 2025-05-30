@@ -18,6 +18,7 @@ pio_owner = "k0i05"
 # peripheral/i2c/[component_name]
 # peripheral/owb/[component_name]
 # peripheral/spi/[component_name]
+# peripheral/uart/[component_name]
 # schedule/[component_name]
 # storage/[component_name]
 # utilities/[component_name]
@@ -36,7 +37,6 @@ component_list = [
                   # adc peripherals 
                   Component(name="esp_s12sd", header_name="s12sd", relative_path="peripherals\\adc\\esp_s12sd"),
                   # i2c peripherals
-                  #Component(name="esp_driver_i2c_ext", header_name="i2c_master_ext", relative_path="peripherals\\i2c\\esp_driver_i2c_ext"),
                   Component(name="esp_ahtxx", header_name="ahtxx", relative_path="peripherals\\i2c\\esp_ahtxx"),
                   Component(name="esp_ak8975", header_name="ak8975", relative_path="peripherals\\i2c\\esp_ak8975"),
                   Component(name="esp_as3935", header_name="as3935", relative_path="peripherals\\i2c\\esp_as3935"),
@@ -60,6 +60,8 @@ component_list = [
                   Component(name="esp_veml7700", header_name="veml7700", relative_path="peripherals\\i2c\\esp_veml7700"),
                   # owb peripherals
                   Component(name="esp_ds18b20", header_name="ds18b20", relative_path="peripherals\\owb\\esp_ds18b20"),
+                  # uart peripherals
+                  Component(name="esp_mux4052a", header_name="mux4052a", relative_path="peripherals\\uart\\esp_mux4052a"),
                   
                   ### Schedule ###
                   # time-into-interval
