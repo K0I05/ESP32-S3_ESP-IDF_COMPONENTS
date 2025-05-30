@@ -9,11 +9,11 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_mux4052a.svg)](https://registry.platformio.org/libraries/k0i05/esp_mux4052a)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_mux4052a/badge.svg)](https://components.espressif.com/components/k0i05/esp_mux4052a)
 
-This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the MUX4052A uart port multiplexer.  The 4052A denotes the multiplexer type (SN74LV4052A) and number of channels supported when utilized for serial applications.  Information on features and functionality are documented and can be found in the `mux4052a.h` header file and in the `documentation` folder.
+This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the MUX4052A uart port multiplexer.  The 4052A denotes the multiplexer type (SN74LV4052A) and number of channels supported when utilized for serial applications.  This component was developed using the MIKROE UAR MUX Click breakout board which utlizes the SN74LV4052A chip by Texas Instruments.  Information on features and functionality are documented and can be found in the `mux4052a.h` header file and in the `documentation` folder.
 
 ## Repository
 
-The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mux4052a>
+The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/uart/esp_mux4052a>
 
 ## General Usage
 
