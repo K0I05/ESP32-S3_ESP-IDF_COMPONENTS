@@ -134,6 +134,7 @@ Supported drivers include the following device peripherals:
 - I2C: [Melexis MLX90614](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mlx90614>)
 - I2C: [Memsic MMC56X3](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mmc56x3>)
 - I2C: [InvenSense MPU6050](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mpu6050>)
+- I2C: [NXP Semiconductors PCT2075](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_pct2075>)
 - I2C: [Sensirion SGP4X](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sgp4x>)
 - I2C: [Sensirion SHT4X](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sht4x>)
 - I2C: [Generic SSD1306](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ssd1306>)

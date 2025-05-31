@@ -1,4 +1,4 @@
-version: "1.2.6"
+version: "1.2.7"
 license: "MIT"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for Microchip AT24C32, AT24C64, AT24C128, AT24C256, AT24C512 i2c EEPROM."

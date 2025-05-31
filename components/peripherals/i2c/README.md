@@ -29,6 +29,7 @@ ESP-IDF I2C device peripheral components supported at this time are listed as fo
 - Melexis MLX90614
 - Memsic MMC56X3
 - InvenSense MPU6050
+- NXP Semiconductors PCT2075
 - Sensirion SGP4X
 - Sensirion SHT4X
 - Generic SSD1306 (128x32 and 128x64)

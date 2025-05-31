@@ -1,4 +1,4 @@
-version: "1.2.6"
+version: "1.2.7"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for ScioSense CCS811 digital metal-oxide multi-gas I2C sensor."
 license: "MIT"

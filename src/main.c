@@ -46,6 +46,7 @@
  * 
  * See `[component-name]_task.h` within the include folder to change default configuration settings by component.
  *
+ * https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
  * 
  * 
  * PowerShell prompt: C:\Users\lavco\.platformio\penv\Scripts\platformio.exe run -t menuconfig
@@ -571,7 +572,7 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_BMP280);
     //i2c0_component_example_start(I2C_COMPONENT_BMP390);
     //i2c0_component_example_start(I2C_COMPONENT_CCS811);
-    i2c0_component_example_start(I2C_COMPONENT_ENS160);
+    //i2c0_component_example_start(I2C_COMPONENT_ENS160);
     //i2c0_component_example_start(I2C_COMPONENT_HDC1080);
     //i2c0_component_example_start(I2C_COMPONENT_HMC5883L);
     //i2c0_component_example_start(I2C_COMPONENT_INA226);
@@ -580,7 +581,7 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_MLX90614);
     //i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
-    //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
+    i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);
     //i2c0_component_example_start(I2C_COMPONENT_SHT4X);
     //i2c0_component_example_start(I2C_COMPONENT_SSD1306);

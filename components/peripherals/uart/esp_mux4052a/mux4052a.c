@@ -27,6 +27,8 @@
  * ESP-IDF driver for MUX4052A uart port multiplexer. The 4052A denotes the multiplexer type
  * (SN74LV4052A) and number of uart ports supported. The MUX4052A, or SN74LV4052A, is a 
  * 4-channel analog multiplexer and demultiplexer with three control pins.
+ * 
+ * https://github.com/MikroElektronika/mikrosdk_click_v2/blob/master/clicks/mux4/lib_mux4/src/mux4.c
  *
  * Ported from esp-open-rtos
  *

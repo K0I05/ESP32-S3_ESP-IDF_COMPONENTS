@@ -37,7 +37,7 @@
 
 void i2c0_pct2075_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t         last_wake_time = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
     pct2075_config_t dev_cfg          = I2C_PCT2075_CONFIG_DEFAULT;
@@ -50,9 +50,42 @@ void i2c0_pct2075_task( void *pvParameters ) {
         assert(dev_hdl);
     }
     //
+    esp_err_t result;
+    // set overtemperature shutdown temperature
+    float ots_temperature;
+    result = pct2075_set_ots_temperature(dev_hdl, 85.6f);
+    if (result != ESP_OK) {
+        ESP_LOGE(APP_TAG, "pct2075 set overtemperature shutdown temperature failed (%s)", esp_err_to_name(result));
+        assert(result == ESP_OK);
+    }
+    result = pct2075_get_ots_temperature(dev_hdl, &ots_temperature);
+    if (result != ESP_OK) {
+        ESP_LOGE(APP_TAG, "pct2075 get overtemperature shutdown temperature failed (%s)", esp_err_to_name(result));
+        assert(result == ESP_OK);
+    } else {
+        ESP_LOGI(APP_TAG, "overtemperature shutdown temperature: %.2f °C", ots_temperature);
+    }
+    //
+    // set hysteresis temperature
+    float hys_temperature;
+    result = pct2075_set_hys_temperature(dev_hdl, 70.7f);
+    if (result != ESP_OK) {
+        ESP_LOGE(APP_TAG, "pct2075 set hysteresis temperature failed (%s)", esp_err_to_name(result));
+        assert(result == ESP_OK);
+    }
+    result = pct2075_get_hys_temperature(dev_hdl, &hys_temperature);
+    if (result != ESP_OK) {
+        ESP_LOGE(APP_TAG, "pct2075 get hysteresis temperature failed (%s)", esp_err_to_name(result));
+        assert(result == ESP_OK);
+    } else {
+        ESP_LOGI(APP_TAG, "hysteresis temperature: %.2f °C", hys_temperature);
+    }
+    //
+    // set sampling period
+    //
     // task loop entry point
     for ( ;; ) {
-        ESP_LOGI(APP_TAG, "######################## AHTXX - START #########################");
+        ESP_LOGI(APP_TAG, "######################## PCT2075 - START #########################");
         //
         // handle sensor
         float temperature;
@@ -63,7 +96,7 @@ void i2c0_pct2075_task( void *pvParameters ) {
             ESP_LOGI(APP_TAG, "air temperature:     %.2f °C", temperature);
         }
         //
-        ESP_LOGI(APP_TAG, "######################## AHTXX - END ###########################");
+        ESP_LOGI(APP_TAG, "######################## PCT2075 - END ###########################");
         //
         //
         // pause the task per defined wait period

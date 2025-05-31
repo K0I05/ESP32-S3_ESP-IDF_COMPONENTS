@@ -1,4 +1,4 @@
-version: "1.2.6"
+version: "1.2.7"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component for Honeywell HMC5883L 3-axis digital compass I2C sensor."
 license: "MIT"
 url: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_hmc5883l"

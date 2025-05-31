@@ -14,7 +14,7 @@
     "url": "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sht4x"
   },
   "homepage": "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "license": "MIT",
   "frameworks": "espidf",
   "platforms": "espressif32",

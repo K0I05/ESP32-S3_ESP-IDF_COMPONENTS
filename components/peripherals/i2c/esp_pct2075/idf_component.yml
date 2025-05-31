@@ -1,19 +1,16 @@
 version: "1.2.7"
 license: "MIT"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
-  for Asair AHT10, AHT20, AHT21, AHT25, AHT30 temperature and humidity i2c sensors."
-url: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ahtxx"
+  for NXP Semiconductors PCT2075 temperature I2C sensor."
+url: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_pct2075"
 repository: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS.git"
 registry_url: "https://components.espressif.com"
-documentation: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/blob/main/components/peripherals/i2c/esp_ahtxx/README.md"
+documentation: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/blob/main/components/peripherals/i2c/esp_pct2075/README.md"
 tags:
-- asair
-- ahtxx
-- aht10
-- aht20
-- aht21
-- aht25
-- aht30
+- nxp
+- semiconductor
+- temperature
+- pct2075
 - i2c
 - espidf
 - esp32

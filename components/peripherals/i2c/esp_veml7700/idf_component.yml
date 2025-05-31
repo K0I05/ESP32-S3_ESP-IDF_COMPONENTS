@@ -1,4 +1,4 @@
-version: "1.2.6"
+version: "1.2.7"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for Vishay's VEML7700 I2C sensor."
 license: "MIT"
