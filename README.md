@@ -108,6 +108,151 @@ void app_main( void ) {
 
 Once these initial steps are done, compile and upload the program, assuming your development board is equivalent to the `esp32s3box`.  Otherwise, you will have to configure the environment for your development board and recompile before uploading the program.
 
+## Basic Example
+
+All components use the same implementation model and a basic example is provided below.
+
+To get started, create a new PlatformIO project, and copy the `esp_bmp390` component to the components folder.  Setup your development board and environment in PlatformIO, and copy the example code to overwrite default code in the `main.c` file.  I2C port and GPIO assigments: the example assigns `I2C_NUM_0` to the master I2C port, `SDA` is assigned to GPIO number 45, and `SCL` is assigned to GPIO number 48.  Interface the BMP390 sensor to the development board, compile example, and upload the binary to the device.  Open the serial terminal to monitor the output.  Reset the board to view configured registers at startup.
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <string.h>
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+// bmp390 component
+#include <bmp390.h>
+
+#define TSK_MINIMAL_STACK_SIZE         (1024)
+
+#define I2C0_MASTER_PORT               I2C_NUM_0
+#define I2C0_MASTER_SDA_IO             GPIO_NUM_45 // blue
+#define I2C0_MASTER_SCL_IO             GPIO_NUM_48 // yellow
+
+#define I2C0_TASK_NAME                 "bmp390_tsk"
+#define I2C0_TASK_SAMPLING_RATE        (10) // seconds
+#define I2C0_TASK_STACK_SIZE           (TSK_MINIMAL_STACK_SIZE * 8)
+#define I2C0_TASK_PRIORITY             (tskIDLE_PRIORITY + 2)
+
+#define I2C0_MASTER_CONFIG_DEFAULT {                                \
+        .clk_source                     = I2C_CLK_SRC_DEFAULT,      \
+        .i2c_port                       = I2C0_MASTER_PORT,         \
+        .scl_io_num                     = I2C0_MASTER_SCL_IO,       \
+        .sda_io_num                     = I2C0_MASTER_SDA_IO,       \
+        .glitch_ignore_cnt              = 7,                        \
+        .flags.enable_internal_pullup   = true, }
+
+#define APP_TAG                         "ESP-IDF BMP390 COMPONENT [APP]"
+
+static inline void print_registers(bmp390_handle_t handle) {
+    /* configuration registers */
+    bmp390_power_control_register_t     power_ctrl_reg;
+    bmp390_configuration_register_t     config_reg;
+    bmp390_oversampling_register_t      oversampling_reg;
+    bmp390_output_data_rate_register_t  output_data_rate_reg;
+    bmp390_interrupt_control_register_t interrupt_ctrl_reg;
+
+    /* attempt to read configuration register */
+    bmp390_get_configuration_register(handle, &config_reg);
+
+    /* attempt to read oversampling register */
+    bmp390_get_oversampling_register(handle, &oversampling_reg);
+
+    /* attempt to read to power control register */
+    bmp390_get_power_control_register(handle, &power_ctrl_reg);
+
+    /* attempt to read to output data rate register */
+    bmp390_get_output_data_rate_register(handle, &output_data_rate_reg);
+
+    /* attempt to read to interrupt control register */
+    bmp390_get_interrupt_control_register(handle, &interrupt_ctrl_reg);
+
+
+    ESP_LOGI(APP_TAG, "Configuration (0x%02x): %s", config_reg.reg,           uint8_to_binary(config_reg.reg));
+    ESP_LOGI(APP_TAG, "Oversampling  (0x%02x): %s", oversampling_reg.reg,     uint8_to_binary(oversampling_reg.reg));
+    ESP_LOGI(APP_TAG, "Data Rate     (0x%02x): %s", output_data_rate_reg.reg, uint8_to_binary(output_data_rate_reg.reg));
+    ESP_LOGI(APP_TAG, "Power Control (0x%02x): %s", power_ctrl_reg.reg,       uint8_to_binary(power_ctrl_reg.reg));
+    ESP_LOGI(APP_TAG, "Int Control   (0x%02x): %s", interrupt_ctrl_reg.reg,   uint8_to_binary(interrupt_ctrl_reg.reg));
+
+    if(interrupt_ctrl_reg.bits.irq_data_ready_enabled) ESP_LOGE(APP_TAG, "bmp390 irq data ready is enabled");
+}
+
+void i2c0_bmp390_task( void *pvParameters ) {
+    // initialize the xLastWakeTime variable with the current time.
+    TickType_t          last_wake_time  = xTaskGetTickCount ();
+    //
+    // initialize i2c device configuration
+    bmp390_config_t dev_cfg         = I2C_BMP390_CONFIG_DEFAULT;
+    bmp390_handle_t dev_hdl;
+    //
+    // init device
+    bmp390_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
+    if (dev_hdl == NULL) {
+        ESP_LOGE(APP_TAG, "bmp390 handle init failed");
+        assert(dev_hdl);
+    }
+
+    print_registers(dev_hdl);
+
+    // task loop entry point
+    for ( ;; ) {
+        ESP_LOGI(APP_TAG, "######################## BMP390 - START #########################");
+        //
+        // handle sensor
+
+        float temperature, pressure;
+        esp_err_t result = bmp390_get_measurements(dev_hdl, &temperature, &pressure);
+        if(result != ESP_OK) {
+            ESP_LOGE(APP_TAG, "bmp390 device read failed (%s)", esp_err_to_name(result));
+        } else {
+            pressure = pressure / 100;
+            ESP_LOGI(APP_TAG, "air temperature:     %.2f °C", temperature);
+            ESP_LOGI(APP_TAG, "barometric pressure: %.2f hPa", pressure);
+        }
+        //
+        ESP_LOGI(APP_TAG, "######################## BMP390 - END ###########################");
+        //
+        //
+        // pause the task per defined wait period
+        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+    }
+    //
+    // free resources
+    bmp390_delete( dev_hdl );
+    vTaskDelete( NULL );
+}
+
+/**
+ * @brief Main application entry point.
+ */
+void app_main( void ) {
+    ESP_LOGI(APP_TAG, "Startup..");
+    ESP_LOGI(APP_TAG, "Free memory: %lu bytes", esp_get_free_heap_size());
+    ESP_LOGI(APP_TAG, "IDF version: %s", esp_get_idf_version());
+
+    /* set log levels */
+    esp_log_level_set("*", ESP_LOG_INFO);
+    esp_log_level_set(APP_TAG, ESP_LOG_VERBOSE);
+
+    /* instantiate i2c master bus 0 */
+    ESP_ERROR_CHECK( i2c_new_master_bus(&i2c0_bus_cfg, &i2c0_bus_hdl) );
+
+    /* create task pinned to the app core */
+    xTaskCreatePinnedToCore( 
+        i2c0_bmp390_task,
+        I2C0_TASK_NAME, 
+        I2C0_TASK_STACK_SIZE, 
+        NULL, 
+        I2C0_TASK_PRIORITY, 
+        NULL, 
+        APP_CPU_NUM );
+}
+```
+
 ## ESP Peripheral Components (ADC, I2C, OWB, SPI, UART)
 
 The ESP peripheral components accommodate ADC, I2C, OWB, SPI, and UART device interfacing supported by various device manufacturers.
