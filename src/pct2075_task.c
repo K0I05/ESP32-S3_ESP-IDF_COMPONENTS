@@ -41,16 +41,16 @@ void i2c0_pct2075_task( void *pvParameters ) {
     //
     // initialize i2c device configuration
     pct2075_config_t dev_cfg          = I2C_PCT2075_CONFIG_DEFAULT;
-    pct2075_handle_t dev_hdl;
+    pct2075_handle_t dev_hdl          = NULL;
+    esp_err_t        result           = ESP_OK;
     //
     // init device
-    pct2075_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
-    if (dev_hdl == NULL) {
+    result = pct2075_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
+    if (result != ESP_OK) {
         ESP_LOGE(APP_TAG, "pct2075 handle init failed");
         assert(dev_hdl);
     }
     //
-    esp_err_t result;
     // set overtemperature shutdown temperature
     float ots_temperature;
     result = pct2075_set_ots_temperature(dev_hdl, 85.6f);

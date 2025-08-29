@@ -131,6 +131,7 @@ typedef struct at24cxxx_memory_mapping_s {
     uint8_t write_time_ms;          /*!< at24cxxx write time in ms */
 } at24cxxx_memory_mapping_t;
 
+
 /**
  * @brief AT24CXXX configuration structure definition.
  */
@@ -154,6 +155,7 @@ struct at24cxxx_context_t {
  * @brief AT24CXXX context structure definition.
  */
 typedef struct at24cxxx_context_t at24cxxx_context_t;
+
 
 /**
  * @brief AT24CXXX handle structure definition.

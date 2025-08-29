@@ -142,11 +142,23 @@ typedef struct pct2075_config_s {
     uint16_t                        sampling_period;    /*!< pct2075 sampling period in milliseconds (range is 100 to 3,100 milliseconds), 100 ms is the sampling period by default */
 } pct2075_config_t;
 
+/**
+ * @brief PCT2075 context structure.
+ */
+struct pct2075_context_t {
+    pct2075_config_t        dev_config; /*!< pct2075 device configuration */
+    i2c_master_dev_handle_t i2c_handle; /*!< pct2075 i2c device handle */
+};
 
 /**
- * @brief PCT2075 opaque handle structure definition.
+ * @brief PCT2075 context structure definition.
  */
-typedef void* pct2075_handle_t;
+typedef struct pct2075_context_t pct2075_context_t;
+
+/**
+ * @brief PCT2075 handle structure definition.
+ */
+typedef struct pct2075_context_t* pct2075_handle_t;
 
 /**
  * public function and subroutine declarations
