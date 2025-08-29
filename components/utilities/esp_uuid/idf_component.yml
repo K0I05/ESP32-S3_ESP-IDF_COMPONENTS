@@ -13,8 +13,5 @@ tags:
 - esp32
 - rfc-4122
 - uuid
-targets:
-- esp32
-- esp32s3
 url: https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/utilities/esp_uuid
 version: 1.2.7

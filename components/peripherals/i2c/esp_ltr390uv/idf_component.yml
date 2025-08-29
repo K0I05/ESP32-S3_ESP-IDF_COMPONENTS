@@ -10,9 +10,6 @@ tags:
 - i2c
 - espidf
 - esp32
-targets:
-- esp32
-- esp32s3
 dependencies:
   idf:
     version: ">5.3.0"

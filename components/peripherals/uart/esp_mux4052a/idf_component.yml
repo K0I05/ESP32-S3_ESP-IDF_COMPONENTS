@@ -13,8 +13,5 @@ tags:
 - sn74lv4052a
 - uart
 - multiplexer
-targets:
-- esp32
-- esp32s3
 url: https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/utilities/esp_mux4052a
 version: 1.2.7

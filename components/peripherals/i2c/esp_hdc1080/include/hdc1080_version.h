@@ -49,7 +49,7 @@ extern "C" {
 
 #define HDC1080_COMPONENT_NAME              "esp_hdc1080"
 /** Version release date  */
-#define HDC1080_FW_VERSION_DATE             "2025-05-30"
+#define HDC1080_FW_VERSION_DATE             "2025-06-07"
 /** Major version number (X.x.x) */
 #define HDC1080_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define HDC1080_FW_VERSION_PATCH            7
 /** Semantic version number (X.X.X-X) */
-#define HDC1080_FW_SEMANTIC_VERSION         "1.2.7-1"
+#define HDC1080_FW_SEMANTIC_VERSION         "1.2.7-4"
 /** Git version hash */
-#define HDC1080_FW_GIT_SHORT_SHA            "7302e05"
+#define HDC1080_FW_GIT_SHORT_SHA            "f32c566"
 
 
 /**

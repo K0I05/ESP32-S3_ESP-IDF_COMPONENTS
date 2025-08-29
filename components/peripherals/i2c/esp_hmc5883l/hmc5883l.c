@@ -869,8 +869,7 @@ esp_err_t hmc5883l_delete(hmc5883l_handle_t handle) {
     ESP_RETURN_ON_ERROR( hmc5883l_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
 
     /* validate handle instance and free handles */
-    if(handle->i2c_handle) {
-        free(handle->i2c_handle);
+    if(handle) {
         free(handle);
     }
 

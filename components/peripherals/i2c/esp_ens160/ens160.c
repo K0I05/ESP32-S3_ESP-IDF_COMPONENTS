@@ -846,8 +846,7 @@ esp_err_t ens160_delete(ens160_handle_t handle) {
     ESP_RETURN_ON_ERROR( ens160_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
 
     /* validate handle instance and free handles */
-    if(handle->i2c_handle) {
-        free(handle->i2c_handle);
+    if(handle) {
         free(handle);
     }
 

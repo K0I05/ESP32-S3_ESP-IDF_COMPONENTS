@@ -268,8 +268,9 @@ esp_err_t s12sd_delete(s12sd_handle_t handle) {
 
     ret = adc_oneshot_del_unit(handle->adc_handle);
 
-    if (handle->adc_calibrate) {
+    if (handle) {
         s12sd_calibration_delete(handle->adc_cal_handle);
+        free(handle);
     }
 
     return ret;

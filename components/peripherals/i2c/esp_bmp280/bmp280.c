@@ -747,12 +747,9 @@ esp_err_t bmp280_delete(bmp280_handle_t handle){
     ESP_RETURN_ON_ERROR( bmp280_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
 
     /* validate handle instance and free handles */
-    if(handle->i2c_handle) {
-        free(handle->i2c_handle);
-        free(handle);
-    }
-    if(handle->dev_cal_factors) {
+    if(handle) {
         free(handle->dev_cal_factors);
+        free(handle);
     }
 
     return ESP_OK;

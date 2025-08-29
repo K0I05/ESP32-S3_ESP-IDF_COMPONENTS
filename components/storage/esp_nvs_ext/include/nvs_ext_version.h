@@ -49,7 +49,7 @@ extern "C" {
 
 #define NVS_EXT_COMPONENT_NAME              "esp_nvs_ext"
 /** Version release date  */
-#define NVS_EXT_FW_VERSION_DATE             "2025-05-30"
+#define NVS_EXT_FW_VERSION_DATE             "2025-06-07"
 /** Major version number (X.x.x) */
 #define NVS_EXT_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define NVS_EXT_FW_VERSION_PATCH            7
 /** Semantic version number (X.X.X-X) */
-#define NVS_EXT_FW_SEMANTIC_VERSION         "1.2.7-1"
+#define NVS_EXT_FW_SEMANTIC_VERSION         "1.2.7-4"
 /** Git version hash */
-#define NVS_EXT_FW_GIT_SHORT_SHA            "7302e05"
+#define NVS_EXT_FW_GIT_SHORT_SHA            "f32c566"
 
 
 /**

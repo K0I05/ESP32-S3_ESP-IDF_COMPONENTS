@@ -354,8 +354,7 @@ esp_err_t at24cxxx_delete(at24cxxx_handle_t handle) {
     ESP_RETURN_ON_ERROR( at24cxxx_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
 
     /* validate handle instance and free handles */
-    if(handle->i2c_handle) {
-        free(handle->i2c_handle);
+    if(handle) {
         free(handle);
     }
 
