@@ -69,8 +69,6 @@ extern "C" {
 #define I2C_INA226_ADDR_SCL_SDA         UINT8_C(0x4e)       //!< ina226 I2C address, A1 pin - SCL, A0 pin - SDA
 #define I2C_INA226_ADDR_SCL_SCL         UINT8_C(0x4f)       //!< ina226 I2C address, A1 pin - SCL, A0 pin - SCL
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 /*
 
 INA266 Wiring for Voltage

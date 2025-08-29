@@ -55,8 +55,6 @@ extern "C" {
 #define I2C_ENS160_DEV_ADDR_LO              UINT8_C(0x52)   //!< ens160 I2C address ADDR pin low
 #define I2C_ENS160_DEV_ADDR_HI              UINT8_C(0x53)   //!< ens160 I2C address ADDR pin high
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 #define ENS160_TVOC_MIN                 UINT16_C(0)         /*!< ens160 tvoc minimum in ppb (section 5.1) */
 #define ENS160_TVOC_MAX                 UINT16_C(65000)     /*!< ens160 tvoc maximum in ppb (section 5.1) */

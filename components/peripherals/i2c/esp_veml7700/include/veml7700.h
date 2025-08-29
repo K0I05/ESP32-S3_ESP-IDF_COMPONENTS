@@ -53,8 +53,6 @@ extern "C" {
 
 #define I2C_VEML7700_DEV_ADDR               UINT8_C(0x10)       //!< veml7700 I2C address
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * VEML7700 macro definitions

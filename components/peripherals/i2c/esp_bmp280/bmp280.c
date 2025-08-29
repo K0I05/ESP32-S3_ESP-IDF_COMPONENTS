@@ -76,11 +76,14 @@
 #define BMP280_CMD_DELAY_MS             UINT16_C(5)
 #define BMP280_TX_RX_DELAY_MS           UINT16_C(10)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
+
 
 /*
 * static constant declarations

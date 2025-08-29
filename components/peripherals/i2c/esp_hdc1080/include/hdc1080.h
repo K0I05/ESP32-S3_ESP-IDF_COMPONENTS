@@ -56,8 +56,6 @@ extern "C" {
 #define I2C_HDC1080_DEV_ADDR_2              UINT8_C(0x42) //!< hdc1080 I2C address when ADR1 = 1, ADR0 = 0
 #define I2C_HDC1080_DEV_ADDR_3              UINT8_C(0x43) //!< hdc1080 I2C address when ADR1 = 1, ADR0 = 1
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * macro definitions
 */

@@ -82,6 +82,8 @@
 #define BMP390_CMD_DELAY_MS             UINT16_C(5)
 #define BMP390_TX_RX_DELAY_MS           UINT16_C(10)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */

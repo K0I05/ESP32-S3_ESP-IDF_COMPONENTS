@@ -54,8 +54,6 @@ extern "C"
 #define I2C_TLV493D_DEV_ADDR_LO           UINT8_C(0x1F) //!< tlv493d I2C address
 #define I2C_TLV493D_DEV_ADDR_HI           UINT8_C(0x5E) //!< tlv493d I2C address
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * TLV493D macro definitions
  */

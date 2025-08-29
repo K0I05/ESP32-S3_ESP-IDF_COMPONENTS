@@ -59,8 +59,6 @@ extern "C"
 
 #define I2C_LTR390UV_DEV_ADDR               UINT8_C(0x53) //!< ltr390uv I2C address
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * LTR390UV macro definitions

@@ -75,6 +75,8 @@
 #define SHT4X_RETRY_DELAY_MS        UINT16_C(2)     /*!< sht4x delay between an I2C receive transaction retry */
 #define SHT4X_TX_RX_DELAY_MS        UINT16_C(10)    /*!< sht4x delay after attempting an I2C transmit transaction and attempting an I2C receive transaction */
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */

@@ -70,6 +70,8 @@
 #define VEML6040_IT_OPT_SVTY_INDEX  UINT8_C(2)      /*!< integration time gain sensitivity */
 #define VEML6040_IT_OPT_MXLX_INDEX  UINT8_C(3)      /*!< integration time maximum lux value */
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */

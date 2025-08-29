@@ -57,8 +57,6 @@ extern "C" {
 #define I2C_BMP390_DEV_ADDR_LO      UINT8_C(0x76) //!< bmp390 I2C address when ADDR pin low
 #define I2C_BMP390_DEV_ADDR_HI      UINT8_C(0x77) //!< bmp390 I2C address when ADDR pin high
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * BMP390 macros
 */

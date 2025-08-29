@@ -56,8 +56,6 @@ extern "C" {
 
 #define I2C_AS7341_DEV_ADDR              UINT8_C(0x39)     //!< as7341 I2C address
 
-#define I2C_XFR_TIMEOUT_MS               (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * AS7341 macro definitions
@@ -500,7 +498,6 @@ typedef struct as7341_config_s {
     uint16_t                    astep;
     as7341_spectral_gains_t     spectral_gain;
 } as7341_config_t;
-
 
 /**
  * @brief AS7341 context structure.

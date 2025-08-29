@@ -60,8 +60,6 @@ extern "C" {
 #define I2C_AS3935_DEV_ADDR_2            UINT8_C(0x02)   //!< as3935 I2C address when ADD0 pin floating/low and ADD1 pin high
 #define I2C_AS3935_DEV_ADDR_3            UINT8_C(0x03)   //!< as3935 I2C address when ADD0 and ADD1 pins high
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 /* AS3935 registers */
 #define AS3935_REG_00                UINT8_C(0x00)   //!< as3935 I2C register to access AFE gain boost and power-down
 #define AS3935_REG_01                UINT8_C(0x01)   //!< as3935 I2C register to access noise floor level and watchdog threshold (0-15)

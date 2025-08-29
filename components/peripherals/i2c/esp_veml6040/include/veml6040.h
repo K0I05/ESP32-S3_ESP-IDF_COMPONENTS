@@ -53,8 +53,6 @@ extern "C" {
 
 #define I2C_VEML6040_DEV_ADDR               UINT8_C(0x10)       //!< veml6040 I2C address
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * VEML6040 macro definitions
 */

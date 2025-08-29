@@ -54,8 +54,6 @@ extern "C" {
 #define I2C_BH1750_DEV_ADDR_LO          UINT8_C(0x23)       //!< bh1750 I2C address when ADDR pin floating/low
 #define I2C_BH1750_DEV_ADDR_HI          UINT8_C(0x5C)       //!< bh1750 I2C address when ADDR pin high
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * macros definitions

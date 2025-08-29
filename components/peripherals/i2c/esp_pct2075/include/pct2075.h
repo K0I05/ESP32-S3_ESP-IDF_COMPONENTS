@@ -57,8 +57,6 @@ extern "C" {
 #define I2C_PCT2075_DEV_CLK_SPD             UINT32_C(100000)    /*!< pct2075 i2c device scl clock frequency (100KHz) */
 #define I2C_PCT2075_DEV_ADDR                UINT8_C(0x37)       /*!< pct2075 i2c device address */
 
-#define I2C_XFR_TIMEOUT_MS                  UINT16_C(500)       //!< I2C transaction timeout in milliseconds
-
 /**
  * public macro definitions
  */

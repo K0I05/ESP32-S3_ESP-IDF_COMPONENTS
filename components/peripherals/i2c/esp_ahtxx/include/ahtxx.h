@@ -57,7 +57,6 @@ extern "C" {
 #define I2C_AHTXX_DEV_CLK_SPD   UINT32_C(100000) /*!< ahtxx i2c device scl clock frequency (100KHz) */
 #define I2C_AHTXX_DEV_ADDR      UINT8_C(0x38)    /*!< ahtxx i2c device address */
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
 
 /**
  * public macro definitions
@@ -150,7 +149,7 @@ typedef struct ahtxx_config_s {
  * @brief AHTXX context structure.
  */
 struct ahtxx_context_t {
-    ahtxx_config_t      dev_config; /*!< ahtxx device configuration */
+    ahtxx_config_t          dev_config; /*!< ahtxx device configuration */
     i2c_master_dev_handle_t i2c_handle; /*!< ahtxx i2c device handle */
 };
 

@@ -55,6 +55,8 @@
 #define AS3935_EVENT_TASK_STACK_SIZE    (configMINIMAL_STACK_SIZE * 5)
 #define AS3935_EVENT_TASK_PRIORITY      (tskIDLE_PRIORITY + 6)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /** 
  * macro definitions
 */
@@ -65,6 +67,7 @@
  * @brief AS3935 monitor event base definition.
  */
 ESP_EVENT_DEFINE_BASE(ESP_AS3935_EVENT);
+
 
 /**
  * static constant declarations

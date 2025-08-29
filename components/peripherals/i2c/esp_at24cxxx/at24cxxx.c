@@ -58,12 +58,13 @@
 #define AT24CXXX_READ_DELAY_MS         UINT16_C(5) 
 #define AT24CXXX_WRITE_DELAY_MS        UINT16_C(10)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /**
  * macro definitions
  */
 
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
-
 
  
 /**

@@ -55,8 +55,6 @@ extern "C" {
 #define I2C_CCS811_DEV_ADDR_LO                  UINT8_C(0x5a)   //!< ccs811 I2C address when ADDR pin floating/low
 #define I2C_CCS811_DEV_ADDR_HI                  UINT8_C(0x5b)   //!< ccs811 I2C address when ADDR pin high
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 #define CCS811_ERROR_TABLE_SIZE                 (6)             //!< ccs811 I2C error table size
 #define CCS811_MEASURE_MODE_TABLE_SIZE          (5)             //!< ccs811 I2C measure mode table size
 

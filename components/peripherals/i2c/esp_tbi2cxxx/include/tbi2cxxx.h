@@ -54,8 +54,6 @@ extern "C"
 
 #define I2C_TBI2CXXX_DEV_ADDR              UINT8_C(0x3a)   //!< tbi2cxxx I2C address
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * TBI2CXXX macro definitions
  */

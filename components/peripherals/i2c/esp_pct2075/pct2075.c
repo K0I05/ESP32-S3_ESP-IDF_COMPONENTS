@@ -60,6 +60,8 @@
 #define PCT2075_APPSTART_DELAY_MS           UINT16_C(25)
 #define PCT2075_CMD_DELAY_MS                UINT16_C(10)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */

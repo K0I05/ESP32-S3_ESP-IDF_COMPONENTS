@@ -53,8 +53,6 @@ extern "C"
 
 #define I2C_MAX30105_DEV_ADDR              UINT8_C(0x38) //!< max30105 I2C address
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * MAX30105 macro definitions

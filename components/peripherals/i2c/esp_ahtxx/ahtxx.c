@@ -84,6 +84,8 @@
 #define AHTXX_MEAS_PROC_DELAY_MS    UINT16_C(80)    /*!< ahtxx delay before attempting read transaction after a measurement trigger command is issued */
 #define AHTXX_TX_RX_DELAY_MS        UINT16_C(10)    /*!< ahtxx delay after attempting a transmit transaction and attempting a receive transaction */
 
+#define I2C_XFR_TIMEOUT_MS          (500)          //!< I2C transaction timeout in milliseconds
+
 
 /**
  * macro definitions
@@ -91,6 +93,7 @@
 
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
+
 
 /**
  * static constant declarations

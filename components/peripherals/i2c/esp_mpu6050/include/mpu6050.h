@@ -55,8 +55,6 @@ extern "C" {
 #define I2C_MPU6050_DEV_ADDR_H                  UINT8_C(0x69)   //!< mpu6050 I2C address when AD0 = 1 or to vcc
 #define I2C_MPU6050_DEV_ADDR_L                  UINT8_C(0x68)   //!< mpu6050 I2C address when AD0 = 0 or to gnd
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * MPU6050 macro definitions

@@ -59,8 +59,6 @@ extern "C" {
 #define I2C_SHT4X_DEV_ADDR_LO           UINT8_C(0x44)       //!< sht4x i2c address when ADDR pin floating/low
 #define I2C_SHT4X_DEV_ADDR_HI           UINT8_C(0x45)       //!< sht4x i2c address when ADDR pin high
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 /**
  * public macro definitions
  */

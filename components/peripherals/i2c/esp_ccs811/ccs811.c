@@ -84,6 +84,8 @@
 #define CCS811_VERIFY_DELAY_MS          UINT16_C(70)    //!< ccs811 I2C verification delay before device accepts transactions
 #define CCS811_TX_RX_DELAY_MS           UINT16_C(10)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */

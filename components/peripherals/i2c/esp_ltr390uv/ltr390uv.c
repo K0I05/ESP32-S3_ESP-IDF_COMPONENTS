@@ -84,6 +84,8 @@
 #define LTR390UV_CMD_DELAY_MS          UINT16_C(5)     /*!< ltr390uv delay before attempting I2C transactions after a command is issued */
 #define LTR390UV_TX_RX_DELAY_MS        UINT16_C(10)    /*!< ltr390uv delay after attempting an I2C transmit transaction and attempting an I2C receive transaction */
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 
 /*
  * macro definitions

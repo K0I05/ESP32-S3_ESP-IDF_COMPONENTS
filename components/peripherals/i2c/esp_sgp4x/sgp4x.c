@@ -69,6 +69,8 @@
 #define SGP4X_CMD_DELAY_MS              UINT16_C(5)     /*!< delay before attempting I2C transactions after a command is issued */
 #define SGP4X_RETRY_DELAY_MS            UINT16_C(2)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 
 /*
  * macro definitions
@@ -98,7 +100,7 @@ static inline esp_err_t sgp4x_i2c_read(sgp4x_handle_t handle, uint8_t *buffer, c
     ESP_ARG_CHECK( handle );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, buffer, size, I2C_SGP4X_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read failed" );
 
     return ESP_OK;
 }
@@ -116,7 +118,7 @@ static inline esp_err_t sgp4x_i2c_write(sgp4x_handle_t handle, const uint8_t *bu
     ESP_ARG_CHECK( handle );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, buffer, size, I2C_SGP4X_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -136,7 +138,7 @@ static inline esp_err_t sgp4x_i2c_write_command(sgp4x_handle_t handle, const uin
     ESP_ARG_CHECK( handle );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_SGP4X_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -272,7 +274,7 @@ esp_err_t sgp4x_init(i2c_master_bus_handle_t master_handle, const sgp4x_config_t
     vTaskDelay(pdMS_TO_TICKS(SGP4X_POWERUP_DELAY_MS));
 
     /* validate device exists on the master bus */
-    esp_err_t ret = i2c_master_probe(master_handle, sgp4x_config->i2c_address, I2C_SGP4X_XFR_TIMEOUT_MS);
+    esp_err_t ret = i2c_master_probe(master_handle, sgp4x_config->i2c_address, I2C_XFR_TIMEOUT_MS);
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, sgp4x device handle initialization failed", sgp4x_config->i2c_address);
 
     /* validate memory availability for handle */

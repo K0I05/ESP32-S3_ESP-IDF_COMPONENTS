@@ -56,6 +56,8 @@
 #define TBI2CXXX_APPSTART_DELAY_MS     UINT16_C(10)    /*!< tbi2cxxx delay after initialization before application start-up */
 #define TBI2CXXX_CMD_DELAY_MS          UINT16_C(5)     /*!< tbi2cxxx delay before attempting I2C transactions after a command is issued */
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 
 /*
  * macro definitions

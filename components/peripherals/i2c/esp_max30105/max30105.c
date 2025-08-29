@@ -86,6 +86,7 @@
 #define MAX30105_CMD_DELAY_MS               UINT16_C(5)     /*!< max30105 delay before attempting I2C transactions after a command is issued */
 #define MAX30105_TX_RX_DELAY_MS             UINT16_C(10)    /*!< max30105 delay after attempting an I2C transmit transaction and attempting an I2C receive transaction */
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
 
 /*
  * macro definitions

@@ -55,8 +55,6 @@ extern "C" {
 #define I2C_MLX90614_DEV_CLK_SPD             UINT32_C(100000)  //!< mlx90614 I2C default clock frequency (100KHz)
 #define I2C_MLX90614_DEV_ADDR                UINT8_C(0x5A)     //!< mlx90614 I2C address when ADDR pin floating/low
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * macro definitions

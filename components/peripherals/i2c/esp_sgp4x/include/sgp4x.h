@@ -54,8 +54,6 @@ extern "C"
 
 #define I2C_SGP4X_DEV_ADDR              UINT8_C(0x59) //!< sgp4x I2C address
 
-#define I2C_SGP4X_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 /*
  * SGP4X macro definitions
  */

@@ -53,8 +53,6 @@ extern "C" {
 
 #define I2C_MMC56X3_DEV_ADDR                UINT8_C(0x30)     //!< mmc56x3 I2C address
 
-#define I2C_XFR_TIMEOUT_MS              (500)          //!< I2C transaction timeout in milliseconds
-
 
 /*
  * MMC56X3 macro definitions

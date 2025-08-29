@@ -71,6 +71,8 @@
 #define VEML7700_PSM_TIMES_COUNT    UINT8_C(24) 
 #define VEML7700_PSM_OPTIONS_COUNT  UINT8_C(4)
 
+#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+
 /*
  * macro definitions
 */
