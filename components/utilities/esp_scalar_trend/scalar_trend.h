@@ -59,24 +59,9 @@ typedef enum scalar_trend_codes_tag {        /*!< 1-hr Change */
 } scalar_trend_codes_t;
 
 /**
- * @brief Scalar trend structure.
+ * @brief Scalar trend opaque handle structure definition.
  */
-struct scalar_trend_t {
-    double      critical_t;    /*!< scalar trend samples absolute critical t value, state machine variable */
-    uint16_t    samples_count; /*!< scalar trend samples count, state machine variable */
-    uint16_t    samples_size;  /*!< scalar trend samples size, state machine variable */
-    float*      samples;       /*!< scalar trend samples array, state machine variable */
-};
-
-/**
- * @brief Scalar trend type definition.
- */
-typedef struct scalar_trend_t scalar_trend_t;
-
-/**
- * @brief Scalar trend handle definition.
- */
-typedef struct scalar_trend_t *scalar_trend_handle_t;
+typedef void* scalar_trend_handle_t;
 
 /**
  * @brief Converts `scalar_trend_codes_t` enumerator trend code to string.

@@ -69,6 +69,15 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief DS18B20 device descriptor structure definition.
+ */
+typedef struct ds18b20_device_s {
+    ds18b20_config_t          config;       /*!< ds18b20 device configuration */
+    onewire_bus_handle_t      owb_handle;   /*!< ds18b20 1-wire bus handle */
+    onewire_device_address_t  owb_address;  /*!< ds18b20 1-wire device address */
+} ds18b20_device_t;
+
 /*
 * static constant declarations
 */
@@ -97,18 +106,18 @@ static inline bool ds18b20_validate_scratchpad(const ds18b20_scratchpad_t scratc
  * @param cmd DS18B20 command value.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ds18b20_send_command(ds18b20_handle_t handle, const uint8_t cmd) {
+static inline esp_err_t ds18b20_send_command(ds18b20_device_t *const device, const uint8_t cmd) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     // build command
     uint8_t tx_buffer[10] = {0};
     tx_buffer[0] = ONEWIRE_CMD_MATCH_ROM;
-    memcpy(&tx_buffer[1], &handle->owb_address, sizeof(handle->owb_address));
-    tx_buffer[sizeof(handle->owb_address) + 1] = cmd;
+    memcpy(&tx_buffer[1], &device->owb_address, sizeof(device->owb_address));
+    tx_buffer[sizeof(device->owb_address) + 1] = cmd;
 
     /* write command */
-    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(handle->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write bytes, send command failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(device->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write bytes, send command failed" );
 
     return ESP_OK;
 }
@@ -156,18 +165,20 @@ esp_err_t ds18b20_detect(onewire_bus_handle_t owb_handle, onewire_device_t *cons
 }
 
 esp_err_t ds18b20_connected(ds18b20_handle_t handle, bool *const connected) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
     ESP_ARG_CHECK( handle );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, connected failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, connected failed" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, connected failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, connected failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, connected failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, connected failed" );
 
     // validate scratchpad and crc
     if(ds18b20_validate_scratchpad(scratchpad) == true && onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc) {
@@ -187,25 +198,24 @@ esp_err_t ds18b20_init(onewire_device_t *device, const ds18b20_config_t *ds18b20
     ESP_RETURN_ON_FALSE( ds18b20_validate_address(device->address), ESP_ERR_NOT_SUPPORTED, TAG, "%016llX is not a ds18b20 device, ds18b20 device handle initialization failed", device->address );
 
     /* validate memory availability for handle */
-    ds18b20_handle_t out_handle;
-    out_handle = (ds18b20_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_RETURN_ON_FALSE( out_handle, ESP_ERR_NO_MEM, TAG, "no memory for device, ds18b20 device handle initialization failed" );
+    ds18b20_device_t* dev = (ds18b20_device_t*)calloc(1, sizeof(ds18b20_device_t));
+    ESP_RETURN_ON_FALSE( dev, ESP_ERR_NO_MEM, TAG, "no memory for device, ds18b20 device handle initialization failed" );
 
     /* copy configuration */
-	out_handle->owb_handle  = device->bus;
-    out_handle->owb_address = device->address;
-    out_handle->dev_config  = *ds18b20_config;
+	dev->owb_handle  = device->bus;
+    dev->owb_address = device->address;
+    dev->config      = *ds18b20_config;
 
     /* set temperature resolution */
-    ESP_RETURN_ON_ERROR( ds18b20_set_resolution(out_handle, out_handle->dev_config.resolution), TAG, "unable to write temperature resolution, ds18b20 device handle initialization failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_set_resolution((ds18b20_handle_t)dev, dev->config.resolution), TAG, "unable to write temperature resolution, ds18b20 device handle initialization failed" );
 
     /* set trigger thresholds if enabled */
     if(ds18b20_config->trigger_enabled == true) {
-        ESP_RETURN_ON_ERROR( ds18b20_set_alarm_thresholds(out_handle, out_handle->dev_config.trigger_high, out_handle->dev_config.trigger_low), TAG, "unable to write trigger thresholds, ds18b20 device handle initialization failed" );
+        ESP_RETURN_ON_ERROR( ds18b20_set_alarm_thresholds((ds18b20_handle_t)dev, dev->config.trigger_high, dev->config.trigger_low), TAG, "unable to write trigger thresholds, ds18b20 device handle initialization failed" );
     }
 
     /* set device handle */
-    *ds18b20_handle = out_handle;
+    *ds18b20_handle = (ds18b20_handle_t)dev;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(DS18B20_APPSTART_DELAY_MS));
@@ -227,18 +237,20 @@ esp_err_t ds18b20_get_temperature(ds18b20_handle_t handle, float *const temperat
 }
 
 esp_err_t ds18b20_get_measurement(ds18b20_handle_t handle, float *const temperature) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "reset bus error" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "reset bus error" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "send DS18B20_CMD_READ_SCRATCHPAD failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "send DS18B20_CMD_READ_SCRATCHPAD failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "error while reading scratchpad data" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "error while reading scratchpad data" );
 
     // validate crc
     ESP_RETURN_ON_FALSE( onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc, ESP_ERR_INVALID_CRC, TAG, "scratchpad crc error");
@@ -250,18 +262,18 @@ esp_err_t ds18b20_get_measurement(ds18b20_handle_t handle, float *const temperat
     const float resolution_multipliers[] = { 0.5f, 0.25f, 0.125f, 0.0625f };
 
     // convert the raw temperature to a float
-    switch(handle->dev_config.resolution) {
+    switch(dev->config.resolution) {
         case DS18B20_RESOLUTION_9BIT:
-            *temperature = (float)(temperature_raw >> 3) * resolution_multipliers[handle->dev_config.resolution];
+            *temperature = (float)(temperature_raw >> 3) * resolution_multipliers[dev->config.resolution];
             break;
         case DS18B20_RESOLUTION_10BIT:
-            *temperature = (float)(temperature_raw >> 2) * resolution_multipliers[handle->dev_config.resolution];
+            *temperature = (float)(temperature_raw >> 2) * resolution_multipliers[dev->config.resolution];
             break;
         case DS18B20_RESOLUTION_11BIT:
-            *temperature = (float)(temperature_raw >> 1) * resolution_multipliers[handle->dev_config.resolution];
+            *temperature = (float)(temperature_raw >> 1) * resolution_multipliers[dev->config.resolution];
             break;
         case DS18B20_RESOLUTION_12BIT:
-            *temperature = (float)temperature_raw * resolution_multipliers[handle->dev_config.resolution];
+            *temperature = (float)temperature_raw * resolution_multipliers[dev->config.resolution];
             break;
     }
 
@@ -269,37 +281,41 @@ esp_err_t ds18b20_get_measurement(ds18b20_handle_t handle, float *const temperat
 }
 
 esp_err_t ds18b20_trigger_temperature_conversion(ds18b20_handle_t handle) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, trigger temperature conversion failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, trigger temperature conversion failed" );
 
     // send command: DS18B20_CMD_CONVERT_TEMP
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_TEMP_CONVERT), TAG, "unable to send DS18B20_CMD_CONVERT_TEMP command, trigger temperature conversion failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_TEMP_CONVERT), TAG, "unable to send DS18B20_CMD_CONVERT_TEMP command, trigger temperature conversion failed" );
 
     // temperature conversion delays by resolution (9, 10, 11, 12 bit)
     const uint16_t delays_ms[] = { 100, 200, 400, 800 };
 
     // delay for temperature conversion - based on resolution setting
-    vTaskDelay(pdMS_TO_TICKS(delays_ms[handle->dev_config.resolution]));
+    vTaskDelay(pdMS_TO_TICKS(delays_ms[dev->config.resolution]));
 
     return ESP_OK;
 }
 
 esp_err_t ds18b20_get_resolution(ds18b20_handle_t handle, ds18b20_resolutions_t *const resolution) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "reset bus error" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "reset bus error" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "send DS18B20_CMD_READ_SCRATCHPAD failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "send DS18B20_CMD_READ_SCRATCHPAD failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "error while reading scratchpad data" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "error while reading scratchpad data" );
 
     // validate crc
     ESP_RETURN_ON_FALSE( onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc, ESP_ERR_INVALID_CRC, TAG, "scratchpad crc error");
@@ -314,20 +330,22 @@ esp_err_t ds18b20_get_resolution(ds18b20_handle_t handle, ds18b20_resolutions_t 
 }
 
 esp_err_t ds18b20_set_resolution(ds18b20_handle_t handle, const ds18b20_resolutions_t resolution) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* ##### read existing configuration ##### */
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, set resolution failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, set resolution failed" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, set resolution failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, set resolution failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, set resolution failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, set resolution failed" );
 
     // validate crc
     ESP_RETURN_ON_FALSE( onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc, ESP_ERR_INVALID_CRC, TAG, "scratchpad crc is invalid, set resolution failed");
@@ -335,20 +353,20 @@ esp_err_t ds18b20_set_resolution(ds18b20_handle_t handle, const ds18b20_resoluti
     /* ##### write updated configuration ##### */
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, set resolution failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, set resolution failed" );
 
     // send command: DS18B20_CMD_WRITE_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_WRITE), TAG, "unable to send DS18B20_CMD_WRITE_SCRATCHPAD command, set resolution failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_WRITE), TAG, "unable to send DS18B20_CMD_WRITE_SCRATCHPAD command, set resolution failed" );
 
     // init configuration register and buffer data
     const ds18b20_configuration_register_t cfg = { .bits.reserved1 = 1, .bits.reserved2 = 0, .bits.resolution = resolution };
     const uint8_t tx_buffer[] = { scratchpad.trigger_high, scratchpad.trigger_low, cfg.reg };
 
     // write resolution data to scratchpad
-    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(handle->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write resolution, set resolution failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(dev->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write resolution, set resolution failed" );
 
     // set handle resolution setting
-    handle->dev_config.resolution = resolution;
+    dev->config.resolution = resolution;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(DS18B20_EEPROM_WRITE_DELAY_MS));
@@ -357,18 +375,20 @@ esp_err_t ds18b20_set_resolution(ds18b20_handle_t handle, const ds18b20_resoluti
 }
 
 esp_err_t ds18b20_get_alarm_thresholds(ds18b20_handle_t handle, int8_t *const high, int8_t *const low) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, get alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, get alarm thresholds failed" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, get alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, get alarm thresholds failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, get alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, get alarm thresholds failed" );
 
     // validate crc
     ESP_RETURN_ON_FALSE( onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc, ESP_ERR_INVALID_CRC, TAG, "scratchpad crc is invalid, get alarm thresholds failed");
@@ -381,8 +401,10 @@ esp_err_t ds18b20_get_alarm_thresholds(ds18b20_handle_t handle, int8_t *const hi
 }
 
 esp_err_t ds18b20_set_alarm_thresholds(ds18b20_handle_t handle, const int8_t high, const int8_t low) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate threshold limits */
     ESP_RETURN_ON_FALSE( high > low, ESP_ERR_INVALID_ARG, TAG, "high threshold must be greater than the low threshold, set alarm thresholds failed" );
@@ -392,14 +414,14 @@ esp_err_t ds18b20_set_alarm_thresholds(ds18b20_handle_t handle, const int8_t hig
     /* ##### read existing configuration ##### */
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, set alarm thresholds failed" );
 
     // send command: DS18B20_CMD_READ_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_READ), TAG, "unable to send OWB_DS18B20_CMD_SCRATCHPAD_READ command, set alarm thresholds failed" );
 
     // read scratchpad data
     ds18b20_scratchpad_t scratchpad;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(handle->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bytes(dev->owb_handle, (uint8_t *)&scratchpad, sizeof(scratchpad)), TAG, "unable to read scratchpad data, set alarm thresholds failed" );
 
     // validate crc
     ESP_RETURN_ON_FALSE( onewire_crc8(0, (uint8_t *)&scratchpad, 8) == scratchpad.crc, ESP_ERR_INVALID_CRC, TAG, "scratchpad crc is invalid, set alarm thresholds failed");
@@ -407,20 +429,20 @@ esp_err_t ds18b20_set_alarm_thresholds(ds18b20_handle_t handle, const int8_t hig
     /* ##### write updated configuration ##### */
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "unable to reset bus, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "unable to reset bus, set alarm thresholds failed" );
 
     // send command: DS18B20_CMD_WRITE_SCRATCHPAD
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_SCRATCHPAD_WRITE), TAG, "unable to send DS18B20_CMD_WRITE_SCRATCHPAD command, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_SCRATCHPAD_WRITE), TAG, "unable to send DS18B20_CMD_WRITE_SCRATCHPAD command, set alarm thresholds failed" );
 
     // init resolution data
     const uint8_t tx_buffer[] = { (uint8_t)high, (uint8_t)low, scratchpad.configuration };
 
     // write resolution data to scratchpad
-    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(handle->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write thresholds, set alarm thresholds failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_write_bytes(dev->owb_handle, tx_buffer, sizeof(tx_buffer)), TAG, "unable to write thresholds, set alarm thresholds failed" );
 
     // set handle parameters
-    handle->dev_config.trigger_high = high;
-    handle->dev_config.trigger_low  = low;
+    dev->config.trigger_high = high;
+    dev->config.trigger_low  = low;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(DS18B20_EEPROM_WRITE_DELAY_MS));
@@ -429,18 +451,20 @@ esp_err_t ds18b20_set_alarm_thresholds(ds18b20_handle_t handle, const int8_t hig
 }
 
 esp_err_t ds18b20_get_power_supply_mode(ds18b20_handle_t handle, bool *const parasitic) {
+    ds18b20_device_t* dev = (ds18b20_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // reset bus and check if the ds18b20 is present
-    ESP_RETURN_ON_ERROR( onewire_bus_reset(handle->owb_handle), TAG, "reset bus error" );
+    ESP_RETURN_ON_ERROR( onewire_bus_reset(dev->owb_handle), TAG, "reset bus error" );
 
     // send command: OWB_DS18B20_CMD_POWER_SUPPLY_READ
-    ESP_RETURN_ON_ERROR( ds18b20_send_command(handle, DS18B20_CMD_POWER_SUPPLY_READ), TAG, "send OWB_DS18B20_CMD_POWER_SUPPLY_READ failed" );
+    ESP_RETURN_ON_ERROR( ds18b20_send_command(dev, DS18B20_CMD_POWER_SUPPLY_READ), TAG, "send OWB_DS18B20_CMD_POWER_SUPPLY_READ failed" );
 
     // read power supply type
     uint8_t value = 0;
-    ESP_RETURN_ON_ERROR( onewire_bus_read_bit(handle->owb_handle, &value), TAG, "read bit failed" );
+    ESP_RETURN_ON_ERROR( onewire_bus_read_bit(dev->owb_handle, &value), TAG, "read bit failed" );
 
     /* set output parameter */
     *parasitic = !(bool)(value & 0x01u);
@@ -461,7 +485,7 @@ esp_err_t ds18b20_delete(ds18b20_handle_t handle) {
 }
 
 const char* ds18b20_get_fw_version(void) {
-    return DS18B20_FW_VERSION_STR;
+    return (char*)DS18B20_FW_VERSION_STR;
 }
 
 int32_t ds18b20_get_fw_version_number(void) {

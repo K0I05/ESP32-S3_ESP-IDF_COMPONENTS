@@ -124,7 +124,7 @@ Usage:
 #define PACK8 __attribute__((aligned( __alignof__( uint8_t ) ), packed ))
 
 /**
- * @brief SSD1306 device structure definition.
+ * @brief SSD1306 device descriptor structure definition.
  */
 typedef struct ssd1306_device_s {
 	ssd1306_config_t 	config;    			/*!< ssd1306 device configuration */

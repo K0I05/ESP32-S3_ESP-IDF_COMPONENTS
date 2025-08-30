@@ -116,23 +116,9 @@ typedef struct ds18b20_config_s {
 } ds18b20_config_t;
 
 /**
- * @brief DS18B20 context structure.
+ * @brief DS18B20 opaque handle structure definition.
  */
-struct ds18b20_context_t {
-    ds18b20_config_t          dev_config;   /*!< ds18b20 device configuration */
-    onewire_bus_handle_t      owb_handle;   /*!< ds18b20 1-wire bus handle */
-    onewire_device_address_t  owb_address;  /*!< ds18b20 1-wire device address */
-};
-
-/**
- * @brief DS18B20 context structure definition.
- */
-typedef struct ds18b20_context_t ds18b20_context_t;
-
-/**
- * @brief DS18B20 handle structure definition.
- */
-typedef struct ds18b20_context_t *ds18b20_handle_t;
+typedef void* ds18b20_handle_t;
 
 
 /**

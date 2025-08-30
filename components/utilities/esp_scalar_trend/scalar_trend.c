@@ -51,6 +51,17 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define SQR(x) ((x) * (x))
+
+/**
+ * @brief Scalar trend context descriptor structure definition.
+ */
+typedef struct scalar_trend_context_s {
+    double      critical_t;    /*!< scalar trend samples absolute critical t value, state machine variable */
+    uint16_t    samples_count; /*!< scalar trend samples count, state machine variable */
+    uint16_t    samples_size;  /*!< scalar trend samples size, state machine variable */
+    float*      samples;       /*!< scalar trend samples array, state machine variable */
+} scalar_trend_context_t;
+
 /*
 * static constant declarations
 */
@@ -159,24 +170,24 @@ esp_err_t scalar_trend_init(const uint16_t samples_size, scalar_trend_handle_t *
     ESP_GOTO_ON_FALSE( samples_size > 2, ESP_ERR_INVALID_ARG, err, TAG, "samples size must be greater than 2, scalar trend handle initialization failed" );
 
     /* validate memory availability for scalar trend handle */
-    scalar_trend_handle_t out_handle = (scalar_trend_handle_t)calloc(1, sizeof(scalar_trend_t)); 
-    ESP_GOTO_ON_FALSE( out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for scalar trend handle, scalar trend handle initialization failed" );
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)calloc(1, sizeof(scalar_trend_context_t)); 
+    ESP_GOTO_ON_FALSE( ctxt, ESP_ERR_NO_MEM, err, TAG, "no memory for scalar trend handle, scalar trend handle initialization failed" );
 
     /* validate memory availability for samples array */
-    out_handle->samples = (float*)calloc(samples_size, sizeof(float));
-    ESP_GOTO_ON_FALSE( out_handle->samples, ESP_ERR_NO_MEM, err_out_handle, TAG, "no memory for scalar trend handle samples, scalar trend handle initialization failed" );
+    ctxt->samples = (float*)calloc(samples_size, sizeof(float));
+    ESP_GOTO_ON_FALSE( ctxt->samples, ESP_ERR_NO_MEM, err_out_handle, TAG, "no memory for scalar trend handle samples, scalar trend handle initialization failed" );
 
     /* calculate absolute critical t value and copy configuration */
-    out_handle->critical_t   = fabs(t_inv(0.05/2, samples_size - 2));
-    out_handle->samples_size = samples_size;
+    ctxt->critical_t   = fabs(t_inv(0.05/2, samples_size - 2));
+    ctxt->samples_size = samples_size;
 
     /* set output instance */
-    *scalar_trend_handle = out_handle;
+    *scalar_trend_handle = (scalar_trend_handle_t)ctxt;
 
     return ESP_OK;
 
     err_out_handle:
-        free(out_handle);
+        free(ctxt);
     err:
         return ret;
 }
@@ -184,28 +195,30 @@ esp_err_t scalar_trend_init(const uint16_t samples_size, scalar_trend_handle_t *
 esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle, 
                                 const float sample, 
                                 scalar_trend_codes_t *const code) {
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK(scalar_trend_handle);
+    ESP_ARG_CHECK(ctxt);
 
     // have we filled the array?
-    if (scalar_trend_handle->samples_count < scalar_trend_handle->samples_size) {
+    if (ctxt->samples_count < ctxt->samples_size) {
         // no! add this observation to the array
-        scalar_trend_handle->samples[scalar_trend_handle->samples_count] = sample;
+        ctxt->samples[ctxt->samples_count] = sample;
 
         // bump n
-        scalar_trend_handle->samples_count++;
+        ctxt->samples_count++;
     } else {
         // yes! the array is full so we have to make space
-        for (uint16_t i = 1; i < scalar_trend_handle->samples_size; i++) {
-            scalar_trend_handle->samples[i-1] = scalar_trend_handle->samples[i];
+        for (uint16_t i = 1; i < ctxt->samples_size; i++) {
+            ctxt->samples[i-1] = ctxt->samples[i];
         }
 
         // now we can fill in the last slot
-        scalar_trend_handle->samples[scalar_trend_handle->samples_size-1] = sample;
+        ctxt->samples[ctxt->samples_size-1] = sample;
     }
 
     // is the array full yet?
-    if (scalar_trend_handle->samples_count < scalar_trend_handle->samples_size) {
+    if (ctxt->samples_count < ctxt->samples_size) {
         // no! we are still training
         *code = SCALAR_TREND_CODE_UNKNOWN;
 
@@ -223,12 +236,12 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
     double sum_xy = 0.0;    // ∑(xy)
     
     // we need n in lots of places and it's convenient as a double
-    double n = 1.0 * scalar_trend_handle->samples_size;
+    double n = 1.0 * ctxt->samples_size;
 
     // iterate to calculate the above values
-    for (size_t i = 0; i < scalar_trend_handle->samples_size; i++) {
+    for (size_t i = 0; i < ctxt->samples_size; i++) {
         double x = 1.0 * i;
-        double y = scalar_trend_handle->samples[i];
+        double y = ctxt->samples[i];
 
         sum_x = sum_x + x;
         sum_xx = sum_xx + x * x;
@@ -305,8 +318,8 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
     double SSE = 0.0;        // ∑((y-ŷ)²)
 
     // iterate
-    for (uint16_t i = 0; i < scalar_trend_handle->samples_size; i++) {
-        double y = scalar_trend_handle->samples[i];
+    for (uint16_t i = 0; i < ctxt->samples_size; i++) {
+        double y = ctxt->samples[i];
         double residual = y - (intercept + slope * i);
         SSE = SSE + residual * residual;
     }
@@ -327,7 +340,7 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
      */
 
     // is tObserved further to the left or right than tCritical?
-    if (tObserved > scalar_trend_handle->critical_t) {
+    if (tObserved > ctxt->critical_t) {
     
         // yes! what is the sign of the slope?
         if (slope < 0.0) {
@@ -348,25 +361,31 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
 }
 
 esp_err_t scalar_trend_reset(scalar_trend_handle_t scalar_trend_handle) {
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK(scalar_trend_handle);
+    ESP_ARG_CHECK(ctxt);
 
     /* purge samples */
-    for(uint16_t i = 0; i < scalar_trend_handle->samples_size; i++) {
-        scalar_trend_handle->samples[i] = NAN;
+    for(uint16_t i = 0; i < ctxt->samples_size; i++) {
+        ctxt->samples[i] = NAN;
     }
 
     /* reset samples counter */
-    scalar_trend_handle->samples_count = 0;
+    ctxt->samples_count = 0;
 
     return ESP_OK;
 }
 
 esp_err_t scalar_trend_delete(scalar_trend_handle_t scalar_trend_handle) {
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK(scalar_trend_handle);
-    if(scalar_trend_handle->samples) 
-        free(scalar_trend_handle->samples);
+    ESP_ARG_CHECK(ctxt);
+
+    if(ctxt->samples) 
+        free(ctxt->samples);
     free(scalar_trend_handle);
+    
     return ESP_OK;
 }
