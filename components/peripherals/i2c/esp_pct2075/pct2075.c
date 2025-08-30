@@ -72,7 +72,7 @@
  * @brief PCT2075 device descriptor structure definition.
  */
 typedef struct pct2075_device_s {
-    pct2075_config_t        dev_config; /*!< pct2075 device configuration */
+    pct2075_config_t        config;     /*!< pct2075 device configuration */
     i2c_master_dev_handle_t i2c_handle; /*!< pct2075 i2c device handle */
 } pct2075_device_t;
 
@@ -243,36 +243,36 @@ static inline esp_err_t pct2075_setup(pct2075_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* configure set-point temperatures */
-    if(device->dev_config.configure_setpoints == true) {
-        ESP_RETURN_ON_ERROR( pct2075_set_ots_temperature((pct2075_handle_t)device, device->dev_config.ots_temperature), TAG, "setting overtemperature set-point temperature failed" );
-        ESP_RETURN_ON_ERROR( pct2075_set_hys_temperature((pct2075_handle_t)device, device->dev_config.hys_temperature), TAG, "setting hysteresis set-point temperature failed" );
+    if(device->config.configure_setpoints == true) {
+        ESP_RETURN_ON_ERROR( pct2075_set_ots_temperature((pct2075_handle_t)device, device->config.ots_temperature), TAG, "setting overtemperature set-point temperature failed" );
+        ESP_RETURN_ON_ERROR( pct2075_set_hys_temperature((pct2075_handle_t)device, device->config.hys_temperature), TAG, "setting hysteresis set-point temperature failed" );
     }
 
     /* configure sampling interval */
-    if(device->dev_config.configure_sampling == true) {
-        ESP_RETURN_ON_ERROR( pct2075_set_sampling_period((pct2075_handle_t)device, device->dev_config.sampling_period), TAG, "setting sampling period failed" );
+    if(device->config.configure_sampling == true) {
+        ESP_RETURN_ON_ERROR( pct2075_set_sampling_period((pct2075_handle_t)device, device->config.sampling_period), TAG, "setting sampling period failed" );
     }
 
     /* read configuration register */
     ESP_RETURN_ON_ERROR( pct2075_get_config_register((pct2075_handle_t)device, &cfg_reg), TAG, "read configuration register failed" );
 
     /* configure operation mode */
-    if(device->dev_config.operation_mode != PCT2075_OS_OP_MODE_COMPARATOR) {
+    if(device->config.operation_mode != PCT2075_OS_OP_MODE_COMPARATOR) {
         cfg_reg.bits.operation_mode = PCT2075_OS_OP_MODE_INTERRUPT; // set operation mode to interrupt
     }
 
     /* configure polarity */
-    if(device->dev_config.polarity != PCT2075_OS_POL_ACTIVE_LOW) {
+    if(device->config.polarity != PCT2075_OS_POL_ACTIVE_LOW) {
         cfg_reg.bits.polarity = PCT2075_OS_POL_ACTIVE_HIGH; // set polarity to high
     }
 
     /* configure fault queue */
-    if(device->dev_config.fault_queue != PCT2075_OS_FAULT_QUEUE_1) {
-        cfg_reg.bits.fault_queue = device->dev_config.fault_queue; // set fault queue
+    if(device->config.fault_queue != PCT2075_OS_FAULT_QUEUE_1) {
+        cfg_reg.bits.fault_queue = device->config.fault_queue; // set fault queue
     }
 
     /* enable or disable (i.e. shutdown) pct2075 */
-    if(device->dev_config.shutdown_enabled == true) {
+    if(device->config.shutdown_enabled == true) {
         cfg_reg.bits.shutdown_enabled = true; // shutdown enabled
     }
 
@@ -328,13 +328,13 @@ esp_err_t pct2075_init(const i2c_master_bus_handle_t master_handle, const pct207
     ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c pct2075 device");
 
     /* copy configuration */
-    dev->dev_config = *pct2075_config;
+    dev->config = *pct2075_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = dev->dev_config.i2c_address,
-        .scl_speed_hz       = dev->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */

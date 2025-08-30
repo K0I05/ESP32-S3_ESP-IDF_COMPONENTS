@@ -76,6 +76,15 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief S12SD device descriptor context structure.
+ */
+typedef struct s12sd_device_s {
+    s12sd_config_t              config;         /*!< s12sd adc configuration */
+    adc_oneshot_unit_handle_t   adc_handle;     /*!< s12sd adc device handle */
+    adc_cali_handle_t           adc_cal_handle; /*!< s12sd adc calibration handle */
+    bool                        adc_calibrate;  /*!< s12sd adc calibration initialization flag */
+} s12sd_device_t;
 
 /*
 * static constant declarations
@@ -185,65 +194,65 @@ static inline void s12sd_calibration_delete(adc_cali_handle_t cal_handle) {
 
 esp_err_t s12sd_init(const s12sd_config_t *s12sd_config, s12sd_handle_t *s12sd_handle) {
     esp_err_t       ret = ESP_OK;
-    s12sd_handle_t  out_handle;
 
     ESP_ARG_CHECK( s12sd_config && s12sd_handle );
 
-    out_handle = (s12sd_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for adc s12sd device");
+    s12sd_device_t* dev = (s12sd_device_t*)calloc(1, sizeof(s12sd_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for adc s12sd device");
 
     /* copy configuration */
-    out_handle->dev_config = *s12sd_config;
+    dev->config = *s12sd_config;
 
     adc_oneshot_unit_init_cfg_t init_conf = {
-        .unit_id = out_handle->dev_config.adc_unit,
+        .unit_id = dev->config.adc_unit,
     };
 
-    ESP_GOTO_ON_ERROR(adc_oneshot_new_unit(&init_conf, &out_handle->adc_handle), err, TAG, "adc s12sd device new one-shot handle failed");
+    ESP_GOTO_ON_ERROR(adc_oneshot_new_unit(&init_conf, &dev->adc_handle), err, TAG, "adc s12sd device new one-shot handle failed");
 
     adc_oneshot_chan_cfg_t os_conf = {
         .bitwidth = ADC_S12SD_DIGI_BIT_WIDTH,
         .atten    = ADC_S12SD_ATTEN,
     };
 
-    ESP_GOTO_ON_ERROR(adc_oneshot_config_channel(out_handle->adc_handle, out_handle->dev_config.adc_channel, &os_conf), err, TAG, "adc s12sd device configuration (one-shot) failed");
+    ESP_GOTO_ON_ERROR(adc_oneshot_config_channel(dev->adc_handle, dev->config.adc_channel, &os_conf), err, TAG, "adc s12sd device configuration (one-shot) failed");
 
-    out_handle->adc_calibrate = s12sd_calibration_init(s12sd_config, &out_handle->adc_cal_handle);
+    dev->adc_calibrate = s12sd_calibration_init(s12sd_config, &dev->adc_cal_handle);
 
     /* set device handle */
-    *s12sd_handle = out_handle;
+    *s12sd_handle = (s12sd_handle_t)dev;
 
     return ESP_OK;
 
     err:
-        if (out_handle && out_handle->adc_handle) {
-            adc_oneshot_del_unit(out_handle->adc_handle);
+        if (dev && dev->adc_handle) {
+            adc_oneshot_del_unit(dev->adc_handle);
         }
-        free(out_handle);
+        free(dev);
         return ret;
 }
 
 esp_err_t s12sd_measure(s12sd_handle_t handle, uint8_t *uv_index) {
-    esp_err_t   ret         = ESP_OK;
-    int         avg_sum     = 0;
-    float       avg_volt    = 0;
+    esp_err_t       ret      = ESP_OK;
+    int             avg_sum  = 0;
+    float           avg_volt = 0;
+    s12sd_device_t* dev      = (s12sd_device_t*)handle;
 
-    ESP_ARG_CHECK( handle && uv_index );
+    ESP_ARG_CHECK( dev && uv_index );
 
     for (int i=0; i<ADC_S12SD_SAMPLE_SIZE; i++) {
         int adc_raw;
         int adc_volt;
 
-        ret = adc_oneshot_read(handle->adc_handle, handle->dev_config.adc_channel, &adc_raw);
+        ret = adc_oneshot_read(dev->adc_handle, dev->config.adc_channel, &adc_raw);
 
-        if (ret == ESP_OK && handle->adc_calibrate == true) {
-            ret = adc_cali_raw_to_voltage(handle->adc_cal_handle, adc_raw, &adc_volt);
+        if (ret == ESP_OK && dev->adc_calibrate == true) {
+            ret = adc_cali_raw_to_voltage(dev->adc_cal_handle, adc_raw, &adc_volt);
 
             if(ret != ESP_OK) return ret; // abort altogether
 
             avg_sum += adc_volt;
         } else {
-            if(handle->adc_calibrate == false) return ESP_ERR_INVALID_STATE;
+            if(dev->adc_calibrate == false) return ESP_ERR_INVALID_STATE;
 
             return ret; // abort altogether
         }
@@ -263,22 +272,23 @@ esp_err_t s12sd_measure(s12sd_handle_t handle, uint8_t *uv_index) {
 }
 
 esp_err_t s12sd_delete(s12sd_handle_t handle) {
-    esp_err_t ret = ESP_OK;
+    esp_err_t       ret = ESP_OK;
+    s12sd_device_t* dev = (s12sd_device_t*)handle;
 
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
-    ret = adc_oneshot_del_unit(handle->adc_handle);
+    ret = adc_oneshot_del_unit(dev->adc_handle);
 
-    if (handle) {
-        s12sd_calibration_delete(handle->adc_cal_handle);
-        free(handle);
+    if (dev) {
+        s12sd_calibration_delete(dev->adc_cal_handle);
+        free(dev);
     }
 
     return ret;
 }
 
 const char* s12sd_get_fw_version(void) {
-    return S12SD_FW_VERSION_STR;
+    return (char *)S12SD_FW_VERSION_STR;
 }
 
 int32_t s12sd_get_fw_version_number(void) {

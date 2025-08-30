@@ -86,24 +86,9 @@ typedef struct s12sd_config_s {
 } s12sd_config_t;
 
 /**
- * @brief S12SD context structure.
+ * @brief S12SD opaque handle structure definition.
  */
-struct s12sd_context_t {
-    s12sd_config_t              dev_config;     /*!< s12sd adc configuration */
-    adc_oneshot_unit_handle_t   adc_handle;     /*!< s12sd adc device handle */
-    adc_cali_handle_t           adc_cal_handle; /*!< s12sd adc calibration handle */
-    bool                        adc_calibrate;  /*!< s12sd adc calibration initialization flag */
-};
-
-/**
- * @brief S12SD context structure definition.
- */
-typedef struct s12sd_context_t  s12sd_context_t;
-
-/**
- * @brief S12SD handle structure definition.
- */
-typedef struct s12sd_context_t* s12sd_handle_t;
+typedef void* s12sd_handle_t;
 
 /**
  * public function and subroutine declarations

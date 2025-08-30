@@ -145,23 +145,11 @@ typedef struct ahtxx_config_s {
     ahtxx_sensor_types_t sensor_type;   /*!< aht sensor type, see `ahtxx_sensor_types_t` enumerator for support sensor types */
 } ahtxx_config_t;
 
-/**
- * @brief AHTXX context structure.
- */
-struct ahtxx_context_t {
-    ahtxx_config_t          dev_config; /*!< ahtxx device configuration */
-    i2c_master_dev_handle_t i2c_handle; /*!< ahtxx i2c device handle */
-};
 
 /**
- * @brief AHTXX context structure definition.
+ * @brief AHTXX opaque handle structure definition.
  */
-typedef struct ahtxx_context_t ahtxx_context_t;
-
-/**
- * @brief AHTXX handle structure definition.
- */
-typedef struct ahtxx_context_t* ahtxx_handle_t;
+typedef void* ahtxx_handle_t;
 
 /**
  * public function and subroutine declarations

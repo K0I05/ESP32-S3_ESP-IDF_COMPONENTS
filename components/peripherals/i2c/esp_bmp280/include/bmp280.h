@@ -182,26 +182,6 @@ typedef union __attribute__((packed)) bmp280_configuration_register_u {
 
 
 /**
- * @brief BMP280 temperature and pressure calibration factors structure definition.
- */
-typedef struct bmp280_cal_factors_s {
-    /* temperature and pressure compensation */
-    uint16_t                dig_T1;
-    int16_t                 dig_T2;
-    int16_t                 dig_T3;
-    uint16_t                dig_P1;
-    int16_t                 dig_P2;
-    int16_t                 dig_P3;
-    int16_t                 dig_P4;
-    int16_t                 dig_P5;
-    int16_t                 dig_P6;
-    int16_t                 dig_P7;
-    int16_t                 dig_P8;
-    int16_t                 dig_P9;
-    int32_t                 t_fine;
-} bmp280_cal_factors_t;
-
-/**
  * @brief BMP280 configuration structure definition.
  */
 typedef struct bmp280_config_s {
@@ -214,25 +194,11 @@ typedef struct bmp280_config_s {
     bmp280_standby_times_t                  standby_time;               /*!< bmp280 stand-by time setting */
 } bmp280_config_t;
 
-/**
- * @brief BMP280 context structure.
- */
-struct bmp280_context_t {
-    bmp280_config_t                         dev_config;         /*!< bmp280 device configuration */  
-    i2c_master_dev_handle_t                 i2c_handle;         /*!< bmp280 i2c device handle */
-    bmp280_cal_factors_t                   *dev_cal_factors;    /*!< bmp280 device calibration factors */
-    uint8_t                                 sensor_type;        /*!< sensor type, should be bmp280 */
-};
 
 /**
- * @brief BMP280 context structure definition.
+ * @brief BMP280 opaque handle structure definition.
  */
-typedef struct bmp280_context_t bmp280_context_t;
-
-/**
- * @brief BMP280 handle structure definition.
- */
-typedef struct bmp280_context_t* bmp280_handle_t;
+typedef void* bmp280_handle_t;
 
 /**
  * public function and subroutine declarations
