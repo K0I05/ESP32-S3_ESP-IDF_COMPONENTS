@@ -585,11 +585,7 @@ esp_err_t bmp280_get_data_status(bmp280_handle_t handle, bool *const ready) {
     ESP_RETURN_ON_ERROR( bmp280_get_status_register(handle, &status_reg), TAG, "read status register (data ready state) failed" );
 
     /* set ready state */
-    if(status_reg.bits.measuring == true) {
-        *ready = false;
-    } else {
-        *ready = true;
-    }
+    *ready = !status_reg.bits.measuring;
 
     return ESP_OK;
 }
