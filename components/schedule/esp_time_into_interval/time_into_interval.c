@@ -55,6 +55,18 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief Time-into-interval context descriptor structure definition.
+ */
+typedef struct time_into_interval_context_s {
+    const char*                      name;               /*!< time-into-interval, name, maximum of 25-characters */
+    uint64_t                         epoch_timestamp;    /*!< time-into-interval, next event unix epoch timestamp (UTC) in milli-seconds */
+    time_into_interval_types_t       interval_type;      /*!< time-into-interval, interval type setting */
+    uint16_t                         interval_period;    /*!< time-into-interval, a non-zero interval period setting per interval type setting */
+    uint16_t                         interval_offset;    /*!< time-into-interval, interval offset setting, per interval type setting, that must be less than the interval period */
+    SemaphoreHandle_t                mutex_handle;       /*!< mutex handle of the time-into-interval handle */
+} time_into_interval_context_t;
+
 /*
 * static constant declarations
 */
@@ -210,6 +222,18 @@ static inline esp_err_t time_into_interval_set_epoch_timestamp_event(const time_
     return ESP_OK;
 }
 
+esp_err_t time_into_interval_get_interval(time_into_interval_handle_t handle, time_into_interval_types_t *const interval_type, uint16_t *const interval_period) {
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)handle;
+
+    // validate arguments
+    ESP_ARG_CHECK( ctxt );
+
+    *interval_type   = ctxt->interval_type;
+    *interval_period = ctxt->interval_period;
+
+    return ESP_OK;
+}
+
 uint64_t time_into_interval_normalize_interval_to_sec(const time_into_interval_types_t interval_type, const uint16_t interval) {
     uint64_t interval_sec = 0;
 
@@ -287,7 +311,6 @@ uint64_t time_into_interval_get_epoch_timestamp_usec(void) {
 esp_err_t time_into_interval_init(const time_into_interval_config_t *time_into_interval_config, 
                                  time_into_interval_handle_t *time_into_interval_handle) {
     esp_err_t                   ret = ESP_OK;
-    time_into_interval_handle_t out_handle;
     
     /* validate task-schedule arguments */
     ESP_GOTO_ON_FALSE( (strnlen(time_into_interval_config->name, TIME_INTO_INTERVAL_NAME_MAX_LEN + 1) < TIME_INTO_INTERVAL_NAME_MAX_LEN), ESP_ERR_INVALID_ARG, err, TAG, "time-into-interval name cannot exceed 20-characters, time-into-interval handle initialization failed" );
@@ -299,53 +322,54 @@ esp_err_t time_into_interval_init(const time_into_interval_config_t *time_into_i
     ESP_GOTO_ON_FALSE( (interval_delta > 0), ESP_ERR_INVALID_ARG, err, TAG, "time-into-interval interval period must be larger than the interval offset, time-into-interval handle initialization failed" );
     
     /* validate memory availability for time into interval handle */
-    out_handle = (time_into_interval_handle_t)calloc(1, sizeof(time_into_interval_context_t)); 
-    ESP_GOTO_ON_FALSE( out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for time-into-interval handle, time-into-interval handle initialization failed" );
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)calloc(1, sizeof(time_into_interval_context_t));
+    ESP_GOTO_ON_FALSE( ctxt, ESP_ERR_NO_MEM, err, TAG, "no memory for time-into-interval handle, time-into-interval handle initialization failed" );
 
     /* initialize task schedule state object parameters */
-    out_handle->name            = time_into_interval_config->name;
-    out_handle->epoch_timestamp = 0;
-    out_handle->interval_type   = time_into_interval_config->interval_type;
-    out_handle->interval_period = time_into_interval_config->interval_period;
-    out_handle->interval_offset = time_into_interval_config->interval_offset;
-    out_handle->mutex_handle    = xSemaphoreCreateMutex();
+    ctxt->name            = time_into_interval_config->name;
+    ctxt->epoch_timestamp = 0;
+    ctxt->interval_type   = time_into_interval_config->interval_type;
+    ctxt->interval_period = time_into_interval_config->interval_period;
+    ctxt->interval_offset = time_into_interval_config->interval_offset;
+    ctxt->mutex_handle    = xSemaphoreCreateMutex();
 
     /* set epoch timestamp of the next scheduled time-into-interval event */
-    ESP_GOTO_ON_ERROR( time_into_interval_set_epoch_timestamp_event(out_handle->interval_type, 
-                                                                out_handle->interval_period, 
-                                                                out_handle->interval_offset, 
-                                                                &out_handle->epoch_timestamp), 
+    ESP_GOTO_ON_ERROR( time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
+                                                                ctxt->interval_period, 
+                                                                ctxt->interval_offset, 
+                                                                &ctxt->epoch_timestamp), 
                                                                 err_out_handle, TAG, "unable to set epoch timestamp, time-into-interval handle initialization failed" );
 
     /* set output handle */
-    *time_into_interval_handle = out_handle;
+    *time_into_interval_handle = (time_into_interval_handle_t)ctxt;
 
     return ESP_OK;
 
     err_out_handle:
-        free(out_handle);
+        free(ctxt);
     err:
         return ret;
 }
 
 bool time_into_interval(time_into_interval_handle_t handle) {
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)handle;
     bool state = false;
 
     /* validate arguments */
-    if(!(handle)) {
+    if(!(ctxt)) {
         return state;
     }
 
     /* lock the mutex */
-    xSemaphoreTake(handle->mutex_handle, portMAX_DELAY);
+    xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     // get system unix epoch timestamp (UTC)
     uint64_t now_unix_msec = time_into_interval_get_epoch_timestamp_msec();
 
     // compute time delta until next time into interval condition
-    int64_t delta_msec = handle->epoch_timestamp - now_unix_msec;
+    int64_t delta_msec = ctxt->epoch_timestamp - now_unix_msec;
 
-    ESP_LOGW(TAG, "time_into_interval(%s):delta_msec: %lli", handle->name, delta_msec);
+    ESP_LOGW(TAG, "time_into_interval(%s):delta_msec: %lli", ctxt->name, delta_msec);
 
     // validate time delta, when delta is <= 0, time has elapsed
     if(delta_msec <= 0) {
@@ -354,98 +378,104 @@ bool time_into_interval(time_into_interval_handle_t handle) {
         state = true;
 
         /* set next event timestamp (UTC) */
-        time_into_interval_set_epoch_timestamp_event(handle->interval_type, 
-                                                    handle->interval_period, 
-                                                    handle->interval_offset, 
-                                                    &handle->epoch_timestamp);
+        time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
+                                                    ctxt->interval_period, 
+                                                    ctxt->interval_offset, 
+                                                    &ctxt->epoch_timestamp);
     }
 
     /* unlock the mutex */
-    xSemaphoreGive(handle->mutex_handle);
+    xSemaphoreGive(ctxt->mutex_handle);
     
     return state;
 }
 
 esp_err_t time_into_interval_delay(time_into_interval_handle_t handle) {
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)handle;
+
     // validate arguments
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( ctxt );
 
     /* lock the mutex */
-    xSemaphoreTake(handle->mutex_handle, portMAX_DELAY);
+    xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     // get system unix epoch timestamp (UTC)
     uint64_t now_unix_msec = time_into_interval_get_epoch_timestamp_msec();
 
     // compute time delta until next scan event
-    int64_t delta_msec = handle->epoch_timestamp - now_unix_msec;
+    int64_t delta_msec = ctxt->epoch_timestamp - now_unix_msec;
 
     // validate time is into the future, otherwise, reset next epoch time
     if(delta_msec < 0) {
 
         // set epoch timestamp of the next scheduled task
-        time_into_interval_set_epoch_timestamp_event(handle->interval_type, 
-                                                    handle->interval_period, 
-                                                    handle->interval_offset, 
-                                                    &handle->epoch_timestamp);
+        time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
+                                                    ctxt->interval_period, 
+                                                    ctxt->interval_offset, 
+                                                    &ctxt->epoch_timestamp);
 
         // compute time delta for next event
-        delta_msec = handle->epoch_timestamp - now_unix_msec;
+        delta_msec = ctxt->epoch_timestamp - now_unix_msec;
     }
 
-    ESP_LOGW(TAG, "time_into_interval_delay(%s):delta_msec: %lli", handle->name, delta_msec);
+    ESP_LOGW(TAG, "time_into_interval_delay(%s):delta_msec: %lli", ctxt->name, delta_msec);
 
     /* unlock the mutex */
-    xSemaphoreGive(handle->mutex_handle);
+    xSemaphoreGive(ctxt->mutex_handle);
 
     /* wait for the next cycle */
     time_into_interval_task_delay_until(delta_msec);
 
     /* lock the mutex */
-    xSemaphoreTake(handle->mutex_handle, portMAX_DELAY);
+    xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     // set epoch timestamp of the next scheduled task
-    time_into_interval_set_epoch_timestamp_event(handle->interval_type, 
-                                                handle->interval_period, 
-                                                handle->interval_offset, 
-                                                &handle->epoch_timestamp);
+    time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
+                                                ctxt->interval_period, 
+                                                ctxt->interval_offset, 
+                                                &ctxt->epoch_timestamp);
                                         
     /* unlock the mutex */
-    xSemaphoreGive(handle->mutex_handle);
+    xSemaphoreGive(ctxt->mutex_handle);
 
     return ESP_OK;
 }
 
 esp_err_t time_into_interval_get_last_event(time_into_interval_handle_t handle, uint64_t *epoch_timestamp) {
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)handle;
+
     // validate arguments
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( ctxt );
 
     /* lock the mutex */
-    xSemaphoreTake(handle->mutex_handle, portMAX_DELAY);
+    xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     /* convert interval into msec */
-    uint64_t interval_msec = time_into_interval_normalize_interval_to_msec(handle->interval_type, handle->interval_period);
+    uint64_t interval_msec = time_into_interval_normalize_interval_to_msec(ctxt->interval_type, ctxt->interval_period);
 
     /* set last event epoch timestamp */
-    *epoch_timestamp = handle->epoch_timestamp - interval_msec;
+    *epoch_timestamp = ctxt->epoch_timestamp - interval_msec;
 
     /* unlock the mutex */
-    xSemaphoreGive(handle->mutex_handle);
+    xSemaphoreGive(ctxt->mutex_handle);
 
     return ESP_OK;
 }
 
 esp_err_t time_into_interval_get_next_event(time_into_interval_handle_t handle, uint64_t *epoch_timestamp) {
+    time_into_interval_context_t* ctxt = (time_into_interval_context_t*)handle;
+
     // validate arguments
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( ctxt );
 
     /* lock the mutex */
-    xSemaphoreTake(handle->mutex_handle, portMAX_DELAY);
+    xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     /* set next event epoch timestamp */
-    *epoch_timestamp = handle->epoch_timestamp;
+    *epoch_timestamp = ctxt->epoch_timestamp;
 
     /* unlock the mutex */
-    xSemaphoreGive(handle->mutex_handle);
+    xSemaphoreGive(ctxt->mutex_handle);
 
     return ESP_OK;
 }
@@ -461,7 +491,7 @@ esp_err_t time_into_interval_delete(time_into_interval_handle_t handle) {
 }
 
 const char* time_into_interval_get_fw_version(void) {
-    return TIME_INTO_INTERVAL_FW_VERSION_STR;
+    return (char*)TIME_INTO_INTERVAL_FW_VERSION_STR;
 }
 
 int32_t time_into_interval_get_fw_version_number(void) {

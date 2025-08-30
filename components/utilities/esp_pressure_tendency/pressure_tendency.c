@@ -47,6 +47,15 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief Pressure tendency context descriptor structure definition.
+ */
+typedef struct pressure_tendency_context_s {
+    uint16_t    samples_count; /*!< pressure tendency samples count, state machine variable */
+    uint16_t    samples_size;  /*!< pressure tendency samples size, state machine variable */
+    float*      samples;       /*!< pressure tendency samples array, state machine variable */
+} pressure_tendency_context_t;
+
 /*
 * static constant declarations
 */
@@ -74,23 +83,23 @@ esp_err_t pressure_tendency_init(const uint16_t samples_size, pressure_tendency_
     ESP_GOTO_ON_FALSE( samples_size > 2, ESP_ERR_INVALID_ARG, err, TAG, "samples size must be greater than 2, pressure tendency handle initialization failed" );
 
     /* validate memory availability for pressure tendency handle */
-    pressure_tendency_handle_t out_handle = (pressure_tendency_handle_t)calloc(1, sizeof(pressure_tendency_t)); 
-    ESP_GOTO_ON_FALSE( out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for pressure tendency handle, pressure tendency handle initialization failed" );
+    pressure_tendency_context_t* ctxt = (pressure_tendency_context_t*)calloc(1, sizeof(pressure_tendency_context_t));
+    ESP_GOTO_ON_FALSE( ctxt, ESP_ERR_NO_MEM, err, TAG, "no memory for pressure tendency handle, pressure tendency handle initialization failed" );
 
     /* validate memory availability for samples array */
-    out_handle->samples = (float*)calloc(samples_size, sizeof(float));
-    ESP_GOTO_ON_FALSE( out_handle->samples, ESP_ERR_NO_MEM, err_out_handle, TAG, "no memory for pressure tendency handle samples, pressure tendency handle initialization failed" );
+    ctxt->samples = (float*)calloc(samples_size, sizeof(float));
+    ESP_GOTO_ON_FALSE( ctxt->samples, ESP_ERR_NO_MEM, err_out_handle, TAG, "no memory for pressure tendency handle samples, pressure tendency handle initialization failed" );
 
     /* copy configuration */
-    out_handle->samples_size = samples_size;
+    ctxt->samples_size = samples_size;
 
     /* set output instance */
-    *pressure_tendency_handle = out_handle;
+    *pressure_tendency_handle = (pressure_tendency_handle_t)ctxt;
 
     return ESP_OK;
 
     err_out_handle:
-        free(out_handle);
+        free(ctxt);
     err:
         return ret;
 }
@@ -99,28 +108,30 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendenc
                                     const float sample, 
                                     pressure_tendency_codes_t *const code,
                                     float *const change) {
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+
     /* validate arguments */
     ESP_ARG_CHECK(pressure_tendency_handle);
 
     // have we filled the array?
-    if (pressure_tendency_handle->samples_count < pressure_tendency_handle->samples_size) {
+    if (pressure_tendency_context->samples_count < pressure_tendency_context->samples_size) {
         // no! add this observation to the array
-        pressure_tendency_handle->samples[pressure_tendency_handle->samples_count] = sample;
+        pressure_tendency_context->samples[pressure_tendency_context->samples_count] = sample;
 
         // bump n
-        pressure_tendency_handle->samples_count++;
+        pressure_tendency_context->samples_count++;
     } else {
         // yes! the array is full so we have to make space
-        for (uint16_t i = 1; i < pressure_tendency_handle->samples_size; i++) {
-            pressure_tendency_handle->samples[i-1] = pressure_tendency_handle->samples[i];
+        for (uint16_t i = 1; i < pressure_tendency_context->samples_size; i++) {
+            pressure_tendency_context->samples[i-1] = pressure_tendency_context->samples[i];
         }
 
         // now we can fill in the last slot
-        pressure_tendency_handle->samples[pressure_tendency_handle->samples_size-1] = sample;
+        pressure_tendency_context->samples[pressure_tendency_context->samples_size-1] = sample;
     }
 
     // does the array have an hour of samples
-    if (pressure_tendency_handle->samples_count < (pressure_tendency_handle->samples_size / 3)) {
+    if (pressure_tendency_context->samples_count < (pressure_tendency_context->samples_size / 3)) {
         // no! we are still training
         *code = PRESSURE_TENDENCY_CODE_UNKNOWN;
         *change = NAN;
@@ -129,7 +140,7 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendenc
     }
 
     /* subtract oldest pressure sample from latest pressure sample */
-    float delta = sample - pressure_tendency_handle->samples[0];
+    float delta = sample - pressure_tendency_context->samples[0];
 
     /* evaluate delta aka 3-hr change in pressure */
     /* if the absolute variance is less than 1 hPa, air pressure is steady */
@@ -159,31 +170,36 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendenc
 }
 
 esp_err_t pressure_tendency_reset(pressure_tendency_handle_t pressure_tendency_handle) {
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+
     /* validate arguments */
     ESP_ARG_CHECK(pressure_tendency_handle);
 
     /* purge samples */
-    for(uint16_t i = 0; i < pressure_tendency_handle->samples_size; i++) {
-        pressure_tendency_handle->samples[i] = NAN;
+    for(uint16_t i = 0; i < pressure_tendency_context->samples_size; i++) {
+        pressure_tendency_context->samples[i] = NAN;
     }
 
     /* reset samples counter */
-    pressure_tendency_handle->samples_count = 0;
+    pressure_tendency_context->samples_count = 0;
 
     return ESP_OK;
 }
 
 esp_err_t pressure_tendency_delete(pressure_tendency_handle_t pressure_tendency_handle) {
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK(pressure_tendency_handle);
-    if(pressure_tendency_handle->samples) 
-        free(pressure_tendency_handle->samples);
+    ESP_ARG_CHECK(pressure_tendency_context);
+
+    if(pressure_tendency_context->samples) 
+        free(pressure_tendency_context->samples);
     free(pressure_tendency_handle);
     return ESP_OK;
 }
 
 const char* pressure_tendency_get_fw_version(void) {
-    return PRESSURE_TENDENCY_FW_VERSION_STR;
+    return (char*)PRESSURE_TENDENCY_FW_VERSION_STR;
 }
 
 int32_t pressure_tendency_get_fw_version_number(void) {

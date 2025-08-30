@@ -135,7 +135,7 @@ typedef struct datatable_event_tag {
  * @brief Data-logger event.
  * 
  */
-typedef void (*datatable_event)(void *handle, datatable_event_t);
+typedef void (*datatable_event)(void *context, datatable_event_t);
 
 /**
  * @brief Data-table record identifier column data-type structure.
@@ -263,40 +263,11 @@ typedef struct datatable_config_tag {
     datatable_event                     event_handler;
 } datatable_config_t;
 
-/**
- * @brief Data-table state object structure definition.  Do not modify these fields once the
- * data-table handle is created, these are read-only, and represent a state machine.
- */
-struct datatable_t {
-    const char*                         name;                       /*!< data-table textual name, maximum of 15 characters */
-    datatable_data_storage_types_t      data_storage_type;          /*!< data-table data storage type, defines handling of records when the data-table is full, set when data-table is created */
-    uint16_t                            sampling_count;             /*!< data-table data sampling count seed number */
-    time_into_interval_handle_t         sampling_tii_handle;        /*!< data-table sampling time-into-interval handle */
-    time_into_interval_handle_t         processing_tii_handle;      /*!< data-table processing time-into-interval handle */
-    uint16_t                            record_id;                  /*!< data-table record identifier seed number */
-    uint8_t                             columns_count;              /*!< data-table column count seed number, this number should not exceed the column size*/
-    uint8_t                             columns_size;               /*!< data-table column array size, static, set when data-table is created */
-    datatable_column_t**                columns;                    /*!< array of data-table columns */
-    datatable_process_t**               processes;                  /*!< array of data-table column processes, same size as column array */
-    datatable_buffer_t**                buffers;                    /*!< array of data-table column buffers, same size as column array */
-    uint16_t                            rows_count;                 /*!< data-table row count seed number, this number should not exceed the row size*/
-    uint16_t                            rows_size;                  /*!< data-table row array size, static, set when data-table is created */
-    datatable_row_t**                   rows;                       /*!< array of data-table rows */
-    uint16_t                            samples_maximum_size;       /*!< data-table column samples size maximum, this is calculated from the sampling and processing intervals */
-    uint16_t                            hash_code;                  /*!< hash-code of the data-table handle */
-    SemaphoreHandle_t                   mutex_handle;
-    datatable_event                     event_handler;
-};
-
-/**
- * @brief Data-table structure.
- */
-typedef struct datatable_t datatable_t;
 
  /**
-  * @brief Data-table handle structure.
+  * @brief Data-table opaque handle structure definition.
   */
-typedef struct datatable_t *datatable_handle_t;
+typedef void* datatable_handle_t;
 
 
 

@@ -54,7 +54,7 @@ extern "C" {
 /**
  * @brief Time into interval types enumerator.
  */
-typedef enum time_into_interval_types_tag {
+typedef enum time_into_interval_types_e {
     TIME_INTO_INTERVAL_SEC, /*!< Time-into-interval in seconds. */
     TIME_INTO_INTERVAL_MIN, /*!< Time-into-interval in minutes. */
     TIME_INTO_INTERVAL_HR   /*!< Time-into-interval in hours. */
@@ -62,39 +62,31 @@ typedef enum time_into_interval_types_tag {
 
 
 /**
- * @brief Time-into-interval configuration structure.
+ * @brief Time-into-interval configuration structure definition.
  */
-typedef struct time_into_interval_config_tag {
+typedef struct time_into_interval_config_s {
     const char*                      name;              /*!< time-into-interval, name, maximum of 25-characters */
     time_into_interval_types_t       interval_type;     /*!< time-into-interval, interval type setting */ 
     uint16_t                         interval_period;   /*!< time-into-interval, a non-zero interval period setting per interval type setting */ 
     uint16_t                         interval_offset;   /*!< time-into-interval, interval offset setting, per interval type setting, that must be less than the interval period */ 
 } time_into_interval_config_t;
 
-
 /**
- * @brief Time-into-interval context structure.
+ * @brief Time-into-interval opaque handle definition structure.
  */
-struct time_into_interval_context_t {
-    const char*                      name;               /*!< time-into-interval, name, maximum of 25-characters */
-    uint64_t                         epoch_timestamp;    /*!< time-into-interval, next event unix epoch timestamp (UTC) in milli-seconds */
-    time_into_interval_types_t       interval_type;      /*!< time-into-interval, interval type setting */
-    uint16_t                         interval_period;    /*!< time-into-interval, a non-zero interval period setting per interval type setting */
-    uint16_t                         interval_offset;    /*!< time-into-interval, interval offset setting, per interval type setting, that must be less than the interval period */
-    SemaphoreHandle_t                mutex_handle;       /*!< mutex handle of the time-into-interval handle */
-};
-
-/**
- * @brief Time-into-interval context definition.
- */
-typedef struct time_into_interval_context_t time_into_interval_context_t;
-
-/**
- * @brief Time-into-interval handle definition.
- */
-typedef struct time_into_interval_context_t *time_into_interval_handle_t;
+typedef void* time_into_interval_handle_t;
 
 // https://lloydrochester.com/post/c/c-timestamp-epoch/
+
+/**
+ * @brief Gets configured time-into-interval type and interval.
+ * 
+ * @param[in] handle Time-into-interval handle.
+ * @param[out] interval_type Time-into-interval type setting.
+ * @param[out] interval Time-into-interval period setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t time_into_interval_get_interval(time_into_interval_handle_t handle, time_into_interval_types_t *const interval_type, uint16_t *const interval_period);
 
 /**
  * @brief Normalizes time-into-interval period or offset to seconds.

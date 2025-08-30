@@ -114,24 +114,11 @@ typedef struct mux4052a_config_s {
     bool                ch_input_disabled;       /*!< mux4052a's channel inhibit input pin initial state */
 } mux4052a_config_t;
 
-/**
- * @brief MUX4052A context structure.
- */
-struct mux4052a_context_t {
-    mux4052a_config_t       dev_config;         /*!< mux4052a device configuration */
-    bool                    enabled;            /*!< mux4052a uart input state, input is enabled when true */
-    mux4052a_channels_t     channel_state;      /*!< mux4052a channel number */
-};
 
 /**
- * @brief MUX4052A context structure definition.
+ * @brief MUX4052A opaque handle structure definition.
  */
-typedef struct mux4052a_context_t mux4052a_context_t;
-
-/**
- * @brief MUX4052A handle structure definition.
- */
-typedef struct mux4052a_context_t* mux4052a_handle_t;
+typedef void* mux4052a_handle_t;
 
 /**
  * public function and subroutine declarations

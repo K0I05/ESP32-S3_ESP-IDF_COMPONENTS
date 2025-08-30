@@ -55,23 +55,9 @@ typedef enum pressure_tendency_codes_tag { /*!< 3-hr Change */
 } pressure_tendency_codes_t;
 
 /**
- * @brief Pressure tendency structure.
+ * @brief Pressure tendency opaque handle structure definition.
  */
-struct pressure_tendency_t {
-    uint16_t    samples_count; /*!< pressure tendency samples count, state machine variable */
-    uint16_t    samples_size;  /*!< pressure tendency samples size, state machine variable */
-    float*      samples;       /*!< pressure tendency samples array, state machine variable */
-};
-
-/**
- * @brief Pressure tendency type definition.
- */
-typedef struct pressure_tendency_t pressure_tendency_t;
-
-/**
- * @brief Pressure tendency handle definition.
- */
-typedef struct pressure_tendency_t *pressure_tendency_handle_t;
+typedef void* pressure_tendency_handle_t;
 
 /**
  * @brief Converts `pressure_tendency_codes_t` enumerator pressure tendency code to string.
