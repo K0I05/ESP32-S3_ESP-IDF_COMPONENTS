@@ -111,6 +111,10 @@ static inline void display_textbox(ssd1306_handle_t handle) {
 static inline void display_countdown(ssd1306_handle_t handle) {
 	int top = 1; 
 	uint8_t image[24];
+	bool flip_enabled;
+
+	// Check if flip is enabled
+	ssd1306_get_flip_state(handle, &flip_enabled);
 
 	// Display Count Down
 	ESP_LOGI(APP_TAG, "Display Count Down");
@@ -124,7 +128,7 @@ static inline void display_countdown(ssd1306_handle_t handle) {
 		memset(image, 0, sizeof(image));
 		ssd1306_display_image(handle, top+1, (7*8-1), image, 8);
 		memcpy(image, font_latin_8x8_tr[font], 8);
-		if (handle->dev_config.flip_enabled) ssd1306_flip_buffer(image, 8);
+		if (flip_enabled) ssd1306_flip_buffer(image, 8);
 		ssd1306_display_image(handle, top+1, (7*8-1), image, 8);
 		vTaskDelay(100 / portTICK_PERIOD_MS);
 	}
@@ -133,13 +137,17 @@ static inline void display_countdown(ssd1306_handle_t handle) {
 static inline void display_scroll_up_and_down(ssd1306_handle_t handle) {
 	int bottom = 4;
 	char lineChar[16];
+	uint8_t num_pages;
+
+	// Get number of pages
+	ssd1306_get_number_of_pages(handle, &num_pages);
 
 	// Scroll Up
 	ESP_LOGI(APP_TAG, "Display Scroll Up");
 	ssd1306_clear_display(handle, false);
 	ssd1306_set_contrast(handle, 0xff);
 	ssd1306_display_text(handle, 0, "---Scroll UP---", true);
-	ssd1306_set_software_scroll(handle, (handle->pages - 1), 1);
+	ssd1306_set_software_scroll(handle, (num_pages - 1), 1);
 	for (int line = 0; line < bottom+10; line++) {
 		lineChar[0] = 0x01;
 		snprintf(&lineChar[1], 11, " Line %02d", line);
@@ -154,7 +162,7 @@ static inline void display_scroll_up_and_down(ssd1306_handle_t handle) {
 	ssd1306_clear_display(handle, false);
 	ssd1306_set_contrast(handle, 0xff);
 	ssd1306_display_text(handle, 0, "--Scroll DOWN--", true);
-	ssd1306_set_software_scroll(handle, 1, (handle->pages - 1) );
+	ssd1306_set_software_scroll(handle, 1, (num_pages - 1) );
 	for (int page = 0; page < bottom+10; page++) {
 		lineChar[0] = 0x02;
 		snprintf(&lineChar[1], 11, " Line %02d", page);
@@ -168,15 +176,19 @@ static inline void display_scroll_up_and_down(ssd1306_handle_t handle) {
 static inline void display_page_up_and_down(ssd1306_handle_t handle) {
 	int bottom = 4;
 	char lineChar[16];
+	uint8_t num_pages;
+
+	// Get number of pages
+	ssd1306_get_number_of_pages(handle, &num_pages);
 
 	// Page Down
 	ESP_LOGI(APP_TAG, "Display Page Down");
 	ssd1306_clear_display(handle, false);
 	ssd1306_set_contrast(handle, 0xff);
 	ssd1306_display_text(handle, 0, "---Page	DOWN---", true);
-	ssd1306_set_software_scroll(handle, 1, (handle->pages-1) );
+	ssd1306_set_software_scroll(handle, 1, (num_pages-1) );
 	for (int page = 0; page < bottom+10; page++) {
-		if ( (page % (handle->pages-1)) == 0) ssd1306_clear_display_software_scroll(handle);
+		if ( (page % (num_pages-1)) == 0) ssd1306_clear_display_software_scroll(handle);
 		lineChar[0] = 0x02;
 		snprintf(&lineChar[1], 11, " Line %02d", page);
 		ssd1306_display_software_scroll_text(handle, lineChar, false);
@@ -188,8 +200,11 @@ static inline void display_page_up_and_down(ssd1306_handle_t handle) {
 
 static inline void display_scroll_vert_and_horiz(ssd1306_handle_t handle) {
 	int center = 1;
+	ssd1306_panel_sizes_t panel_size;
 
-	if(handle->dev_config.panel_size != SSD1306_PAGE_128x128_SIZE) {
+	ssd1306_get_panel_size(handle, &panel_size);
+
+	if(panel_size != SSD1306_PAGE_128x128_SIZE) {
 		// Horizontal Scroll
 		ESP_LOGI(APP_TAG, "Display Horizontal Scroll");
 		ssd1306_clear_display(handle, false);
@@ -215,15 +230,24 @@ static inline void display_scroll_vert_and_horiz(ssd1306_handle_t handle) {
 }
 
 static inline void display_bitmaps(ssd1306_handle_t handle) {
+	uint8_t panel_height;
+	uint8_t panel_width;
+
+	// get panel height
+	ssd1306_get_panel_height(handle, &panel_height);
+
+	// get panel width
+	ssd1306_get_panel_width(handle, &panel_width);
+
 	// Bitmaps
 	ESP_LOGI(APP_TAG, "Display Batman Bitmap");
 	ssd1306_clear_display(handle, false);
 	ssd1306_set_contrast(handle, 0xff);
 	ssd1306_display_text(handle, 1, "BATMAN", false);
 	int bitmap_width = 4*8;
-	int xpos = (handle->width/2) - (bitmap_width/2); // center of width
+	int xpos = (panel_width/2) - (bitmap_width/2); // center of width
 	int ypos = 20;
-	ESP_LOGD(APP_TAG, "width=%d xpos=%d", handle->width, xpos);
+	ESP_LOGD(APP_TAG, "width=%d xpos=%d", panel_width, xpos);
 	ssd1306_display_bitmap(handle, xpos, ypos, batman_icon_32x13, 32, 13, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 	for(int i=0;i<128;i++) {
@@ -233,27 +257,27 @@ static inline void display_bitmaps(ssd1306_handle_t handle) {
 
 	ESP_LOGI(APP_TAG, "Display Radio-Active Bitmap");
 	ssd1306_clear_display(handle, false);
-	ssd1306_display_bitmap(handle, ((handle->width/2)-(64/2)), 0, radioactive_icon_64x64, 64, 64, false);
+	ssd1306_display_bitmap(handle, ((panel_width/2)-(64/2)), 0, radioactive_icon_64x64, 64, 64, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 	ESP_LOGI(APP_TAG, "Display Biohazard Bitmap");
 	ssd1306_clear_display(handle, false);
-	ssd1306_display_bitmap(handle, ((handle->width/2)-(70/2)), 0, biohazard_icon_70x64, 70, 64, false);
+	ssd1306_display_bitmap(handle, ((panel_width/2)-(70/2)), 0, biohazard_icon_70x64, 70, 64, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 	ESP_LOGI(APP_TAG, "Display Skull Bitmap");
 	ssd1306_clear_display(handle, false);
-	ssd1306_display_bitmap(handle, ((handle->width/2)-(50/2)), 0, skull_icon_50x64, 50, 64, false);
+	ssd1306_display_bitmap(handle, ((panel_width/2)-(50/2)), 0, skull_icon_50x64, 50, 64, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 	ESP_LOGI(APP_TAG, "Display Proton Bitmap");
 	ssd1306_clear_display(handle, false);
-	ssd1306_display_bitmap(handle, ((handle->width/2)-(64/2)), 0, proton_icon_64x64, 64, 64, false);
+	ssd1306_display_bitmap(handle, ((panel_width/2)-(64/2)), 0, proton_icon_64x64, 64, 64, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 
 	ESP_LOGI(APP_TAG, "Display Molecule Bitmap");
 	ssd1306_clear_display(handle, false);
-	ssd1306_display_bitmap(handle, ((handle->width/2)-(64/2)), 0, molecule_icon_64x64, 64, 64, false);
+	ssd1306_display_bitmap(handle, ((panel_width/2)-(64/2)), 0, molecule_icon_64x64, 64, 64, false);
 	vTaskDelay(2000 / portTICK_PERIOD_MS);
 }
 
@@ -399,9 +423,9 @@ void i2c0_ssd1306_task( void *pvParameters ) {
         ESP_LOGI(APP_TAG, "######################## SSD1306 - START #########################");
 		//
 		// panel size
-		if(dev_hdl->dev_config.panel_size == SSD1306_PANEL_128x32) {
+		if(dev_cfg.panel_size == SSD1306_PANEL_128x32) {
 			ESP_LOGI(APP_TAG, "Display Panel: 128x32");
-		} else if(dev_hdl->dev_config.panel_size == SSD1306_PANEL_128x64) {
+		} else if(dev_cfg.panel_size == SSD1306_PANEL_128x64) {
 			ESP_LOGI(APP_TAG, "Display Panel: 128x64");
 		} else {
 			ESP_LOGI(APP_TAG, "Display Panel: 128x128");

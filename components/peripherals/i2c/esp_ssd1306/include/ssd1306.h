@@ -58,8 +58,6 @@ extern "C" {
 
 #define I2C_SSD1306_DEV_ADDR               		UINT8_C(0x3c)   //!< ssd1306 I2C address
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
-
 
 #define SSD1306_PAGE_SEGMENT_SIZE				128		//!< ssd1306 segment size
 #define SSD1306_PAGE_128x32_SIZE				4		//!< ssd1306 128x32 page size
@@ -196,36 +194,26 @@ typedef struct ssd1306_config_s {
 } ssd1306_config_t;
 
 /**
- * @brief SSD1306 context structure.
+ * @brief SSD1306 opaque handle stucture definition.
  */
-struct ssd1306_context_t {
-	ssd1306_config_t 	dev_config;    /*!< ssd1306 device configuration */
-    i2c_master_dev_handle_t  i2c_handle;    /*!< ssd1306 i2c device handle */
-	uint8_t				width;				/*!< ssd1306 width of display panel */
-	uint8_t 			height;				/*!< ssd1306 height display panel */
-	bool				scroll_enabled;		/*!< ssd1306 scroll enabled when true */
-	uint8_t				scroll_start;		/*!< ssd1306 start page of scroll */
-	uint8_t				scroll_end;			/*!< ssd1306 end page of scroll */
-	int8_t			    scroll_direction;   /*!< ssd1306 scroll direction */
-	uint8_t				pages;				/*!< ssd1306 number of pages supported by display panel */
-	ssd1306_page_t	    page[16];			/*!< ssd1306 pages of segment data to display */
-};
-
-/**
- * @brief SSD1306 context structure definition.
- */
-typedef struct ssd1306_context_t ssd1306_context_t;
-
-/**
- * @brief SSD1306 handle stucture definition.
- */
-typedef struct ssd1306_context_t* ssd1306_handle_t;
+typedef void* ssd1306_handle_t;
 
 
 
 /**
  * public function and subroutine declarations
  */
+
+
+esp_err_t ssd1306_get_panel_size(ssd1306_handle_t handle, ssd1306_panel_sizes_t *const panel_size);
+
+esp_err_t ssd1306_get_panel_height(ssd1306_handle_t handle, uint8_t *const panel_height);
+
+esp_err_t ssd1306_get_panel_width(ssd1306_handle_t handle, uint8_t *const panel_width);
+
+esp_err_t ssd1306_get_flip_state(ssd1306_handle_t handle, bool *const flip_enabled);
+
+esp_err_t ssd1306_get_number_of_pages(ssd1306_handle_t handle, uint8_t *const number_of_pages);
 
 /**
  * @brief Loads a BDF bitmap font and BDF font structure from a font file.
