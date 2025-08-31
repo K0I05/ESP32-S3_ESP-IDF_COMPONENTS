@@ -122,7 +122,7 @@ static const char *TAG = "bmp280";
 
 
 /**
- * @brief BMP280 I2C read from register address transaction.  This is a write and then read process.
+ * @brief BMP280 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to read from.
@@ -142,7 +142,7 @@ static inline esp_err_t bmp280_i2c_read_from(bmp280_device_t *const device, cons
 }
 
 /**
- * @brief BMP280 I2C read halfword from register address transaction.
+ * @brief BMP280 I2C HAL read word from register address transaction.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to read from.
@@ -165,7 +165,7 @@ static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device,
 }
 
 /**
- * @brief BMP280 I2C read byte from register address transaction.
+ * @brief BMP280 I2C HAL read byte from register address transaction.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to read from.
@@ -188,7 +188,7 @@ static inline esp_err_t bmp280_i2c_read_byte_from(bmp280_device_t *const device,
 }
 
 /**
- * @brief BMP280 I2C write byte to register address transaction.
+ * @brief BMP280 I2C HAL write byte to register address transaction.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to write to.

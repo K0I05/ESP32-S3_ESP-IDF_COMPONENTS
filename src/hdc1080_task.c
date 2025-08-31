@@ -52,10 +52,6 @@ void i2c0_hdc1080_task( void *pvParameters ) {
         assert(dev_hdl);
     }
 
-    ESP_LOGI(APP_TAG, "Device ID:       0x%04x", dev_hdl->device_id);
-    ESP_LOGI(APP_TAG, "Manufacturer ID: 0x%04x", dev_hdl->manufacturer_id);
-
-    //
     // task loop entry point
     for ( ;; ) {
         ESP_LOGI(APP_TAG, "######################## HDC1080 - START #########################");

@@ -159,16 +159,6 @@ typedef struct hdc1080_config_s {
     hdc1080_humidity_resolutions_t      humidity_resolution;    /*!< hdc1080 device humidity resolution */
 } hdc1080_config_t;
 
-/**
- * @brief HDC1080 context structure.
- */
-struct hdc1080_context_t {
-    hdc1080_config_t                    dev_config;             /*!< hdc1080 device configuration */ 
-    i2c_master_dev_handle_t             i2c_handle;             /*!< hdc1080 i2c device handle */
-    uint64_t                            serial_number;          /*!< hdc1080 device serial number */
-    uint16_t                            manufacturer_id;        /*!< hdc1080 device manufacturer identifier */
-    uint16_t                            device_id;              /*!< hdc1080 device device identifier */
-};
 
 /**
  * @brief HDC1080 context structure definition.
@@ -176,9 +166,9 @@ struct hdc1080_context_t {
 typedef struct hdc1080_context_t hdc1080_context_t;
 
 /**
- * @brief HDC1080 handle structure definition.
+ * @brief HDC1080 opaque handle structure definition.
  */
-typedef struct hdc1080_context_t* hdc1080_handle_t;
+typedef void* hdc1080_handle_t;
 
 
 /**

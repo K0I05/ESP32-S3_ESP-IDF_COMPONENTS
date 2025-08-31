@@ -108,7 +108,7 @@ static const char *TAG = "bmp390";
 
 
 /**
- * @brief BMP390 I2C read from register address transaction.  This is a write and then read process.
+ * @brief BMP390 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
  * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
@@ -128,7 +128,7 @@ static inline esp_err_t bmp390_i2c_read_from(bmp390_device_t *const device, cons
 }
 
 /**
- * @brief BMP390 I2C read halfword from register address transaction.
+ * @brief BMP390 I2C HAL read word from register address transaction.
  * 
  * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
@@ -151,7 +151,7 @@ static inline esp_err_t bmp390_i2c_read_word_from(bmp390_device_t *const device,
 }
 
 /**
- * @brief BMP390 I2C read byte from register address transaction.
+ * @brief BMP390 I2C HAL read byte from register address transaction.
  * 
  * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
@@ -174,7 +174,7 @@ static inline esp_err_t bmp390_i2c_read_byte_from(bmp390_device_t *const device,
 }
 
 /**
- * @brief BMP390 I2C write byte to register address transaction.
+ * @brief BMP390 I2C HAL write byte to register address transaction.
  * 
  * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to write to.
