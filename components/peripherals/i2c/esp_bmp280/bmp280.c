@@ -331,7 +331,7 @@ static inline esp_err_t bmp280_setup(bmp280_device_t *const device) {
     config_reg.bits.iir_filter   = device->config.iir_filter;
 
     /* initialize control measurement register from configuration params */
-    if (device->config.power_mode == BMP280_POWER_MODE_FORCED || device->config.power_mode == BMP280_POWER_MODE_FORCED1) {
+    if (device->config.power_mode == BMP280_POWER_MODE_FORCED) {
         // initial mode for forced is sleep
         ctrl_meas_reg.bits.power_mode               = BMP280_POWER_MODE_SLEEP;
         ctrl_meas_reg.bits.temperature_oversampling = device->config.temperature_oversampling;

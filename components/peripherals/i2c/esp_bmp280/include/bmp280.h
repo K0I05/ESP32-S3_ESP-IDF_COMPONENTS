@@ -111,8 +111,7 @@ typedef enum bmp280_standby_times_e {
  */
 typedef enum bmp280_power_modes_e {
     BMP280_POWER_MODE_SLEEP   = (0b00), //!< sleep mode, default after power-up
-    BMP280_POWER_MODE_FORCED  = (0b01), //!< measurement is initiated by user
-    BMP280_POWER_MODE_FORCED1 = (0b10), //!< measurement is initiated by user
+    BMP280_POWER_MODE_FORCED  = (0b01), //!< measurement is initiated by user. The value 0b10 is also valid for forced mode.
     BMP280_POWER_MODE_NORMAL  = (0b11)  //!< continuously cycles between active measurement and inactive (standby-time) periods
 } bmp280_power_modes_t;
 
@@ -137,9 +136,7 @@ typedef enum bmp280_temperature_oversampling_e {
     BMP280_TEMPERATURE_OVERSAMPLING_2X         = (0b010),  //!< low power
     BMP280_TEMPERATURE_OVERSAMPLING_4X         = (0b011),  //!< standard
     BMP280_TEMPERATURE_OVERSAMPLING_8X         = (0b100),  //!< high resolution
-    BMP280_TEMPERATURE_OVERSAMPLING_16X        = (0b101),  //!< ultra high resolution
-    BMP280_TEMPERATURE_OVERSAMPLING_16X1       = (0b110),  //!< ultra high resolution
-    BMP280_TEMPERATURE_OVERSAMPLING_16X2       = (0b111)   //!< ultra high resolution
+    BMP280_TEMPERATURE_OVERSAMPLING_16X        = (0b101)   //!< ultra high resolution. The values 0b110 and 0b111 are also valid for x16 oversampling.
 } bmp280_temperature_oversampling_t;
 
 /**

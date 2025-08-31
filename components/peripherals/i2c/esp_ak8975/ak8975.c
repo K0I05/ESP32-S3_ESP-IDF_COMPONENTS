@@ -79,6 +79,18 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief AK8975 context structure.
+ */
+typedef struct ak8975_device_s {
+    ak8975_config_t                 config;       /*!< ak8975 device configuration */
+    i2c_master_dev_handle_t         i2c_handle;   /*!< ak8975 I2C master device handle */
+    uint8_t                         device_id;    /*!< ak8975 device identifier */
+    uint8_t                         device_info;  /*!< ak8975 device information */
+    uint8_t                         asa_x_value;  /*!< ak8975 x-axis sensitivity adjustment value */
+    uint8_t                         asa_y_value;  /*!< ak8975 y-axis sensitivity adjustment value */
+    uint8_t                         asa_z_value;  /*!< ak8975 z-axis sensitivity adjustment value */
+} ak8975_device_t;
 
 /*
 * static constant declarations
@@ -104,19 +116,19 @@ static inline float ak8975_get_sensitivity_adjusted_axis(const uint8_t asa, cons
 /**
  * @brief Gets the sensitivity adjusted axes values.
  * 
- * @param handle AK8975 device handle.
+ * @param device AK8975 device descriptor.
  * @param axes_data AK8975 uncompensated magnetic axes data.
  * @param magnetic_axes_data AK8975 magnetic axes data with sensitivity adjustments applied.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ak8975_get_sensitivity_adjusted_axes(ak8975_handle_t handle, const ak8975_axes_data_t axes_data, ak8975_magnetic_axes_data_t *const magnetic_axes_data) {
+static inline esp_err_t ak8975_get_sensitivity_adjusted_axes(ak8975_device_t *const device, const ak8975_axes_data_t axes_data, ak8975_magnetic_axes_data_t *const magnetic_axes_data) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device && magnetic_axes_data );
 
     /* apply sensitivity adjustments */
-    magnetic_axes_data->x_axis = ak8975_get_sensitivity_adjusted_axis(handle->asa_x_value, axes_data.x_axis.value);
-    magnetic_axes_data->y_axis = ak8975_get_sensitivity_adjusted_axis(handle->asa_y_value, axes_data.y_axis.value);
-    magnetic_axes_data->z_axis = ak8975_get_sensitivity_adjusted_axis(handle->asa_z_value, axes_data.z_axis.value);
+    magnetic_axes_data->x_axis = ak8975_get_sensitivity_adjusted_axis(device->asa_x_value, axes_data.x_axis.value);
+    magnetic_axes_data->y_axis = ak8975_get_sensitivity_adjusted_axis(device->asa_y_value, axes_data.y_axis.value);
+    magnetic_axes_data->z_axis = ak8975_get_sensitivity_adjusted_axis(device->asa_z_value, axes_data.z_axis.value);
 
     return ESP_OK;
 }
@@ -124,19 +136,19 @@ static inline esp_err_t ak8975_get_sensitivity_adjusted_axes(ak8975_handle_t han
 /**
  * @brief AK8975 I2C read from register address transaction.  This is a write and then read process.
  * 
- * @param handle AK8975 device handle.
+ * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to read from.
  * @param buffer AK8975 read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ak8975_i2c_read_from(ak8975_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t ak8975_i2c_read_from(ak8975_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ak8975_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ak8975_i2c_read_byte_from failed" );
     
     return ESP_OK;
 }
@@ -144,19 +156,19 @@ static inline esp_err_t ak8975_i2c_read_from(ak8975_handle_t handle, const uint8
 /**
  * @brief AK8975 I2C read byte from register address transaction.
  * 
- * @param handle AK8975 device handle.
+ * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to read from.
  * @param byte AK8975 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ak8975_i2c_read_byte_from(ak8975_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t ak8975_i2c_read_byte_from(ak8975_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ak8975_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ak8975_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -167,19 +179,19 @@ static inline esp_err_t ak8975_i2c_read_byte_from(ak8975_handle_t handle, const 
 /**
  * @brief AK8975 I2C write byte to register address transaction.
  * 
- * @param handle AK8975 device handle.
+ * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to write to.
  * @param byte AK8975 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ak8975_i2c_write_byte_to(ak8975_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t ak8975_i2c_write_byte_to(ak8975_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -218,9 +230,10 @@ static inline esp_err_t ak8975_set_mode(ak8975_handle_t handle, const ak8975_ope
  */
 static inline esp_err_t ak8975_set_selftest(ak8975_handle_t handle, const bool state) {
     ak8975_selftest_control_register_t selftest;
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ak8975_get_selftest_control_register(handle, &selftest), TAG, "set mode failed" );
@@ -231,7 +244,7 @@ static inline esp_err_t ak8975_set_selftest(ak8975_handle_t handle, const bool s
     selftest.bits.reserved2 = 0;
 
     /* attempt i2c self test control register write transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_write_byte_to(handle, AK8975_REG_SELF_TEST_RW, selftest.reg), TAG, "write self-test control register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_write_byte_to(dev, AK8975_REG_SELF_TEST_RW, selftest.reg), TAG, "write self-test control register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -240,11 +253,13 @@ static inline esp_err_t ak8975_set_selftest(ak8975_handle_t handle, const bool s
 }
 
 static inline esp_err_t ak8975_get_device_id_register(ak8975_handle_t handle, uint8_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_DEVICE_ID_R, reg), TAG, "ak8975 device identifier register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_DEVICE_ID_R, reg), TAG, "ak8975 device identifier register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -253,11 +268,13 @@ static inline esp_err_t ak8975_get_device_id_register(ak8975_handle_t handle, ui
 }
 
 static inline esp_err_t ak8975_get_device_information_register(ak8975_handle_t handle, uint8_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_INFO_R, reg), TAG, "ak8975 device information register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_INFO_R, reg), TAG, "ak8975 device information register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -276,9 +293,10 @@ static inline esp_err_t ak8975_get_fixed_magnetic_axes(ak8975_handle_t handle, a
     esp_err_t ret           = ESP_OK;
     uint64_t  start_time    = esp_timer_get_time();
     bool      data_is_ready = false;
+    ak8975_device_t* dev    = (ak8975_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to wait until data is available */
     do {
@@ -296,7 +314,7 @@ static inline esp_err_t ak8975_get_fixed_magnetic_axes(ak8975_handle_t handle, a
     bit48_uint8_buffer_t rx = { 0 };
 
     /* 6-byte i2c read transaction */
-    ESP_GOTO_ON_ERROR( ak8975_i2c_read_from(handle, AK8975_REG_HXL_DATA_R, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read axes (x, y, z) bytes failed" );
+    ESP_GOTO_ON_ERROR( ak8975_i2c_read_from(dev, AK8975_REG_HXL_DATA_R, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read axes (x, y, z) bytes failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -333,11 +351,13 @@ static inline esp_err_t ak8975_get_fixed_magnetic_axes(ak8975_handle_t handle, a
 }
 
 esp_err_t ak8975_get_control_register(ak8975_handle_t handle, ak8975_control_register_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_CONTROL_RW, &reg->reg), TAG, "ak8975 read control register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_CONTROL_RW, &reg->reg), TAG, "ak8975 read control register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -346,15 +366,17 @@ esp_err_t ak8975_get_control_register(ak8975_handle_t handle, ak8975_control_reg
 }
 
 esp_err_t ak8975_set_control_register(ak8975_handle_t handle, const ak8975_control_register_t reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     ak8975_control_register_t ctrl = { .reg = reg.reg };
     ctrl.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_write_byte_to(handle, AK8975_REG_CONTROL_RW, ctrl.reg), TAG, "write control register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_write_byte_to(dev, AK8975_REG_CONTROL_RW, ctrl.reg), TAG, "write control register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -363,11 +385,13 @@ esp_err_t ak8975_set_control_register(ak8975_handle_t handle, const ak8975_contr
 }
 
 esp_err_t ak8975_get_selftest_control_register(ak8975_handle_t handle, ak8975_selftest_control_register_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_SELF_TEST_RW, &reg->reg), TAG, "read self-test control register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_SELF_TEST_RW, &reg->reg), TAG, "read self-test control register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -376,11 +400,13 @@ esp_err_t ak8975_get_selftest_control_register(ak8975_handle_t handle, ak8975_se
 }
 
 esp_err_t ak8975_get_status1_register(ak8975_handle_t handle, ak8975_status1_register_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_STATUS_1_R, &reg->reg), TAG, "read status 1 register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_STATUS_1_R, &reg->reg), TAG, "read status 1 register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -389,11 +415,13 @@ esp_err_t ak8975_get_status1_register(ak8975_handle_t handle, ak8975_status1_reg
 }
 
 esp_err_t ak8975_get_status2_register(ak8975_handle_t handle, ak8975_status2_register_t *const reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_STATUS_2_R, &reg->reg), TAG, "read status 2 register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_STATUS_2_R, &reg->reg), TAG, "read status 2 register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_CMD_DELAY_MS));
@@ -402,16 +430,18 @@ esp_err_t ak8975_get_status2_register(ak8975_handle_t handle, ak8975_status2_reg
 }
 
 esp_err_t ak8975_get_asa_registers(ak8975_handle_t handle, uint8_t *const asa_x_reg, uint8_t *const asa_y_reg, uint8_t *const asa_z_reg) {
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to set operating mode */
-    ESP_RETURN_ON_ERROR( ak8975_set_mode(handle, AK8975_OPMODE_FUSE_ROM), TAG, "fuse rom access mode failed" );
+    ESP_RETURN_ON_ERROR( ak8975_set_mode(dev, AK8975_OPMODE_FUSE_ROM), TAG, "fuse rom access mode failed" );
 
     /* attempt i2c read transactions */
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_ASAX_VALUE_R, asa_x_reg), TAG, "read asax register failed" );
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_ASAY_VALUE_R, asa_y_reg), TAG, "read asay register failed" );
-    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(handle, AK8975_REG_ASAZ_VALUE_R, asa_z_reg), TAG, "read asaz register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_ASAX_VALUE_R, asa_x_reg), TAG, "read asax register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_ASAY_VALUE_R, asa_y_reg), TAG, "read asay register failed" );
+    ESP_RETURN_ON_ERROR( ak8975_i2c_read_byte_from(dev, AK8975_REG_ASAZ_VALUE_R, asa_z_reg), TAG, "read asaz register failed" );
 
     /* attempt to set operating mode */
     ESP_RETURN_ON_ERROR( ak8975_set_mode(handle, AK8975_OPMODE_POWER_DOWN), TAG, "power down mode failed" );
@@ -443,36 +473,35 @@ esp_err_t ak8975_init(i2c_master_bus_handle_t master_handle, const ak8975_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, ak8975 device handle initialization failed", ak8975_config->i2c_address);
 
     /* validate memory availability for handle */
-    ak8975_handle_t out_handle;
-    out_handle = (ak8975_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ak8975 device");
+    ak8975_device_t* dev = (ak8975_device_t*)calloc(1, sizeof(ak8975_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ak8975 device");
 
     /* copy configuration */
-    out_handle->dev_config = *ak8975_config;
+    dev->config = *ak8975_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus failed");
     }
 
     /* attempt to read device identifier */
-    ESP_GOTO_ON_ERROR( ak8975_get_device_id_register(out_handle, &out_handle->device_id), err_handle, TAG, "read device identifier register failed" );
+    ESP_GOTO_ON_ERROR( ak8975_get_device_id_register((ak8975_handle_t)dev, &dev->device_id), err_handle, TAG, "read device identifier register failed" );
 
     /* attempt to read device information */
-    ESP_GOTO_ON_ERROR( ak8975_get_device_information_register(out_handle, &out_handle->device_info), err_handle, TAG, "read device information register failed" );
+    ESP_GOTO_ON_ERROR( ak8975_get_device_information_register((ak8975_handle_t)dev, &dev->device_info), err_handle, TAG, "read device information register failed" );
 
     /* attempt to read asa values */
-    ESP_GOTO_ON_ERROR( ak8975_get_asa_registers(out_handle, &out_handle->asa_x_value, &out_handle->asa_y_value, &out_handle->asa_z_value), err_handle, TAG, "read asa registers failed" );
+    ESP_GOTO_ON_ERROR( ak8975_get_asa_registers((ak8975_handle_t)dev, &dev->asa_x_value, &dev->asa_y_value, &dev->asa_z_value), err_handle, TAG, "read asa registers failed" );
 
     /* set device handle */
-    *ak8975_handle = out_handle;
+    *ak8975_handle = (ak8975_handle_t)dev;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AK8975_APPSTART_DELAY_MS));
@@ -481,10 +510,10 @@ esp_err_t ak8975_init(i2c_master_bus_handle_t master_handle, const ak8975_config
 
     err_handle:
         /* clean up handle instance */
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -597,9 +626,11 @@ esp_err_t ak8975_power_down(ak8975_handle_t handle) {
 }
 
 esp_err_t ak8975_remove(ak8975_handle_t handle) {
-    ESP_ARG_CHECK( handle );
+    ak8975_device_t* dev = (ak8975_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t ak8975_delete(ak8975_handle_t handle) {

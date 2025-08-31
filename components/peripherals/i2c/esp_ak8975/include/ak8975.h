@@ -158,27 +158,11 @@ typedef struct ak8975_config_s {
     uint32_t          i2c_clock_speed;      /*!< ak8975 i2c device scl clock speed in hz */
 } ak8975_config_t;
 
-/**
- * @brief AK8975 context structure.
- */
-struct ak8975_context_t {
-    ak8975_config_t                 dev_config;     /*!< ak8975 device configuration */
-    i2c_master_dev_handle_t         i2c_handle;  /*!< ak8975 I2C master device handle */
-    uint8_t                         device_id;    /*!< ak8975 device identifier */
-    uint8_t                         device_info;  /*!< ak8975 device information */
-    uint8_t                         asa_x_value;  /*!< ak8975 x-axis sensitivity adjustment value */
-    uint8_t                         asa_y_value;  /*!< ak8975 y-axis sensitivity adjustment value */
-    uint8_t                         asa_z_value;  /*!< ak8975 z-axis sensitivity adjustment value */
-};
 
 /**
- * @brief AK8975 context structure definition.
+ * @brief AK8975 opaque handle structure definition.
  */
-typedef struct ak8975_context_t ak8975_context_t;
-/**
- * @brief AK8975 handle structure definition.
- */
-typedef struct ak8975_context_t *ak8975_handle_t;
+typedef void* ak8975_handle_t;
 
 
 /**

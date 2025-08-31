@@ -72,7 +72,7 @@ typedef struct time_into_interval_config_s {
 } time_into_interval_config_t;
 
 /**
- * @brief Time-into-interval opaque handle definition structure.
+ * @brief Time-into-interval opaque handle structure definition.
  */
 typedef void* time_into_interval_handle_t;
 
