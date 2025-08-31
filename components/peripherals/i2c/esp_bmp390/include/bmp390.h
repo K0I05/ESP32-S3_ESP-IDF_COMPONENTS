@@ -288,25 +288,9 @@ typedef struct bmp390_config_s {
 } bmp390_config_t;
 
 /**
- * @brief BMP390 context structure.
+ * @brief BMP390 opaque handle structure definition.
  */
-struct bmp390_context_t {
-    bmp390_config_t                         dev_config;             /*!< bmp390 device configuration */
-    i2c_master_dev_handle_t                 i2c_handle;             /*!< bmp380 i2c device handle */
-    bmp390_cal_factors_t                   *dev_cal_factors;        /*!< bmp390 device calibration factors */
-    bmp390_conv_cal_factors_t              *dev_conv_cal_factors;   /*!< bmp390 device calibration factors converted to floating point numbers (section 8.4)*/
-    uint8_t                                 dev_type;               /*!< device type, should be bmp390 */
-};
-
-/**
- * @brief BMP390 context structure definition.
- */
-typedef struct bmp390_context_t bmp390_context_t;
-
-/**
- * @brief BMP390 handle structure definition.
- */
-typedef struct bmp390_context_t *bmp390_handle_t;
+typedef void* bmp390_handle_t;
 
 
 

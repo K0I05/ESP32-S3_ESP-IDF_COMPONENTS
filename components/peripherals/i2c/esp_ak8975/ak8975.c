@@ -80,7 +80,7 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
 /**
- * @brief AK8975 context structure.
+ * @brief AK8975 device structure definition.
  */
 typedef struct ak8975_device_s {
     ak8975_config_t                 config;       /*!< ak8975 device configuration */

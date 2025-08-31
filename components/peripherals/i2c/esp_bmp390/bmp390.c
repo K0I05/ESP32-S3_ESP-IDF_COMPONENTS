@@ -90,6 +90,16 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief BMP390 device structure definition.
+ */
+typedef struct bmp390_device_s {
+    bmp390_config_t                         config;                 /*!< bmp390 device configuration */
+    i2c_master_dev_handle_t                 i2c_handle;             /*!< bmp380 i2c device handle */
+    bmp390_cal_factors_t                   *cal_factors;            /*!< bmp390 device calibration factors */
+    bmp390_conv_cal_factors_t              *conv_cal_factors;       /*!< bmp390 device calibration factors converted to floating point numbers (section 8.4)*/
+    uint8_t                                 type;                   /*!< device type, should be bmp390 */
+} bmp390_device_t;
 
 /*
 * static constant declarations
@@ -100,19 +110,19 @@ static const char *TAG = "bmp390";
 /**
  * @brief BMP390 I2C read from register address transaction.  This is a write and then read process.
  * 
- * @param handle BMP390 device handle.
+ * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
  * @param buffer BMP390 read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_i2c_read_from(bmp390_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t bmp390_i2c_read_from(bmp390_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_from failed" );
 
     return ESP_OK;
 }
@@ -120,19 +130,19 @@ static inline esp_err_t bmp390_i2c_read_from(bmp390_handle_t handle, const uint8
 /**
  * @brief BMP390 I2C read halfword from register address transaction.
  * 
- * @param handle BMP390 device handle.
+ * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
  * @param halfword BMP390 read transaction return halfword.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_i2c_read_word_from(bmp390_handle_t handle, const uint8_t reg_addr, uint16_t *const halfword) {
+static inline esp_err_t bmp390_i2c_read_word_from(bmp390_device_t *const device, const uint8_t reg_addr, uint16_t *const halfword) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit16_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_word_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_word_from failed" );
 
     /* set output parameter */
     *halfword = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
@@ -143,19 +153,19 @@ static inline esp_err_t bmp390_i2c_read_word_from(bmp390_handle_t handle, const 
 /**
  * @brief BMP390 I2C read byte from register address transaction.
  * 
- * @param handle BMP390 device handle.
+ * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to read from.
  * @param byte BMP390 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_i2c_read_byte_from(bmp390_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t bmp390_i2c_read_byte_from(bmp390_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp390_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -166,19 +176,19 @@ static inline esp_err_t bmp390_i2c_read_byte_from(bmp390_handle_t handle, const 
 /**
  * @brief BMP390 I2C write byte to register address transaction.
  * 
- * @param handle BMP390 device handle.
+ * @param device BMP390 device descriptor.
  * @param reg_addr BMP390 register address to write to.
  * @param byte BMP390 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_i2c_write_byte_to(bmp390_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t bmp390_i2c_write_byte_to(bmp390_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -186,41 +196,41 @@ static inline esp_err_t bmp390_i2c_write_byte_to(bmp390_handle_t handle, const u
 /**
  * @brief Temperature compensation algorithm is taken from BMP390 datasheet.  See datasheet for details.
  *
- * @param[in] handle BMP390 device handle.
+ * @param[in] device BMP390 device descriptor.
  * @param[in] adc_temperature Raw adc temperature.
  * @return Compensated temperature in degrees Celsius.
  */
-static inline double bmp390_compensate_temperature(bmp390_handle_t handle, const uint32_t adc_temperature) {
-    double var1 = (double)(adc_temperature - handle->dev_conv_cal_factors->PAR_T1);
-    double var2 = (double)(var1 * handle->dev_conv_cal_factors->PAR_T2);
+static inline double bmp390_compensate_temperature(bmp390_device_t *const device, const uint32_t adc_temperature) {
+    double var1 = (double)(adc_temperature - device->conv_cal_factors->PAR_T1);
+    double var2 = (double)(var1 * device->conv_cal_factors->PAR_T2);
     //
-    handle->dev_conv_cal_factors->t_lin = var2 + (var1 * var1) * handle->dev_conv_cal_factors->PAR_T3;
+    device->conv_cal_factors->t_lin = var2 + (var1 * var1) * device->conv_cal_factors->PAR_T3;
 
-    return handle->dev_conv_cal_factors->t_lin;
+    return device->conv_cal_factors->t_lin;
 }
 
 /**
  * @brief Pressure compensation algorithm is taken from BMP390 datasheet.  See datasheet for details.
  *
- * @param[in] handle BMP390 device handle.
+ * @param[in] device BMP390 device descriptor.
  * @param[in] adc_pressure Raw adc pressure.
  * @return Compensated pressure in pascal.
  */
-static inline double bmp390_compensate_pressure(bmp390_handle_t handle, const uint32_t adc_pressure) {
-    double dat1 = handle->dev_conv_cal_factors->PAR_P6 * handle->dev_conv_cal_factors->t_lin;
-    double dat2 = handle->dev_conv_cal_factors->PAR_P7 * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin;
-    double dat3 = handle->dev_conv_cal_factors->PAR_P8 * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin;
-    double var1 = handle->dev_conv_cal_factors->PAR_P5 + dat1 + dat2 + dat3;
+static inline double bmp390_compensate_pressure(bmp390_device_t *const device, const uint32_t adc_pressure) {
+    double dat1 = device->conv_cal_factors->PAR_P6 * device->conv_cal_factors->t_lin;
+    double dat2 = device->conv_cal_factors->PAR_P7 * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin;
+    double dat3 = device->conv_cal_factors->PAR_P8 * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin;
+    double var1 = device->conv_cal_factors->PAR_P5 + dat1 + dat2 + dat3;
     //
-    dat1 = handle->dev_conv_cal_factors->PAR_P2 * handle->dev_conv_cal_factors->t_lin;
-    dat2 = handle->dev_conv_cal_factors->PAR_P3 * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin;
-    dat3 = handle->dev_conv_cal_factors->PAR_P4 * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin * handle->dev_conv_cal_factors->t_lin;
-    double var2 = (double)adc_pressure * (handle->dev_conv_cal_factors->PAR_P1 + dat1 + dat2 + dat3);
+    dat1 = device->conv_cal_factors->PAR_P2 * device->conv_cal_factors->t_lin;
+    dat2 = device->conv_cal_factors->PAR_P3 * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin;
+    dat3 = device->conv_cal_factors->PAR_P4 * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin * device->conv_cal_factors->t_lin;
+    double var2 = (double)adc_pressure * (device->conv_cal_factors->PAR_P1 + dat1 + dat2 + dat3);
     //
     dat1 = (double)adc_pressure * (double)adc_pressure;
-    dat2 = handle->dev_conv_cal_factors->PAR_P9 + handle->dev_conv_cal_factors->PAR_P10 * handle->dev_conv_cal_factors->t_lin;
+    dat2 = device->conv_cal_factors->PAR_P9 + device->conv_cal_factors->PAR_P10 * device->conv_cal_factors->t_lin;
     dat3 = dat1 * dat2;
-    double dat4 = dat3 + (double)adc_pressure * (double)adc_pressure * (double)adc_pressure * handle->dev_conv_cal_factors->PAR_P11;
+    double dat4 = dat3 + (double)adc_pressure * (double)adc_pressure * (double)adc_pressure * device->conv_cal_factors->PAR_P11;
     //
     return var1 + var2 + dat4;
 }
@@ -228,29 +238,29 @@ static inline double bmp390_compensate_pressure(bmp390_handle_t handle, const ui
 /**
  * @brief Reads calibration factors onboard the BMP390 and applies floating point correction factors.  See datasheet for details.
  *
- * @param[in] handle BMP390 device handle.
+ * @param[in] device BMP390 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_get_cal_factors(bmp390_handle_t handle) {
+static inline esp_err_t bmp390_get_cal_factors(bmp390_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* bmp280 attempt to request T1-T3 calibration values from device */
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x31, &handle->dev_cal_factors->dig_T1) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x33, &handle->dev_cal_factors->dig_T2) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x35, (uint8_t *)&handle->dev_cal_factors->dig_T3) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x31, &device->cal_factors->dig_T1) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x33, &device->cal_factors->dig_T2) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x35, (uint8_t *)&device->cal_factors->dig_T3) );
     /* bmp280 attempt to request P1-P10 calibration values from device */
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x36, (uint16_t *)&handle->dev_cal_factors->dig_P1) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x38, (uint16_t *)&handle->dev_cal_factors->dig_P2) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x3a, (uint8_t *)&handle->dev_cal_factors->dig_P3) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x3b, (uint8_t *)&handle->dev_cal_factors->dig_P4) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x3c, &handle->dev_cal_factors->dig_P5) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x3e, &handle->dev_cal_factors->dig_P6) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x40, (uint8_t *)&handle->dev_cal_factors->dig_P7) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x41, (uint8_t *)&handle->dev_cal_factors->dig_P8) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(handle, 0x42, (uint16_t *)&handle->dev_cal_factors->dig_P9) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x44, (uint8_t *)&handle->dev_cal_factors->dig_P10) );
-    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(handle, 0x45, (uint8_t *)&handle->dev_cal_factors->dig_P11) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x36, (uint16_t *)&device->cal_factors->dig_P1) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x38, (uint16_t *)&device->cal_factors->dig_P2) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x3a, (uint8_t *)&device->cal_factors->dig_P3) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x3b, (uint8_t *)&device->cal_factors->dig_P4) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x3c, &device->cal_factors->dig_P5) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x3e, &device->cal_factors->dig_P6) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x40, (uint8_t *)&device->cal_factors->dig_P7) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x41, (uint8_t *)&device->cal_factors->dig_P8) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_word_from(device, 0x42, (uint16_t *)&device->cal_factors->dig_P9) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x44, (uint8_t *)&device->cal_factors->dig_P10) );
+    ESP_ERROR_CHECK( bmp390_i2c_read_byte_from(device, 0x45, (uint8_t *)&device->cal_factors->dig_P11) );
 
     /*
     ESP_LOGW(TAG, "Calibration data received:");
@@ -271,20 +281,20 @@ static inline esp_err_t bmp390_get_cal_factors(bmp390_handle_t handle) {
     */
 
     /* convert calibration factors to floating point numbers */
-    handle->dev_conv_cal_factors->PAR_T1 = (float)handle->dev_cal_factors->dig_T1 / powf(2.0f, -8.0f);
-    handle->dev_conv_cal_factors->PAR_T2 = (float)handle->dev_cal_factors->dig_T2 / powf(2.0f, 30.0f);
-    handle->dev_conv_cal_factors->PAR_T3 = (float)handle->dev_cal_factors->dig_T3 / powf(2.0f, 48.0f);
-    handle->dev_conv_cal_factors->PAR_P1 = ((float)handle->dev_cal_factors->dig_P1 - powf(2.0f, 14.0f)) / powf(2.0f, 20.0f);
-    handle->dev_conv_cal_factors->PAR_P2 = ((float)handle->dev_cal_factors->dig_P2 - powf(2.0f, 14.0f)) / powf(2.0f, 29.0f);
-    handle->dev_conv_cal_factors->PAR_P3 = (float)handle->dev_cal_factors->dig_P3 / powf(2.0f, 32.0f);
-    handle->dev_conv_cal_factors->PAR_P4 = (float)handle->dev_cal_factors->dig_P4 / powf(2.0f, 37.0f);
-    handle->dev_conv_cal_factors->PAR_P5 = (float)handle->dev_cal_factors->dig_P5 / powf(2.0f, -3.0f);
-    handle->dev_conv_cal_factors->PAR_P6 = (float)handle->dev_cal_factors->dig_P6 / powf(2.0f, 6.0f);
-    handle->dev_conv_cal_factors->PAR_P7 = (float)handle->dev_cal_factors->dig_P7 / powf(2.0f, 8.0f);
-    handle->dev_conv_cal_factors->PAR_P8 = (float)handle->dev_cal_factors->dig_P8 / powf(2.0f, 15.0f);
-    handle->dev_conv_cal_factors->PAR_P9 = (float)handle->dev_cal_factors->dig_P9 / powf(2.0f, 48.0f);
-    handle->dev_conv_cal_factors->PAR_P10 = (float)handle->dev_cal_factors->dig_P10 / powf(2.0f, 48.0f);
-    handle->dev_conv_cal_factors->PAR_P11 = (float)handle->dev_cal_factors->dig_P11 / powf(2.0f, 65.0f);
+    device->conv_cal_factors->PAR_T1 = (float)device->cal_factors->dig_T1 / powf(2.0f, -8.0f);
+    device->conv_cal_factors->PAR_T2 = (float)device->cal_factors->dig_T2 / powf(2.0f, 30.0f);
+    device->conv_cal_factors->PAR_T3 = (float)device->cal_factors->dig_T3 / powf(2.0f, 48.0f);
+    device->conv_cal_factors->PAR_P1 = ((float)device->cal_factors->dig_P1 - powf(2.0f, 14.0f)) / powf(2.0f, 20.0f);
+    device->conv_cal_factors->PAR_P2 = ((float)device->cal_factors->dig_P2 - powf(2.0f, 14.0f)) / powf(2.0f, 29.0f);
+    device->conv_cal_factors->PAR_P3 = (float)device->cal_factors->dig_P3 / powf(2.0f, 32.0f);
+    device->conv_cal_factors->PAR_P4 = (float)device->cal_factors->dig_P4 / powf(2.0f, 37.0f);
+    device->conv_cal_factors->PAR_P5 = (float)device->cal_factors->dig_P5 / powf(2.0f, -3.0f);
+    device->conv_cal_factors->PAR_P6 = (float)device->cal_factors->dig_P6 / powf(2.0f, 6.0f);
+    device->conv_cal_factors->PAR_P7 = (float)device->cal_factors->dig_P7 / powf(2.0f, 8.0f);
+    device->conv_cal_factors->PAR_P8 = (float)device->cal_factors->dig_P8 / powf(2.0f, 15.0f);
+    device->conv_cal_factors->PAR_P9 = (float)device->cal_factors->dig_P9 / powf(2.0f, 48.0f);
+    device->conv_cal_factors->PAR_P10 = (float)device->cal_factors->dig_P10 / powf(2.0f, 48.0f);
+    device->conv_cal_factors->PAR_P11 = (float)device->cal_factors->dig_P11 / powf(2.0f, 65.0f);
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -293,11 +303,13 @@ static inline esp_err_t bmp390_get_cal_factors(bmp390_handle_t handle) {
 }
 
 esp_err_t bmp390_get_chip_id_register(bmp390_handle_t handle, uint8_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_CHIP_ID, reg), TAG, "read chip identifier register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_CHIP_ID, reg), TAG, "read chip identifier register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -306,11 +318,13 @@ esp_err_t bmp390_get_chip_id_register(bmp390_handle_t handle, uint8_t *const reg
 }
 
 esp_err_t bmp390_get_status_register(bmp390_handle_t handle, bmp390_status_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_STATUS, &reg->reg), TAG, "read status register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_STATUS, &reg->reg), TAG, "read status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -319,11 +333,13 @@ esp_err_t bmp390_get_status_register(bmp390_handle_t handle, bmp390_status_regis
 }
 
 esp_err_t bmp390_get_interrupt_status_register(bmp390_handle_t handle, bmp390_interrupt_status_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_INT_STATUS, &reg->reg), TAG, "read interrupt status register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_INT_STATUS, &reg->reg), TAG, "read interrupt status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -332,11 +348,13 @@ esp_err_t bmp390_get_interrupt_status_register(bmp390_handle_t handle, bmp390_in
 }
 
 esp_err_t bmp390_get_interrupt_control_register(bmp390_handle_t handle, bmp390_interrupt_control_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_INT_CNTRL, &reg->reg), TAG, "read interrupt control register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_INT_CNTRL, &reg->reg), TAG, "read interrupt control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -345,8 +363,10 @@ esp_err_t bmp390_get_interrupt_control_register(bmp390_handle_t handle, bmp390_i
 }
 
 esp_err_t bmp390_set_interrupt_control_register(bmp390_handle_t handle, const bmp390_interrupt_control_register_t reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     bmp390_interrupt_control_register_t interrupt_control = { .reg = reg.reg };
@@ -355,7 +375,7 @@ esp_err_t bmp390_set_interrupt_control_register(bmp390_handle_t handle, const bm
     interrupt_control.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_INT_CNTRL, interrupt_control.reg), TAG, "write power control register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_INT_CNTRL, interrupt_control.reg), TAG, "write power control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -364,11 +384,13 @@ esp_err_t bmp390_set_interrupt_control_register(bmp390_handle_t handle, const bm
 }
 
 esp_err_t bmp390_get_power_control_register(bmp390_handle_t handle, bmp390_power_control_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_PWRCTRL, &reg->reg), TAG, "read power control register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_PWRCTRL, &reg->reg), TAG, "read power control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -377,8 +399,10 @@ esp_err_t bmp390_get_power_control_register(bmp390_handle_t handle, bmp390_power
 }
 
 esp_err_t bmp390_set_power_control_register(bmp390_handle_t handle, const bmp390_power_control_register_t reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     bmp390_power_control_register_t power_control = { .reg = reg.reg };
@@ -388,7 +412,7 @@ esp_err_t bmp390_set_power_control_register(bmp390_handle_t handle, const bmp390
     power_control.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_PWRCTRL, power_control.reg), TAG, "write power control register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_PWRCTRL, power_control.reg), TAG, "write power control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -397,11 +421,13 @@ esp_err_t bmp390_set_power_control_register(bmp390_handle_t handle, const bmp390
 }
 
 esp_err_t bmp390_get_output_data_rate_register(bmp390_handle_t handle, bmp390_output_data_rate_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_ODR, &reg->reg), TAG, "read output data rate register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_ODR, &reg->reg), TAG, "read output data rate register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -410,8 +436,10 @@ esp_err_t bmp390_get_output_data_rate_register(bmp390_handle_t handle, bmp390_ou
 }
 
 esp_err_t bmp390_set_output_data_rate_register(bmp390_handle_t handle, const bmp390_output_data_rate_register_t reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     bmp390_output_data_rate_register_t output_data_rate = { .reg = reg.reg };
@@ -420,7 +448,7 @@ esp_err_t bmp390_set_output_data_rate_register(bmp390_handle_t handle, const bmp
     output_data_rate.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_ODR, output_data_rate.reg), TAG, "write output data rate register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_ODR, output_data_rate.reg), TAG, "write output data rate register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -429,11 +457,13 @@ esp_err_t bmp390_set_output_data_rate_register(bmp390_handle_t handle, const bmp
 }
 
 esp_err_t bmp390_get_oversampling_register(bmp390_handle_t handle, bmp390_oversampling_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_OSR, &reg->reg), TAG, "read oversampling register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_OSR, &reg->reg), TAG, "read oversampling register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -442,8 +472,10 @@ esp_err_t bmp390_get_oversampling_register(bmp390_handle_t handle, bmp390_oversa
 }
 
 esp_err_t bmp390_set_oversampling_register(bmp390_handle_t handle, const bmp390_oversampling_register_t reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     bmp390_oversampling_register_t oversampling = { .reg = reg.reg };
@@ -452,7 +484,7 @@ esp_err_t bmp390_set_oversampling_register(bmp390_handle_t handle, const bmp390_
     oversampling.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_OSR, oversampling.reg), TAG, "write oversampling register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_OSR, oversampling.reg), TAG, "write oversampling register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -461,11 +493,13 @@ esp_err_t bmp390_set_oversampling_register(bmp390_handle_t handle, const bmp390_
 }
 
 esp_err_t bmp390_get_configuration_register(bmp390_handle_t handle, bmp390_configuration_register_t *const reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(handle, BMP390_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_read_byte_from(dev, BMP390_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -474,8 +508,10 @@ esp_err_t bmp390_get_configuration_register(bmp390_handle_t handle, bmp390_confi
 }
 
 esp_err_t bmp390_set_configuration_register(bmp390_handle_t handle, const bmp390_configuration_register_t reg) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     bmp390_configuration_register_t config = { .reg = reg.reg };
@@ -485,7 +521,7 @@ esp_err_t bmp390_set_configuration_register(bmp390_handle_t handle, const bmp390
     config.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -493,7 +529,7 @@ esp_err_t bmp390_set_configuration_register(bmp390_handle_t handle, const bmp390
     return ESP_OK;
 }
 
-static inline esp_err_t bmp390_setup(bmp390_handle_t handle) {
+static inline esp_err_t bmp390_setup(bmp390_device_t *const device) {
     /* configuration registers */
     bmp390_power_control_register_t     power_ctrl_reg;
     bmp390_configuration_register_t     config_reg;
@@ -502,50 +538,50 @@ static inline esp_err_t bmp390_setup(bmp390_handle_t handle) {
     bmp390_interrupt_control_register_t interrupt_control_reg;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read calibration factors from device */
-    ESP_RETURN_ON_ERROR(bmp390_get_cal_factors(handle), TAG, "read calibration factors for get registers failed" );
+    ESP_RETURN_ON_ERROR(bmp390_get_cal_factors(device), TAG, "read calibration factors for get registers failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(bmp390_get_configuration_register(handle, &config_reg), TAG, "read configuration register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_get_configuration_register((bmp390_handle_t)device, &config_reg), TAG, "read configuration register for init failed");
 
     /* attempt to read oversampling register */
-    ESP_RETURN_ON_ERROR(bmp390_get_oversampling_register(handle, &oversampling_reg), TAG, "read oversampling register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_get_oversampling_register((bmp390_handle_t)device, &oversampling_reg), TAG, "read oversampling register for init failed");
 
     /* attempt to read to power control register */
-    ESP_RETURN_ON_ERROR(bmp390_get_power_control_register(handle, &power_ctrl_reg), TAG, "read power control register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_get_power_control_register((bmp390_handle_t)device, &power_ctrl_reg), TAG, "read power control register for init failed");
 
     /* attempt to read to output data rate register */
-    ESP_RETURN_ON_ERROR(bmp390_get_output_data_rate_register(handle, &output_data_rate_reg), TAG, "read output data rate register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_get_output_data_rate_register((bmp390_handle_t)device, &output_data_rate_reg), TAG, "read output data rate register for init failed");
 
     /* attempt to read to interrupt control register */
-    ESP_RETURN_ON_ERROR(bmp390_get_interrupt_control_register(handle, &interrupt_control_reg), TAG, "read interrupt control register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_get_interrupt_control_register((bmp390_handle_t)device, &interrupt_control_reg), TAG, "read interrupt control register for init failed");
 
     /* initialize configuration registers from configuration */
-    output_data_rate_reg.bits.output_data_rate     = handle->dev_config.output_data_rate;
-    config_reg.bits.iir_filter                     = handle->dev_config.iir_filter;
+    output_data_rate_reg.bits.output_data_rate     = device->config.output_data_rate;
+    config_reg.bits.iir_filter                     = device->config.iir_filter;
     power_ctrl_reg.bits.pressure_enabled           = true;
     power_ctrl_reg.bits.temperature_enabled        = true;
-    power_ctrl_reg.bits.power_mode                 = handle->dev_config.power_mode;
-    oversampling_reg.bits.temperature_oversampling = handle->dev_config.temperature_oversampling;
-    oversampling_reg.bits.pressure_oversampling    = handle->dev_config.pressure_oversampling;
+    power_ctrl_reg.bits.power_mode                 = device->config.power_mode;
+    oversampling_reg.bits.temperature_oversampling = device->config.temperature_oversampling;
+    oversampling_reg.bits.pressure_oversampling    = device->config.pressure_oversampling;
     interrupt_control_reg.bits.irq_data_ready_enabled = true;
     
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR(bmp390_set_configuration_register(handle, config_reg), TAG, "write configuration register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_set_configuration_register((bmp390_handle_t)device, config_reg), TAG, "write configuration register for init failed");
 
     /* attempt to write oversampling register */
-    ESP_RETURN_ON_ERROR(bmp390_set_oversampling_register(handle, oversampling_reg), TAG, "write oversampling register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_set_oversampling_register((bmp390_handle_t)device, oversampling_reg), TAG, "write oversampling register for init failed");
 
     /* attempt to write to power control register */
-    ESP_RETURN_ON_ERROR(bmp390_set_power_control_register(handle, power_ctrl_reg), TAG, "write power control register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_set_power_control_register((bmp390_handle_t)device, power_ctrl_reg), TAG, "write power control register for init failed");
 
     /* attempt to write to output data rate register */
-    ESP_RETURN_ON_ERROR(bmp390_set_output_data_rate_register(handle, output_data_rate_reg), TAG, "write output data rate register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_set_output_data_rate_register((bmp390_handle_t)device, output_data_rate_reg), TAG, "write output data rate register for init failed");
 
     /* attempt to write to interrupt control register */
-    ESP_RETURN_ON_ERROR(bmp390_set_interrupt_control_register(handle, interrupt_control_reg), TAG, "write interrupt control register for init failed");
+    ESP_RETURN_ON_ERROR(bmp390_set_interrupt_control_register((bmp390_handle_t)device, interrupt_control_reg), TAG, "write interrupt control register for init failed");
 
     return ESP_OK;
 }
@@ -562,48 +598,47 @@ esp_err_t bmp390_init(i2c_master_bus_handle_t master_handle, const bmp390_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, bmp280 device handle initialization failed", bmp390_config->i2c_address);
 
     /* validate memory availability for handle */
-    bmp390_handle_t out_handle;
-    out_handle = (bmp390_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c0 bmp280 device for init");
+    bmp390_device_t* dev = (bmp390_device_t*)calloc(1, sizeof(bmp390_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c0 bmp280 device for init");
 
     /* validate memory availability for handle calibration factors */
-    out_handle->dev_cal_factors = (bmp390_cal_factors_t*)calloc(1, sizeof(bmp390_cal_factors_t));
-    ESP_GOTO_ON_FALSE(out_handle->dev_cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bmp280 device calibration factors for init");
+    dev->cal_factors = (bmp390_cal_factors_t*)calloc(1, sizeof(bmp390_cal_factors_t));
+    ESP_GOTO_ON_FALSE(dev->cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bmp280 device calibration factors for init");
 
     /* validate memory availability for handle converted calibration factors */
-    out_handle->dev_conv_cal_factors = (bmp390_conv_cal_factors_t*)calloc(1, sizeof(bmp390_conv_cal_factors_t));
-    ESP_GOTO_ON_FALSE(out_handle->dev_conv_cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bmp280 device converted calibration factors for init");
+    dev->conv_cal_factors = (bmp390_conv_cal_factors_t*)calloc(1, sizeof(bmp390_conv_cal_factors_t));
+    ESP_GOTO_ON_FALSE(dev->conv_cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bmp280 device converted calibration factors for init");
 
     /* copy configuration */
-    out_handle->dev_config = *bmp390_config;
+    dev->config = *bmp390_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c0 new bus failed for init");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c0 new bus failed for init");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
 
     /* read and validate device type */
-    ESP_GOTO_ON_ERROR(bmp390_get_chip_id_register(out_handle, &out_handle->dev_type), err_handle, TAG, "read chip identifier for init failed");
-    if(out_handle->dev_type != BMP390_CHIP_ID_DFLT) {
-        ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", out_handle->dev_type);
+    ESP_GOTO_ON_ERROR(bmp390_get_chip_id_register((bmp390_handle_t)dev, &dev->type), err_handle, TAG, "read chip identifier for init failed");
+    if(dev->type != BMP390_CHIP_ID_DFLT) {
+        ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", dev->type);
     }
 
     /* attempt to reset the device and initialize handle registers */
-    ESP_GOTO_ON_ERROR(bmp390_reset(out_handle), err_handle, TAG, "soft-reset and initialize registers for init failed");
+    ESP_GOTO_ON_ERROR(bmp390_reset((bmp390_handle_t)dev), err_handle, TAG, "soft-reset and initialize registers for init failed");
 
     
     /* copy configuration */
-    *bmp390_handle = out_handle;
+    *bmp390_handle = (bmp390_handle_t)dev;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_APPSTART_DELAY_MS));
@@ -611,17 +646,19 @@ esp_err_t bmp390_init(i2c_master_bus_handle_t master_handle, const bmp390_config
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
 
 esp_err_t bmp390_get_measurements(bmp390_handle_t handle, float *const temperature, float *const pressure) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && temperature && pressure );
+    ESP_ARG_CHECK( dev && temperature && pressure );
 
     /* initialize local variables */
     esp_err_t    ret                  = ESP_OK;
@@ -631,7 +668,7 @@ esp_err_t bmp390_get_measurements(bmp390_handle_t handle, float *const temperatu
     bit48_uint8_buffer_t rx                   = {};
 
     /* trigger measurement when in forced mode */
-    if(handle->dev_config.power_mode == BMP390_POWER_MODE_FORCED) {
+    if(dev->config.power_mode == BMP390_POWER_MODE_FORCED) {
         bmp390_set_power_mode(handle, BMP390_POWER_MODE_FORCED);
     }
 
@@ -649,7 +686,7 @@ esp_err_t bmp390_get_measurements(bmp390_handle_t handle, float *const temperatu
     } while (pressure_is_ready == false && temperature_is_ready == false);
 
     // read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( bmp390_i2c_read_from(handle, BMP390_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
+    ESP_GOTO_ON_ERROR( bmp390_i2c_read_from(dev, BMP390_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
     
     // concat pressure and temperature adc values
     uint32_t adc_press, adc_temp;
@@ -664,8 +701,8 @@ esp_err_t bmp390_get_measurements(bmp390_handle_t handle, float *const temperatu
     adc_temp  = data_msb | data_lsb | data_xlsb;
 
     /* apply compensation and convert pressure and temperature values to engineering units of measure */
-    *temperature = bmp390_compensate_temperature(handle, adc_temp);
-    *pressure    = bmp390_compensate_pressure(handle, adc_press);
+    *temperature = bmp390_compensate_temperature(dev, adc_temp);
+    *pressure    = bmp390_compensate_pressure(dev, adc_press);
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP390_CMD_DELAY_MS));
@@ -726,9 +763,10 @@ esp_err_t bmp390_get_power_mode(bmp390_handle_t handle, bmp390_power_modes_t *co
 
 esp_err_t bmp390_set_power_mode(bmp390_handle_t handle, const bmp390_power_modes_t power_mode) {
     bmp390_power_control_register_t pwrc;
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read power control register */
     ESP_RETURN_ON_ERROR( bmp390_get_power_control_register(handle, &pwrc), TAG, "read power control register for get power mode failed" );
@@ -740,7 +778,7 @@ esp_err_t bmp390_set_power_mode(bmp390_handle_t handle, const bmp390_power_modes
     ESP_RETURN_ON_ERROR( bmp390_set_power_control_register(handle, pwrc), TAG, "write power control register for set power mode failed" );
 
     /* set config parameter */
-    handle->dev_config.power_mode = power_mode;
+    dev->config.power_mode = power_mode;
 
     return ESP_OK;
 }
@@ -762,9 +800,10 @@ esp_err_t bmp390_get_pressure_oversampling(bmp390_handle_t handle, bmp390_pressu
 
 esp_err_t bmp390_set_pressure_oversampling(bmp390_handle_t handle, const bmp390_pressure_oversampling_t oversampling) {
     bmp390_oversampling_register_t osmp;
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read control measurement register */
     ESP_RETURN_ON_ERROR( bmp390_get_oversampling_register(handle, &osmp), TAG, "read oversampling register for get pressure oversampling failed" );
@@ -776,7 +815,7 @@ esp_err_t bmp390_set_pressure_oversampling(bmp390_handle_t handle, const bmp390_
     ESP_RETURN_ON_ERROR( bmp390_set_oversampling_register(handle, osmp), TAG, "write oversampling register for set pressure oversampling failed" );
 
     /* set config parameter */
-    handle->dev_config.pressure_oversampling = oversampling;
+    dev->config.pressure_oversampling = oversampling;
 
     return ESP_OK;
 }
@@ -798,9 +837,10 @@ esp_err_t bmp390_get_temperature_oversampling(bmp390_handle_t handle, bmp390_tem
 
 esp_err_t bmp390_set_temperature_oversampling(bmp390_handle_t handle, const bmp390_temperature_oversampling_t oversampling) {
     bmp390_oversampling_register_t osmp;
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read oversampling register */
     ESP_RETURN_ON_ERROR( bmp390_get_oversampling_register(handle, &osmp), TAG, "read oversampling register for get temperature oversampling failed" );
@@ -812,7 +852,7 @@ esp_err_t bmp390_set_temperature_oversampling(bmp390_handle_t handle, const bmp3
     ESP_RETURN_ON_ERROR( bmp390_set_oversampling_register(handle, osmp), TAG, "write oversampling register for set temperature oversampling failed" );
 
     /* set config parameter */
-    handle->dev_config.temperature_oversampling = oversampling;
+    dev->config.temperature_oversampling = oversampling;
 
     return ESP_OK;
 }
@@ -834,9 +874,10 @@ esp_err_t bmp280_get_output_data_rate(bmp390_handle_t handle, bmp390_output_data
 
 esp_err_t bmp280_set_output_data_rate(bmp390_handle_t handle, const bmp390_output_data_rates_t output_data_rate) {
     bmp390_output_data_rate_register_t odr;
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read configuration register */
     ESP_RETURN_ON_ERROR( bmp390_get_output_data_rate_register(handle, &odr), TAG, "read output data rate register for get standby time failed" );
@@ -848,7 +889,7 @@ esp_err_t bmp280_set_output_data_rate(bmp390_handle_t handle, const bmp390_outpu
     ESP_RETURN_ON_ERROR( bmp390_set_output_data_rate_register(handle, odr), TAG, "write output data rate register for set stanby time failed" );
 
     /* set config parameter */
-    handle->dev_config.output_data_rate = output_data_rate;
+    dev->config.output_data_rate = output_data_rate;
 
     return ESP_OK;
 }
@@ -870,9 +911,10 @@ esp_err_t bmp390_get_iir_filter(bmp390_handle_t handle, bmp390_iir_filters_t *co
 
 esp_err_t bmp390_set_iir_filter(bmp390_handle_t handle, const bmp390_iir_filters_t iir_filter) {
     bmp390_configuration_register_t config;
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read configuration register */
     ESP_RETURN_ON_ERROR( bmp390_get_configuration_register(handle, &config), TAG, "read configuration register for get IIR filter failed" );
@@ -884,46 +926,52 @@ esp_err_t bmp390_set_iir_filter(bmp390_handle_t handle, const bmp390_iir_filters
     ESP_RETURN_ON_ERROR( bmp390_set_configuration_register(handle, config), TAG, "write configuration register for set IIR filter failed" );
 
     /* set config parameter */
-    handle->dev_config.iir_filter = iir_filter;
+    dev->config.iir_filter = iir_filter;
 
     return ESP_OK;
 }
 
 esp_err_t bmp390_reset(bmp390_handle_t handle) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c transaction */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(handle, BMP390_REG_CMD, BMP390_SFTRESET_CMD), TAG, "write reset register for reset failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_write_byte_to(dev, BMP390_REG_CMD, BMP390_SFTRESET_CMD), TAG, "write reset register for reset failed" );
 
     /* wait until finished copying NVP data */
     // forced delay before next transaction - see datasheet for details
     vTaskDelay(pdMS_TO_TICKS(BMP390_RESET_DELAY_MS)); // check is busy in timeout loop...
 
     /* attempt to setup device  */
-    ESP_RETURN_ON_ERROR( bmp390_setup(handle), TAG, "setup for reset failed" );
+    ESP_RETURN_ON_ERROR( bmp390_setup(dev), TAG, "setup for reset failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bmp390_remove(bmp390_handle_t handle) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t bmp390_delete(bmp390_handle_t handle) {
+    bmp390_device_t* dev = (bmp390_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from master bus */
     ESP_RETURN_ON_ERROR( bmp390_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
 
     /* validate handle instance and free handles */
     if(handle) {
-        free(handle->dev_cal_factors);
-        free(handle->dev_conv_cal_factors);
+        free(dev->cal_factors);
+        free(dev->conv_cal_factors);
         free(handle);
     }
 

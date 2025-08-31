@@ -65,7 +65,7 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
 /**
- * @brief BH1750 I2C device structure definition.
+ * @brief BH1750 device structure definition.
  */
 typedef struct bh1750_device_s {
     bh1750_config_t                 config;         /*!< bh1750 device configuration */ 
