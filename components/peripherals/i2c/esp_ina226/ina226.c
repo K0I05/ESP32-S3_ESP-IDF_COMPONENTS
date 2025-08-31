@@ -78,6 +78,15 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief INA226 device descriptor structure definition.
+ */
+typedef struct ina226_device_s {
+    ina226_config_t                 config;           /*!< ina226 device configuration */
+    i2c_master_dev_handle_t         i2c_handle;       /*!< ina226 I2C device handle */
+    float                           current_lsb;      /*!< ina226 current LSB value, uA/bit, this is automatically configured */
+} ina226_device_t;
+
 /*
 * static constant declarations
 */
@@ -89,21 +98,21 @@ static const char *TAG = "ina226";
 
 
 /**
- * @brief INA226 I2C read halfword from register address transaction.
+ * @brief INA226 I2C HAL read word from register address transaction.
  * 
- * @param handle INA226 device handle.
+ * @param device INA226 device descriptor.
  * @param reg_addr INA226 register address to read from.
- * @param word INA226 read transaction return halfword.
+ * @param word INA226 read transaction return word.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ina226_i2c_read_word_from(ina226_handle_t handle, const uint8_t reg_addr, uint16_t *const word) {
+static inline esp_err_t ina226_i2c_read_word_from(ina226_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit16_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ina226_i2c_read_word_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ina226_i2c_read_word_from failed" );
 
     /* set output parameter */
     *word = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
@@ -112,33 +121,35 @@ static inline esp_err_t ina226_i2c_read_word_from(ina226_handle_t handle, const 
 }
 
 /**
- * @brief INA226 I2C write halfword to register address transaction.
+ * @brief INA226 I2C HAL write word to register address transaction.
  * 
- * @param handle INA226 device handle.
+ * @param device INA226 device descriptor.
  * @param reg_addr INA226 register address to write to.
- * @param word INA226 write transaction input halfword.
+ * @param word INA226 write transaction input word.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ina226_i2c_write_word_to(ina226_handle_t handle, const uint8_t reg_addr, const uint16_t word) {
+static inline esp_err_t ina226_i2c_write_word_to(ina226_device_t *const device, const uint8_t reg_addr, const uint16_t word) {
     const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)((word >> 8) & 0xff), (uint8_t)(word & 0xff) }; // register, lsb, msb
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ina226_i2c_write_word_to, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ina226_i2c_write_word_to, i2c write failed" );
                         
     return ESP_OK;
 }
 
 esp_err_t ina226_get_configuration_register(ina226_handle_t handle, ina226_config_register_t *const reg) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     uint16_t cfg;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_CONFIG, &cfg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_CONFIG, &cfg), TAG, "read configuration register failed" );
 
     reg->reg = cfg;
 
@@ -149,15 +160,16 @@ esp_err_t ina226_get_configuration_register(ina226_handle_t handle, ina226_confi
 }
 
 esp_err_t ina226_set_configuration_register(ina226_handle_t handle, const ina226_config_register_t reg) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
     ina226_config_register_t config = { .reg = reg.reg };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     config.bits.reserved = 0;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_write_word_to(handle, INA226_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_write_word_to(dev, INA226_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -166,11 +178,13 @@ esp_err_t ina226_set_configuration_register(ina226_handle_t handle, const ina226
 }
 
 esp_err_t ina226_get_calibration_register(ina226_handle_t handle, uint16_t *const reg) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_CALIBRATION, reg), TAG, "read calibration register failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_CALIBRATION, reg), TAG, "read calibration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -179,11 +193,13 @@ esp_err_t ina226_get_calibration_register(ina226_handle_t handle, uint16_t *cons
 }
 
 esp_err_t ina226_set_calibration_register(ina226_handle_t handle, const uint16_t reg) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_write_word_to(handle, INA226_REG_CALIBRATION, reg), TAG, "write calibration register failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_write_word_to(dev, INA226_REG_CALIBRATION, reg), TAG, "write calibration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -192,13 +208,15 @@ esp_err_t ina226_set_calibration_register(ina226_handle_t handle, const uint16_t
 }
 
 esp_err_t ina226_get_mask_enable_register(ina226_handle_t handle, ina226_mask_enable_register_t *const reg) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     uint16_t mske;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_MSK_ENA, &mske), TAG, "read mask-enable register failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_MSK_ENA, &mske), TAG, "read mask-enable register failed" );
 
     reg->reg = mske;
 
@@ -220,33 +238,32 @@ esp_err_t ina226_init(i2c_master_bus_handle_t master_handle, const ina226_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, ccs811 device handle initialization failed", ina226_config->i2c_address);
 
     /* validate memory availability for handle */
-    ina226_handle_t out_handle;
-    out_handle = (ina226_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ini226 device");
+    ina226_device_t* dev = (ina226_device_t*)calloc(1, sizeof(ina226_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ini226 device");
 
     /* copy configuration */
-    out_handle->dev_config = *ina226_config;
+    dev->config = *ina226_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus failed");
     }
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(100));
 
     /* attempt to soft-reset */
-    ESP_GOTO_ON_ERROR(ina226_reset(out_handle), err_handle, TAG, "unable to soft-reset, init failed");
+    ESP_GOTO_ON_ERROR(ina226_reset((ina226_handle_t)dev), err_handle, TAG, "unable to soft-reset, init failed");
 
     /* set device handle */
-    *ina226_handle = out_handle;
+    *ina226_handle = (ina226_handle_t)dev;
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_APPSTART_DELAY_MS));
@@ -254,17 +271,19 @@ esp_err_t ina226_init(i2c_master_bus_handle_t master_handle, const ina226_config
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
 
 esp_err_t ina226_calibrate(ina226_handle_t handle, const float max_current, const float shunt_resistance) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     float shunt_volt = max_current * shunt_resistance;
 
@@ -278,7 +297,7 @@ esp_err_t ina226_calibrate(ina226_handle_t handle, const float max_current, cons
     current_lsb /= 0.0001;
     current_lsb = ceil(current_lsb);
     current_lsb *= 0.0001;
-    handle->current_lsb = current_lsb;
+    dev->current_lsb = current_lsb;
     uint16_t cal = (uint16_t)((0.00512) / (current_lsb * shunt_resistance));
 
     ESP_RETURN_ON_ERROR(ina226_set_calibration_register(handle, cal), TAG, "unable to write calibration register, calibration failed");
@@ -287,13 +306,15 @@ esp_err_t ina226_calibrate(ina226_handle_t handle, const float max_current, cons
 }
 
 esp_err_t ina226_get_shunt_voltage(ina226_handle_t handle, float *const voltage) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && voltage );
+    ESP_ARG_CHECK( dev && voltage );
 
     uint16_t sig;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_SHUNT_V, &sig), TAG, "read shunt voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_SHUNT_V, &sig), TAG, "read shunt voltage failed" );
 
     *voltage = (float)sig * 2.5e-6f; /* fixed to 2.5 uV */
 
@@ -308,9 +329,10 @@ esp_err_t ina226_get_triggered_shunt_voltage(ina226_handle_t handle, float *cons
     uint64_t      start_time    = esp_timer_get_time();
     bool          is_data_ready = false;
     uint16_t      sig;
+    ina226_device_t* dev = (ina226_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && voltage );
+    ESP_ARG_CHECK( dev && voltage );
 
     /* attempt to trigger bus voltage */
     ESP_RETURN_ON_ERROR( ina226_set_operating_mode(handle, INA226_OP_MODE_TRIG_SHUNT_VOLT), TAG, "unable to trigger shunt voltage, get triggered shunt voltage failed" );
@@ -333,7 +355,7 @@ esp_err_t ina226_get_triggered_shunt_voltage(ina226_handle_t handle, float *cons
     } while (is_data_ready == false);
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_SHUNT_V, &sig), TAG, "unable to read shunt voltage, get triggered shunt voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_SHUNT_V, &sig), TAG, "unable to read shunt voltage, get triggered shunt voltage failed" );
 
     *voltage = (float)sig * 2.5e-6f; /* fixed to 2.5 uV */
 
@@ -347,13 +369,15 @@ esp_err_t ina226_get_triggered_shunt_voltage(ina226_handle_t handle, float *cons
 }
 
 esp_err_t ina226_get_bus_voltage(ina226_handle_t handle, float *const voltage) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && voltage );
+    ESP_ARG_CHECK( dev && voltage );
 
     uint16_t sig;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_BUS_V, &sig), TAG, "read bus voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_BUS_V, &sig), TAG, "read bus voltage failed" );
 
     *voltage = (float)sig * 0.00125f;
 
@@ -368,9 +392,10 @@ esp_err_t ina226_get_triggered_bus_voltage(ina226_handle_t handle, float *const 
     uint64_t      start_time    = esp_timer_get_time();
     bool          is_data_ready = false;
     uint16_t      sig;
+    ina226_device_t* dev = (ina226_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && voltage );
+    ESP_ARG_CHECK( dev && voltage );
 
     /* attempt to trigger bus voltage */
     ESP_RETURN_ON_ERROR( ina226_set_operating_mode(handle, INA226_OP_MODE_TRIG_BUS_VOLT), TAG, "unable to trigger bus voltage, get triggered bus voltage failed" );
@@ -393,7 +418,7 @@ esp_err_t ina226_get_triggered_bus_voltage(ina226_handle_t handle, float *const 
     } while (is_data_ready == false);
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_BUS_V, &sig), TAG, "unable to read bus voltage, get triggered bus voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_BUS_V, &sig), TAG, "unable to read bus voltage, get triggered bus voltage failed" );
 
     *voltage = (float)sig * 0.00125f;
 
@@ -407,15 +432,17 @@ esp_err_t ina226_get_triggered_bus_voltage(ina226_handle_t handle, float *const 
 }
 
 esp_err_t ina226_get_current(ina226_handle_t handle, float *const current) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && current );
+    ESP_ARG_CHECK( dev && current );
 
     uint16_t sig;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_CURRENT, &sig), TAG, "read bus voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_CURRENT, &sig), TAG, "read bus voltage failed" );
 
-    *current = (float)sig * handle->current_lsb;
+    *current = (float)sig * dev->current_lsb;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -428,9 +455,10 @@ esp_err_t ina226_get_triggered_current(ina226_handle_t handle, float *const curr
     uint64_t      start_time    = esp_timer_get_time();
     bool          is_data_ready = false;
     uint16_t      sig;
+    ina226_device_t* dev = (ina226_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && current );
+    ESP_ARG_CHECK( dev && current );
 
     /* attempt to trigger bus voltage */
     ESP_RETURN_ON_ERROR( ina226_set_operating_mode(handle, INA226_OP_MODE_TRIG_SHUNT_BUS), TAG, "unable to trigger current, get triggered current failed" );
@@ -453,9 +481,9 @@ esp_err_t ina226_get_triggered_current(ina226_handle_t handle, float *const curr
     } while (is_data_ready == false);
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_CURRENT, &sig), TAG, "unable to read current, get triggered current failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_CURRENT, &sig), TAG, "unable to read current, get triggered current failed" );
 
-    *current = (float)sig * handle->current_lsb;
+    *current = (float)sig * dev->current_lsb;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -467,15 +495,17 @@ esp_err_t ina226_get_triggered_current(ina226_handle_t handle, float *const curr
 }
 
 esp_err_t ina226_get_power(ina226_handle_t handle, float *const power) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && power );
+    ESP_ARG_CHECK( dev && power );
 
     uint16_t sig;
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(handle, INA226_REG_POWER, &sig), TAG, "read bus voltage failed" );
+    ESP_RETURN_ON_ERROR( ina226_i2c_read_word_from(dev, INA226_REG_POWER, &sig), TAG, "read bus voltage failed" );
 
-    *power = (float)sig * handle->current_lsb * 25;
+    *power = (float)sig * dev->current_lsb * 25;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(INA226_CMD_DELAY_MS));
@@ -517,8 +547,10 @@ esp_err_t ina226_set_mode(ina226_handle_t handle, const ina226_operating_modes_t
 }
 
 esp_err_t ina226_reset(ina226_handle_t handle) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     ina226_config_register_t config;
 
@@ -533,25 +565,27 @@ esp_err_t ina226_reset(ina226_handle_t handle) {
     /* attempt to configure device */
     ESP_RETURN_ON_ERROR(ina226_get_configuration_register(handle, &config), TAG, "unable to read configuration register, reset failed");
 
-    config.bits.operating_mode      = handle->dev_config.operating_mode;
-    config.bits.averaging_mode      = handle->dev_config.averaging_mode;
-    config.bits.bus_volt_conv_time  = handle->dev_config.bus_voltage_conv_time;
-    config.bits.shun_volt_conv_time = handle->dev_config.shunt_voltage_conv_time;
+    config.bits.operating_mode      = dev->config.operating_mode;
+    config.bits.averaging_mode      = dev->config.averaging_mode;
+    config.bits.bus_volt_conv_time  = dev->config.bus_voltage_conv_time;
+    config.bits.shun_volt_conv_time = dev->config.shunt_voltage_conv_time;
 
     ESP_RETURN_ON_ERROR(ina226_set_configuration_register(handle, config), TAG, "unable to write configuration register, reset failed");
 
     /* attempt to write calibration factor */
-    ESP_RETURN_ON_ERROR(ina226_calibrate(handle, handle->dev_config.max_current, handle->dev_config.shunt_resistance), TAG, "unable to calibrate device, reset failed");
+    ESP_RETURN_ON_ERROR(ina226_calibrate(handle, dev->config.max_current, dev->config.shunt_resistance), TAG, "unable to calibrate device, reset failed");
 
     return ESP_OK;
 }
 
 esp_err_t ina226_remove(ina226_handle_t handle) {
+    ina226_device_t* dev = (ina226_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t ina226_delete(ina226_handle_t handle) {

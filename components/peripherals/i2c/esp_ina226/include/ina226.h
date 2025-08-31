@@ -210,23 +210,9 @@ typedef struct ina226_config_s {
 
 
 /**
- * @brief INA226 context structure.
+ * @brief INA226 opaque handle structure definition.
  */
-struct ina226_context_t {
-    ina226_config_t                 dev_config;       /*!< ina226 device configuration */
-    i2c_master_dev_handle_t         i2c_handle;       /*!< ina226 I2C device handle */
-    float                           current_lsb;      /*!< ina226 current LSB value, uA/bit, this is automatically configured */
-};
-
-/**
- * @brief INA226 context structure definition.
- */
-typedef struct ina226_context_t ina226_context_t;
-
-/**
- * @brief INA226 handle structure definition.
- */
-typedef struct ina226_context_t *ina226_handle_t;
+typedef void* ina226_handle_t;
 
 /**
  * @brief Reads the configuration register from the INA226.
