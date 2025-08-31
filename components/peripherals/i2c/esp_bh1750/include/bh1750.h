@@ -96,22 +96,9 @@ typedef struct bh1750_config_s {
 } bh1750_config_t;
 
 /**
- * @brief BH1750 I2C device handle structure.
+ * @brief BH1750 opaque handle structure definition.
  */
-struct bh1750_context_t {
-    bh1750_config_t                 dev_config;     /*!< bh1750 device configuration */ 
-    i2c_master_dev_handle_t         i2c_handle;     /*!< bh1750 I2C device handle */
-};
-
-/**
- * @brief BH1750 context structure definition.
- */
-typedef struct bh1750_context_t bh1750_context_t;
-
-/**
- * @brief BH1750 handle structure definition.
- */
-typedef struct bh1750_context_t *bh1750_handle_t;
+typedef void* bh1750_handle_t;
 
 
 
