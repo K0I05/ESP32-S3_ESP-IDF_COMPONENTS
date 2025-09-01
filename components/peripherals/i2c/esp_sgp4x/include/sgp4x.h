@@ -84,7 +84,7 @@ typedef union __attribute__((packed)) {
 } sgp4x_self_test_result_t;
 
 /**
- * @brief SGP4X device configuration structure.
+ * @brief SGP4X device configuration structure definition.
  */
 typedef struct {
     uint16_t                i2c_address;        /*!< sgp4x i2c device address */
