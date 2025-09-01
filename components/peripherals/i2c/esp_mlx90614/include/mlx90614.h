@@ -199,7 +199,7 @@ typedef union __attribute__((packed)) mlx90614_flags_register_u {
 } mlx90614_flags_register_t;
 
 /**
- * @brief MLX90614 configuration structure.
+ * @brief MLX90614 configuration structure definition.
  */
 typedef struct mlx90614_config_s {
     uint16_t                    i2c_address;        /*!< mlx90614 i2c device address */
@@ -207,25 +207,9 @@ typedef struct mlx90614_config_s {
 } mlx90614_config_t;
 
 /**
- * @brief MLX90614 context structure.
+ * @brief MLX90614 opaque handle structure definition.
  */
-struct mlx90614_context_t {
-    mlx90614_config_t           dev_config;         /*!< mlx90614 configuration */
-    i2c_master_dev_handle_t     i2c_handle;         /*!< mlx90614 I2C device handle */
-    //uint8_t                     i2c_dev_address;    /*!< mlx90614 I2C device address */
-    uint32_t                    ident_number_hi;    /*!< mlx90614 device identification number 32-bit hi */
-    uint32_t                    ident_number_lo;    /*!< mlx90614 device identification number 32-bit lo */
-    float                       pwm_period_multiplier;
-};
-
-/**
- * @brief MLX90614 context structure definition.
- */
-typedef struct mlx90614_context_t mlx90614_context_t;
-/**
- * @brief MLX90614 handle structure definition.
- */
-typedef struct mlx90614_context_t *mlx90614_handle_t;
+typedef void* mlx90614_handle_t;
 
 
 

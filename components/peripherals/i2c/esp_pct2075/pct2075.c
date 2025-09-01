@@ -704,7 +704,7 @@ esp_err_t pct2075_delete(pct2075_handle_t handle) {
 }
 
 const char* pct2075_get_fw_version(void) {
-    return (char *)PCT2075_FW_VERSION_STR;
+    return (char*)PCT2075_FW_VERSION_STR;
 }
 
 int32_t pct2075_get_fw_version_number(void) {

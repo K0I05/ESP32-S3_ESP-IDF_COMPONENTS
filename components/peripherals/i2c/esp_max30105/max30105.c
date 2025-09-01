@@ -94,6 +94,19 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief MAX30105 device descriptor structure definition.
+ */
+typedef struct max30105_device_s {
+    max30105_config_t                      config;      /*!< max30105 device configuration */
+    i2c_master_dev_handle_t                i2c_handle;  /*!< max30105 I2C device handle */
+   // max30105_mode_configuration_register_t mode_config_reg; /*!< max30105 mode configuration register (read-write) */
+    //max30105_interrupt_status1_register_t  irq_status1_reg; /*!< max30105 interrupt status 1 register (read-only) */
+    //max30105_interrupt_status2_register_t  irq_status2_reg; /*!< max30105 interrupt status 2 register (read-only) */
+   //max30105_interrupt_enable1_register_t  irq_enable1_reg; /*!< max30105 interrupt enable 1 register (read-write) */
+    //max30105_interrupt_enable2_register_t  irq_enable2_reg; /*!< max30105 interrupt enable 2 register (read-write) */
+} max30105_device_t;
+
 /*
 * static constant declarations
 */
@@ -103,28 +116,28 @@ static const char *TAG = "max30105";
 
 
 /**
- * @brief MAX30105 I2C read byte from register address transaction.
+ * @brief MAX30105 I2C HAL read byte from register address transaction.
  * 
- * @param handle MAX30105 device handle.
+ * @param device MAX30105 device descriptor.
  * @param reg_addr MAX30105 register address to read from.
  * @param byte MAX30105 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t max30105_i2c_read_byte_from(max30105_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t max30105_i2c_read_byte_from(max30105_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c read from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c read from failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_TX_RX_DELAY_MS));
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_receive(device->i2c_handle, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -133,31 +146,33 @@ static inline esp_err_t max30105_i2c_read_byte_from(max30105_handle_t handle, co
 }
 
 /**
- * @brief MAX30105 I2C write byte to register address transaction.
+ * @brief MAX30105 I2C HAL write byte to register address transaction.
  * 
- * @param handle MAX30105 device handle.
+ * @param device MAX30105 device descriptor.
  * @param reg_addr MAX30105 register address to write to.
  * @param byte MAX30105 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t max30105_i2c_write_byte_to(max30105_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t max30105_i2c_write_byte_to(max30105_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write to failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write to failed" );
                         
     return ESP_OK;
 }
 
 esp_err_t max30105_get_interrupt_status1_register(max30105_handle_t handle, max30105_interrupt_status1_register_t *const reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(handle, MAX30105_REG_INT_STS1_R, &reg->reg), TAG, "read interrupt status 1 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(dev, MAX30105_REG_INT_STS1_R, &reg->reg), TAG, "read interrupt status 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -166,11 +181,13 @@ esp_err_t max30105_get_interrupt_status1_register(max30105_handle_t handle, max3
 }
 
 esp_err_t max30105_get_interrupt_status2_register(max30105_handle_t handle, max30105_interrupt_status2_register_t *const reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(handle, MAX30105_REG_INT_STS2_R, &reg->reg), TAG, "read interrupt status 2 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(dev, MAX30105_REG_INT_STS2_R, &reg->reg), TAG, "read interrupt status 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -179,11 +196,13 @@ esp_err_t max30105_get_interrupt_status2_register(max30105_handle_t handle, max3
 }
 
 esp_err_t max30105_get_interrupt_enable1_register(max30105_handle_t handle, max30105_interrupt_enable1_register_t *const reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(handle, MAX30105_REG_INT_ENB1_RW, &reg->reg), TAG, "read interrupt enable 1 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(dev, MAX30105_REG_INT_ENB1_RW, &reg->reg), TAG, "read interrupt enable 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -192,8 +211,10 @@ esp_err_t max30105_get_interrupt_enable1_register(max30105_handle_t handle, max3
 }
 
 esp_err_t max30105_set_interrupt_enable1_register(max30105_handle_t handle, const max30105_interrupt_enable1_register_t reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     max30105_interrupt_enable1_register_t irq_enable1 = { .reg = reg.reg };
@@ -202,7 +223,7 @@ esp_err_t max30105_set_interrupt_enable1_register(max30105_handle_t handle, cons
     irq_enable1.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(handle, MAX30105_REG_INT_ENB1_RW, irq_enable1.reg), TAG, "write interrupt enable 1 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(dev, MAX30105_REG_INT_ENB1_RW, irq_enable1.reg), TAG, "write interrupt enable 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -211,11 +232,13 @@ esp_err_t max30105_set_interrupt_enable1_register(max30105_handle_t handle, cons
 }
 
 esp_err_t max30105_get_interrupt_enable2_register(max30105_handle_t handle, max30105_interrupt_enable2_register_t *const reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(handle, MAX30105_REG_INT_ENB2_RW, &reg->reg), TAG, "read interrupt enable 2 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(dev, MAX30105_REG_INT_ENB2_RW, &reg->reg), TAG, "read interrupt enable 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -224,8 +247,10 @@ esp_err_t max30105_get_interrupt_enable2_register(max30105_handle_t handle, max3
 }
 
 esp_err_t max30105_set_interrupt_enable2_register(max30105_handle_t handle, const max30105_interrupt_enable2_register_t reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     max30105_interrupt_enable2_register_t irq_enable2 = { .reg = reg.reg };
@@ -235,7 +260,7 @@ esp_err_t max30105_set_interrupt_enable2_register(max30105_handle_t handle, cons
     irq_enable2.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(handle, MAX30105_REG_INT_ENB2_RW, irq_enable2.reg), TAG, "write interrupt enable 2 register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(dev, MAX30105_REG_INT_ENB2_RW, irq_enable2.reg), TAG, "write interrupt enable 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -244,11 +269,13 @@ esp_err_t max30105_set_interrupt_enable2_register(max30105_handle_t handle, cons
 }
 
 esp_err_t max30105_get_mode_configuration_register(max30105_handle_t handle, max30105_mode_configuration_register_t *const reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(handle, MAX30105_REG_MODE_CONFIG_RW, &reg->reg), TAG, "read mode configuration register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(dev, MAX30105_REG_MODE_CONFIG_RW, &reg->reg), TAG, "read mode configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
@@ -257,8 +284,10 @@ esp_err_t max30105_get_mode_configuration_register(max30105_handle_t handle, max
 }
 
 esp_err_t max30105_set_mode_configuration_register(max30105_handle_t handle, const max30105_mode_configuration_register_t reg) {
+    max30105_device_t* dev = (max30105_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     max30105_mode_configuration_register_t mode_config = { .reg = reg.reg };
@@ -267,7 +296,7 @@ esp_err_t max30105_set_mode_configuration_register(max30105_handle_t handle, con
     mode_config.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(handle, MAX30105_REG_MODE_CONFIG_RW, mode_config.reg), TAG, "write mode configuration register failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(dev, MAX30105_REG_MODE_CONFIG_RW, mode_config.reg), TAG, "write mode configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));

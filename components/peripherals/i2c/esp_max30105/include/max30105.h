@@ -261,7 +261,7 @@ typedef union __attribute__((packed)) max30105_fifo_data_register_u {
 } max30105_fifo_data_register_t;
 
 /**
- * @brief MAX30105 configuration structure.
+ * @brief MAX30105 configuration structure definition.
  */
 typedef struct max30105_config_s {
     uint16_t                    i2c_address;    /*!< max30105 i2c device address */
@@ -270,27 +270,9 @@ typedef struct max30105_config_s {
 } max30105_config_t;
 
 /**
- * @brief MAX30105 context structure.
+ * @brief MAX30105 opaque handle structure definition.
  */
-struct max30105_context_t {
-    max30105_config_t                      dev_config;  /*!< max30105 device configuration */
-    i2c_master_dev_handle_t                i2c_handle;  /*!< max30105 I2C device handle */
-   // max30105_mode_configuration_register_t mode_config_reg; /*!< max30105 mode configuration register (read-write) */
-    //max30105_interrupt_status1_register_t  irq_status1_reg; /*!< max30105 interrupt status 1 register (read-only) */
-    //max30105_interrupt_status2_register_t  irq_status2_reg; /*!< max30105 interrupt status 2 register (read-only) */
-   //max30105_interrupt_enable1_register_t  irq_enable1_reg; /*!< max30105 interrupt enable 1 register (read-write) */
-    //max30105_interrupt_enable2_register_t  irq_enable2_reg; /*!< max30105 interrupt enable 2 register (read-write) */
-};
-
-/**
- * @brief MAX30105 context structure definition.
- */
-typedef struct max30105_context_t max30105_context_t;
-
-/**
- * @brief MAX30105 handle structure definition.
- */
-typedef struct max30105_context_t *max30105_handle_t;
+typedef void* max30105_handle_t;
 
 
 
