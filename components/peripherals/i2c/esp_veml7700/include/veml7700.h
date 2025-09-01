@@ -195,7 +195,7 @@ typedef union __attribute__((packed)) veml7700_identifier_register_u {
 } veml7700_identifier_register_t;
 
 /**
- * @brief VEML7700 device configuration structure.
+ * @brief VEML7700 device configuration structure definition.
  */
 typedef struct veml7700_config_s {
     uint16_t                            i2c_address;            /*!< veml7700 i2c device address */
@@ -212,25 +212,11 @@ typedef struct veml7700_config_s {
     uint16_t                            lo_threshold;           /*!< veml7700 low threshold register for the interrupt */
 } veml7700_config_t;
 
-/**
- * @brief VEML7700 context structure.
- */
-struct veml7700_context_t {
-    veml7700_config_t                       dev_config;             /*!< veml7700 device configuration */
-    i2c_master_dev_handle_t                 i2c_handle;             /*!< veml7700 i2c device handle */
-    //float                                 resolution;			    /*!< Current resolution and multiplier */
-    //uint32_t                              maximum_lux;		    /*!< Current maximum lux limit */
-};
 
 /**
- * @brief VEML7700 context structure definition.
+ * @brief VEML7700 opaque handle structure definition.
  */
-typedef struct veml7700_context_t veml7700_context_t;
-
-/**
- * @brief VEML7700 handle structure definition.
- */
-typedef struct veml7700_context_t *veml7700_handle_t;
+typedef void* veml7700_handle_t;
 
 /**
  * @brief Reads configuration register from VEML7700.
