@@ -647,3 +647,11 @@ esp_err_t ak8975_delete(ak8975_handle_t handle) {
 
     return ESP_OK;
 }
+
+const char* ak8975_get_fw_version(void) {
+    return (const char*)AK8975_FW_VERSION_STR;
+}
+
+int32_t ak8975_get_fw_version_number(void) {
+    return (int32_t)AK8975_FW_VERSION_INT32;
+}

@@ -1610,9 +1610,9 @@ esp_err_t ssd1306_delete(ssd1306_handle_t handle) {
 }
 
 const char* ssd1306_get_fw_version(void) {
-    return (char*)SSD1306_FW_VERSION_STR;
+    return (const char*)SSD1306_FW_VERSION_STR;
 }
 
 int32_t ssd1306_get_fw_version_number(void) {
-    return SSD1306_FW_VERSION_INT32;
+    return (int32_t)SSD1306_FW_VERSION_INT32;
 }

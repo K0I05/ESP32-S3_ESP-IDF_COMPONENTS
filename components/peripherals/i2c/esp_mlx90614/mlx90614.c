@@ -178,7 +178,7 @@ static inline int16_t mlx90614_decode_ir(const uint16_t raw_data) {
 }
 
 /**
- * @brief Reads a word (2-bytes) with CRC validation from MLX90614.
+ * @brief HAL that reads a word (2-bytes) with CRC validation from MLX90614.
  * 
  * @param device MLX90614 device descriptor.
  * @param reg_addr MLX90614 read register (1-byte).
@@ -239,7 +239,7 @@ static inline esp_err_t mlx90614_i2c_write_command(mlx90614_device_t *const devi
 }
 
 /**
- * @brief Writes a word (2-bytes) with CRC to MLX90614.
+ * @brief HAL that writes a word (2-bytes) with CRC to MLX90614.
  * 
  * @param device MLX90614 device descriptor.
  * @param reg_addr MLX90614 write register (1-byte).
@@ -274,7 +274,7 @@ static inline esp_err_t mlx90614_i2c_write_word_to(mlx90614_device_t *const devi
 }
 
 /**
- * @brief Writes a word (2-bytes) to MLX90614 EEPROM.
+ * @brief HAL that writes a word (2-bytes) to MLX90614 EEPROM.
  * 
  * @param device MLX90614 device descriptor.
  * @param reg_addr MLX90614 write register (1-byte).
@@ -301,7 +301,7 @@ static inline esp_err_t mlx90614_i2c_write_eeprom_to(mlx90614_device_t *const de
 }
 
 /**
- * @brief Reads the identification number as two 32-bit values (hi and lo) from MLX90614.
+ * @brief HAL that reads the identification number as two 32-bit values (hi and lo) from MLX90614.
  *
  * @param[in] mlx90614_handle MLX90614 device handle.
  * @return esp_err_t ESP_OK on success.
@@ -711,9 +711,9 @@ esp_err_t mlx90614_delete(mlx90614_handle_t handle) {
 }
 
 const char* mlx90614_get_fw_version(void) {
-    return (char*)MLX90614_FW_VERSION_STR;
+    return (const char*)MLX90614_FW_VERSION_STR;
 }
 
 int32_t mlx90614_get_fw_version_number(void) {
-    return MLX90614_FW_VERSION_INT32;
+    return (int32_t)MLX90614_FW_VERSION_INT32;
 }

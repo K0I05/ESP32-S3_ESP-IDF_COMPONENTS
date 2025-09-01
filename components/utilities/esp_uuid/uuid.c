@@ -146,10 +146,10 @@
  }
  
  const char *uuid_get_fw_version(void) {
-     return (const char *)UUID_FW_VERSION_STR;
+     return (const char*)UUID_FW_VERSION_STR;
  }
  
  int32_t uuid_get_fw_version_number(void) {
-     return UUID_FW_VERSION_INT32;
+     return (int32_t)UUID_FW_VERSION_INT32;
  }
  

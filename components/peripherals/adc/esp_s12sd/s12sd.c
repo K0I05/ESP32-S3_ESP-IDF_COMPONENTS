@@ -288,9 +288,9 @@ esp_err_t s12sd_delete(s12sd_handle_t handle) {
 }
 
 const char* s12sd_get_fw_version(void) {
-    return (char*)S12SD_FW_VERSION_STR;
+    return (const char*)S12SD_FW_VERSION_STR;
 }
 
 int32_t s12sd_get_fw_version_number(void) {
-    return S12SD_FW_VERSION_INT32;
+    return (int32_t)S12SD_FW_VERSION_INT32;
 }

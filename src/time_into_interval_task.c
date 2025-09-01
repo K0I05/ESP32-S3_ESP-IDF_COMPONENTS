@@ -83,11 +83,12 @@ void sch_time_into_interval_task( void *pvParameters ) {
         //if(time_into_interval(tii_1min10sec_hdl) == true) {
         //    print_system_time("tii_1min10sec_hdl conditional execution");
         //}
+        ESP_LOGI(APP_TAG, "Firmware Version: %s", time_into_interval_get_fw_version());
 
         /* delay task */
         time_into_interval_delay(tii_10sec_hdl);
 
-        print_system_time("tii_10sec_hdl delayed execution");
+        print_system_time("tii_60sec_hdl delayed execution");
 
         //ESP_LOGI(APP_TAG, "######################## TIME-INTO-INTERVAL - END ###########################");
     }

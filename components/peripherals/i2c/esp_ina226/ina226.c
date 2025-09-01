@@ -604,9 +604,9 @@ esp_err_t ina226_delete(ina226_handle_t handle) {
 }
 
 const char* ina226_get_fw_version(void) {
-    return (char *)INA226_FW_VERSION_STR;
+    return (const char*)INA226_FW_VERSION_STR;
 }
 
 int32_t ina226_get_fw_version_number(void) {
-    return INA226_FW_VERSION_INT32;
+    return (int32_t)INA226_FW_VERSION_INT32;
 }

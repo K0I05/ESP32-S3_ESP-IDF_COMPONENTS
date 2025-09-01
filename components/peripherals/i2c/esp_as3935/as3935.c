@@ -1049,9 +1049,9 @@ esp_err_t as3935_delete(as3935_handle_t handle) {
 }
 
 const char* as3935_get_fw_version(void) {
-    return AS3935_FW_VERSION_STR;
+    return (const char*)AS3935_FW_VERSION_STR;
 }
 
 int32_t as3935_get_fw_version_number(void) {
-    return AS3935_FW_VERSION_INT32;
+    return (int32_t)AS3935_FW_VERSION_INT32;
 }

@@ -600,9 +600,9 @@ esp_err_t sgp4x_delete(sgp4x_handle_t handle) {
 }
 
 const char* sgp4x_get_fw_version(void) {
-    return (char*)SGP4X_FW_VERSION_STR;
+    return (const char*)SGP4X_FW_VERSION_STR;
 }
 
 int32_t sgp4x_get_fw_version_number(void) {
-    return SGP4X_FW_VERSION_INT32;
+    return (int32_t)SGP4X_FW_VERSION_INT32;
 }

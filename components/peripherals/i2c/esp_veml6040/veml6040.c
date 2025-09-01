@@ -575,9 +575,9 @@ esp_err_t veml6040_delete(veml6040_handle_t handle) {
 }
 
 const char* veml6040_get_fw_version(void) {
-    return (char*)VEML6040_FW_VERSION_STR;
+    return (const char*)VEML6040_FW_VERSION_STR;
 }
 
 int32_t veml6040_get_fw_version_number(void) {
-    return VEML6040_FW_VERSION_INT32;
+    return (int32_t)VEML6040_FW_VERSION_INT32;
 }

@@ -491,9 +491,9 @@ esp_err_t time_into_interval_delete(time_into_interval_handle_t handle) {
 }
 
 const char* time_into_interval_get_fw_version(void) {
-    return (char*)TIME_INTO_INTERVAL_FW_VERSION_STR;
+    return (const char*)TIME_INTO_INTERVAL_FW_VERSION_STR;
 }
 
 int32_t time_into_interval_get_fw_version_number(void) {
-    return TIME_INTO_INTERVAL_FW_VERSION_INT32;
+    return (int32_t)TIME_INTO_INTERVAL_FW_VERSION_INT32;
 }

@@ -288,9 +288,9 @@ esp_err_t mux4052a_delete(mux4052a_handle_t handle) {
 }
 
 const char* mux4052a_get_fw_version(void) {
-    return (char*)MUX4052A_FW_VERSION_STR;
+    return (const char*)MUX4052A_FW_VERSION_STR;
 }
 
 int32_t mux4052a_get_fw_version_number(void) {
-    return MUX4052A_FW_VERSION_INT32;
+    return (int32_t)MUX4052A_FW_VERSION_INT32;
 }

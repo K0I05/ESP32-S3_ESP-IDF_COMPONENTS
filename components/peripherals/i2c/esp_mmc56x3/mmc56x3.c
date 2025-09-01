@@ -730,3 +730,11 @@ float mmc56x3_convert_to_true_heading(const float declination, const mmc56x3_mag
     return heading + declination;
 }
 
+const char* mmc56x3_get_fw_version(void) {
+    return (const char*)MMC56X3_FW_VERSION_STR;
+}
+
+int32_t mmc56x3_get_fw_version_number(void) {
+    return (int32_t)MMC56X3_FW_VERSION_INT32;
+}
+

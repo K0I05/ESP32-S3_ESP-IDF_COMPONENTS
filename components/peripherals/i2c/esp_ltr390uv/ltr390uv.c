@@ -1122,9 +1122,9 @@ esp_err_t ltr390uv_delete(ltr390uv_handle_t handle) {
 }
 
 const char* ltr390uv_get_fw_version(void) {
-    return (char*)LTR390UV_FW_VERSION_STR;
+    return (const char*)LTR390UV_FW_VERSION_STR;
 }
 
 int32_t ltr390uv_get_fw_version_number(void) {
-    return LTR390UV_FW_VERSION_INT32;
+    return (int32_t)LTR390UV_FW_VERSION_INT32;
 }

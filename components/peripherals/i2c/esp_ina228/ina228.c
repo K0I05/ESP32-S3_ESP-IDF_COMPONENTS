@@ -553,9 +553,9 @@ esp_err_t ina228_delete(ina228_handle_t handle) {
 }
 
 const char* ina228_get_fw_version(void) {
-    return (char *)INA228_FW_VERSION_STR;
+    return (const char*)INA228_FW_VERSION_STR;
 }
 
 int32_t ina228_get_fw_version_number(void) {
-    return INA228_FW_VERSION_INT32;
+    return (int32_t)INA228_FW_VERSION_INT32;
 }

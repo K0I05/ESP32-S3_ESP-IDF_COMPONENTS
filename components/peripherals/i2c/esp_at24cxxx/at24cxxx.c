@@ -364,9 +364,9 @@ esp_err_t at24cxxx_delete(at24cxxx_handle_t handle) {
 }
 
 const char* at24cxxx_get_fw_version(void) {
-    return AT24CXXX_FW_VERSION_STR;
+    return (const char*)AT24CXXX_FW_VERSION_STR;
 }
 
 int32_t at24cxxx_get_fw_version_number(void) {
-    return AT24CXXX_FW_VERSION_INT32;
+    return (int32_t)AT24CXXX_FW_VERSION_INT32;
 }

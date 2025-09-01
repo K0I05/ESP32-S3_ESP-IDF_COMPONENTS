@@ -590,9 +590,9 @@ esp_err_t ahtxx_delete(ahtxx_handle_t handle) {
 }
 
 const char* ahtxx_get_fw_version(void) {
-    return (char *)AHTXX_FW_VERSION_STR;
+    return (const char*)AHTXX_FW_VERSION_STR;
 }
 
 int32_t ahtxx_get_fw_version_number(void) {
-    return AHTXX_FW_VERSION_INT32;
+    return (int32_t)AHTXX_FW_VERSION_INT32;
 }

@@ -416,3 +416,11 @@ esp_err_t bh1750_delete(bh1750_handle_t handle) {
 
     return ESP_OK;
 }
+
+const char* bh1750_get_fw_version(void) {
+    return (const char*)BH1750_FW_VERSION_STR;
+}
+
+int32_t bh1750_get_fw_version_number(void) {
+    return (int32_t)BH1750_FW_VERSION_INT32;
+}

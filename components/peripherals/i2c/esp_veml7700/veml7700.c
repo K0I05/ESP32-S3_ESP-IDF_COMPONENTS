@@ -1108,9 +1108,9 @@ esp_err_t veml7700_delete(veml7700_handle_t handle) {
 }
 
 const char* veml7700_get_fw_version(void) {
-    return (char*)VEML7700_FW_VERSION_STR;
+    return (const char*)VEML7700_FW_VERSION_STR;
 }
 
 int32_t veml7700_get_fw_version_number(void) {
-    return VEML7700_FW_VERSION_INT32;
+    return (int32_t)VEML7700_FW_VERSION_INT32;
 }

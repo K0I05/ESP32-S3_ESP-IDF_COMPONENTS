@@ -407,27 +407,11 @@ typedef struct bme680_config_s {
     uint16_t                                heater_shared_duration;         /*!< bme680 heating duration for parallel mode in milliseconds */
 } bme680_config_t;
 
-/**
- * @brief BME680 context structure.
- */
-struct bme680_context_t {
-    bme680_config_t                         dev_config;         /*!< bme680 device configuration */
-    i2c_master_dev_handle_t                 i2c_handle;         /*!< bme680 I2C device handle */
-    bme680_cal_factors_t                   *dev_cal_factors;    /*!< bme680 device calibration factors */
-    uint8_t                                 chip_id;            /*!< bme680 chip identification register */
-    uint16_t                                ambient_temperature;
-    uint8_t                                 variant_id;
-};
 
 /**
- * @brief BME680 context structure definition.
+ * @brief BME680 opaque handle structure definition.
  */
-typedef struct bme680_context_t bme680_context_t;
-
-/**
- * @brief BME680 handle structure definition.
- */
-typedef struct bme680_context_t *bme680_handle_t;
+typedef void* bme680_handle_t;
 
 
 

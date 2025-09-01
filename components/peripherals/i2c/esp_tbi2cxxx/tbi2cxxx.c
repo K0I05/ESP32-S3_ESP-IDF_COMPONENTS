@@ -389,9 +389,9 @@ esp_err_t tbi2cxxx_delete(tbi2cxxx_handle_t handle) {
 }
 
 const char* tbi2cxxx_get_fw_version(void) {
-    return (char*)TBI2CXXX_FW_VERSION_STR;
+    return (const char*)TBI2CXXX_FW_VERSION_STR;
 }
 
 int32_t tbi2cxxx_get_fw_version_number(void) {
-    return TBI2CXXX_FW_VERSION_INT32;
+    return (int32_t)TBI2CXXX_FW_VERSION_INT32;
 }

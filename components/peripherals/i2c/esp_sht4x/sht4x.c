@@ -517,9 +517,9 @@ esp_err_t sht4x_delete(sht4x_handle_t handle) {
 }
 
 const char* sht4x_get_fw_version(void) {
-    return (char*)SHT4X_FW_VERSION_STR;
+    return (const char*)SHT4X_FW_VERSION_STR;
 }
 
 int32_t sht4x_get_fw_version_number(void) {
-    return SHT4X_FW_VERSION_INT32;
+    return (int32_t)SHT4X_FW_VERSION_INT32;
 }

@@ -686,9 +686,9 @@ esp_err_t hdc1080_delete(hdc1080_handle_t handle) {
 }
 
 const char* hdc1080_get_fw_version(void) {
-    return HDC1080_FW_VERSION_STR;
+    return (const char*)HDC1080_FW_VERSION_STR;
 }
 
 int32_t hdc1080_get_fw_version_number(void) {
-    return HDC1080_FW_VERSION_INT32;
+    return (int32_t)HDC1080_FW_VERSION_INT32;
 }

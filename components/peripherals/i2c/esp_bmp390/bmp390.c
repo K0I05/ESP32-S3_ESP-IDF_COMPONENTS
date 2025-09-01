@@ -979,9 +979,9 @@ esp_err_t bmp390_delete(bmp390_handle_t handle) {
 }
 
 const char* bmp390_get_fw_version(void) {
-    return BMP390_FW_VERSION_STR;
+    return (const char*)BMP390_FW_VERSION_STR;
 }
 
 int32_t bmp390_get_fw_version_number(void) {
-    return BMP390_FW_VERSION_INT32;
+    return (int32_t)BMP390_FW_VERSION_INT32;
 }

@@ -841,10 +841,10 @@ esp_err_t mpu6050_delete(mpu6050_handle_t handle) {
 }
 
 const char* mpu6050_get_fw_version(void) {
-    return MPU6050_FW_VERSION_STR;
+    return (const char*)MPU6050_FW_VERSION_STR;
 }
 
 int32_t mpu6050_get_fw_version_number(void) {
-    return MPU6050_FW_VERSION_INT32;
+    return (int32_t)MPU6050_FW_VERSION_INT32;
 }
 

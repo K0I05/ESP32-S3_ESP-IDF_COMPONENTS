@@ -391,9 +391,9 @@ void copy_bytes(const uint8_t* source, uint8_t* destination, const size_t size) 
 }
 
 const char* type_utils_get_fw_version(void) {
-    return TYPE_UTILS_FW_VERSION_STR;
+    return (const char*)TYPE_UTILS_FW_VERSION_STR;
 }
 
 int32_t type_utils_get_fw_version_number(void) {
-    return TYPE_UTILS_FW_VERSION_INT32;
+    return (int32_t)TYPE_UTILS_FW_VERSION_INT32;
 }

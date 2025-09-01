@@ -867,9 +867,9 @@ ens160_aqi_uba_row_t ens160_aqi_index_to_definition(const ens160_aqi_uba_indexes
 }
 
 const char* ens160_get_fw_version(void) {
-    return ENS160_FW_VERSION_STR;
+    return (const char*)ENS160_FW_VERSION_STR;
 }
 
 int32_t ens160_get_fw_version_number(void) {
-    return ENS160_FW_VERSION_INT32;
+    return (int32_t)ENS160_FW_VERSION_INT32;
 }

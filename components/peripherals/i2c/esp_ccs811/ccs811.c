@@ -981,9 +981,9 @@ const char *ccs811_measure_mode_description(const ccs811_drive_modes_t mode) {
 }
 
 const char* ccs811_get_fw_version(void) {
-    return CCS811_FW_VERSION_STR;
+    return (const char*)CCS811_FW_VERSION_STR;
 }
 
 int32_t ccs811_get_fw_version_number(void) {
-    return CCS811_FW_VERSION_INT32;
+    return (int32_t)CCS811_FW_VERSION_INT32;
 }

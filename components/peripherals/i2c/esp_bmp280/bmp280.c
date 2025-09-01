@@ -798,9 +798,9 @@ esp_err_t bmp280_delete(bmp280_handle_t handle){
 }
 
 const char* bmp280_get_fw_version(void) {
-    return (char *)BMP280_FW_VERSION_STR;
+    return (const char*)BMP280_FW_VERSION_STR;
 }
 
 int32_t bmp280_get_fw_version_number(void) {
-    return BMP280_FW_VERSION_INT32;
+    return (int32_t)BMP280_FW_VERSION_INT32;
 }

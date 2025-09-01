@@ -1528,9 +1528,9 @@ esp_err_t as7341_delete(as7341_handle_t handle) {
 }
 
 const char* as7341_get_fw_version(void) {
-    return AS7341_FW_VERSION_STR;
+    return (const char*)AS7341_FW_VERSION_STR;
 }
 
 int32_t as7341_get_fw_version_number(void) {
-    return AS7341_FW_VERSION_INT32;
+    return (int32_t)AS7341_FW_VERSION_INT32;
 }
