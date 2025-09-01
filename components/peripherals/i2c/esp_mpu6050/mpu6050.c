@@ -108,7 +108,7 @@ static const char *TAG = "mpu6050";
 
 
 /**
- * @brief MPU6050 I2C read from register address transaction.  This is a write and then read process.
+ * @brief MPU6050 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
  * @param handle MPU6050 device handle.
  * @param reg_addr MPU6050 register address to read from.
@@ -128,7 +128,7 @@ static inline esp_err_t mpu6050_i2c_read_from(mpu6050_handle_t handle, const uin
 }
 
 /**
- * @brief MPU6050 I2C read byte from register address transaction.
+ * @brief MPU6050 I2C HAL read byte from register address transaction.
  * 
  * @param handle MPU6050 device handle.
  * @param reg_addr MPU6050 register address to read from.
@@ -151,7 +151,7 @@ static inline esp_err_t mpu6050_i2c_read_byte_from(mpu6050_handle_t handle, cons
 }
 
 /**
- * @brief MPU6050 I2C write byte to register address transaction.
+ * @brief MPU6050 I2C HAL write byte to register address transaction.
  * 
  * @param handle MPU6050 device handle.
  * @param reg_addr MPU6050 register address to write to.

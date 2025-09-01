@@ -93,6 +93,14 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief LTR390UV device descriptor structure definition.
+ */
+typedef struct ltr390uv_device_s {
+    ltr390uv_config_t                           config;                 /*!< ltr390uv device configuration */
+    i2c_master_dev_handle_t                     i2c_handle;             /*!< ltr390uv i2c device handle */
+} ltr390uv_device_t;
+
 /*
 * static constant declarations
 */
@@ -100,61 +108,61 @@ static const char *TAG = "ltr390uv";
 
 
 /**
- * @brief LTR390UV I2C write byte to register address transaction.
+ * @brief LTR390UV I2C HAL write byte to register address transaction.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param reg_addr LTR390UV register address to write to.
  * @param byte LTR390UV write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_i2c_write_byte_to(ltr390uv_handle_t handle, uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t ltr390uv_i2c_write_byte_to(ltr390uv_device_t *const device, uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief LTR390UV I2C read from register address transaction.  This is a write and then read process.
+ * @brief LTR390UV I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param reg_addr LTR390UV register address to read from.
  * @param buffer LTR390UV read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_i2c_read_from(ltr390uv_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t ltr390uv_i2c_read_from(ltr390uv_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ltr390uv_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ltr390uv_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief LTR390UV I2C read byte from register address transaction.
+ * @brief LTR390UV I2C HAL read byte from register address transaction.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param reg_addr LTR390UV register address to read from.
  * @param byte LTR390UV read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_i2c_read_byte_from(ltr390uv_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t ltr390uv_i2c_read_byte_from(ltr390uv_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ltr390uv_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ltr390uv_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -163,19 +171,19 @@ static inline esp_err_t ltr390uv_i2c_read_byte_from(ltr390uv_handle_t handle, co
 }
 
 /**
- * @brief LTR390UV I2C write transaction.
+ * @brief LTR390UV I2C HAL write transaction.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param buffer Buffer to write for write transaction.
  * @param size Length of buffer to write for write transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_i2c_write(ltr390uv_handle_t handle, const uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t ltr390uv_i2c_write(ltr390uv_device_t *const device, const uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -183,18 +191,18 @@ static inline esp_err_t ltr390uv_i2c_write(ltr390uv_handle_t handle, const uint8
 /**
  * @brief Determines resolution factor for LTR390UV from configuration settings.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param resolution_factor LTR390UV resolution factor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_get_resolution_factor(ltr390uv_handle_t handle, float *const resolution_factor) {
+static inline esp_err_t ltr390uv_get_resolution_factor(ltr390uv_device_t *const device, float *const resolution_factor) {
     /* validate arguments */
-    ESP_ARG_CHECK(handle && resolution_factor);
+    ESP_ARG_CHECK(device && resolution_factor);
 
-    ltr390uv_sensor_resolutions_t resolution = handle->dev_config.uvs_sensor_resolution;;
+    ltr390uv_sensor_resolutions_t resolution = device->config.uvs_sensor_resolution;;
 
-    if(handle->dev_config.operation_mode == LTR390UV_OM_ALS) {
-        resolution = handle->dev_config.als_sensor_resolution;
+    if(device->config.operation_mode == LTR390UV_OM_ALS) {
+        resolution = device->config.als_sensor_resolution;
     }
 
     /* determine resolution */
@@ -227,18 +235,18 @@ static inline esp_err_t ltr390uv_get_resolution_factor(ltr390uv_handle_t handle,
 /**
  * @brief Determines resolution integration time for LTR390UV in seconds from configuration settings.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param resolution_it LTR390UV resolution integration time.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_get_resolution_it(ltr390uv_handle_t handle, float *const resolution_it) {
+static inline esp_err_t ltr390uv_get_resolution_it(ltr390uv_device_t *const device, float *const resolution_it) {
     /* validate arguments */
-    ESP_ARG_CHECK(handle && resolution_it);
+    ESP_ARG_CHECK(device && resolution_it);
 
-    ltr390uv_sensor_resolutions_t resolution = handle->dev_config.uvs_sensor_resolution;;
+    ltr390uv_sensor_resolutions_t resolution = device->config.uvs_sensor_resolution;;
 
-    if(handle->dev_config.operation_mode == LTR390UV_OM_ALS) {
-        resolution = handle->dev_config.als_sensor_resolution;
+    if(device->config.operation_mode == LTR390UV_OM_ALS) {
+        resolution = device->config.als_sensor_resolution;
     }
 
     /* determine resolution integration time */
@@ -271,18 +279,18 @@ static inline esp_err_t ltr390uv_get_resolution_it(ltr390uv_handle_t handle, flo
 /**
  * @brief Determines gain multiplier for LTR390UV from configuration settings.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param gain_multiplier LTR390UV gain multiplier.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_get_gain_multiplier(ltr390uv_handle_t handle, float *const gain_multiplier) {
+static inline esp_err_t ltr390uv_get_gain_multiplier(ltr390uv_device_t *const device, float *const gain_multiplier) {
     /* validate arguments */
-    ESP_ARG_CHECK(handle && gain_multiplier);
+    ESP_ARG_CHECK(device && gain_multiplier);
 
-    ltr390uv_measurement_gains_t gain = handle->dev_config.uvs_measurement_gain;
+    ltr390uv_measurement_gains_t gain = device->config.uvs_measurement_gain;
 
-    if(handle->dev_config.operation_mode == LTR390UV_OM_ALS)
-        gain = handle->dev_config.als_measurement_gain;
+    if(device->config.operation_mode == LTR390UV_OM_ALS)
+        gain = device->config.als_measurement_gain;
 
     /* determine gain */
     switch(gain) {
@@ -311,21 +319,21 @@ static inline esp_err_t ltr390uv_get_gain_multiplier(ltr390uv_handle_t handle, f
 /**
  * @brief Calculates UV sensitivity value for LTR390UV from configuration settings.
  * 
- * @param handle LTR390UV device handle.
+ * @param device LTR390UV device descriptor.
  * @param uv_sensitivity LTR390UV UV sensitivity value.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ltr390uv_calculate_uv_sensitivity(ltr390uv_handle_t handle, float *const uv_sensitivity) {
+static inline esp_err_t ltr390uv_calculate_uv_sensitivity(ltr390uv_device_t *const device, float *const uv_sensitivity) {
     float resolution_it, gain_multiplier;
 
     /* validate arguments */
-    ESP_ARG_CHECK(handle && uv_sensitivity);
+    ESP_ARG_CHECK(device && uv_sensitivity);
 
     /* attempt to determine gain multiplier */
-    ESP_RETURN_ON_ERROR( ltr390uv_get_gain_multiplier(handle, &gain_multiplier), TAG, "read gain multiplier for get uv sensitivity failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_get_gain_multiplier(device, &gain_multiplier), TAG, "read gain multiplier for get uv sensitivity failed" );
 
     /* attempt to determine resolution integration time */
-    ESP_RETURN_ON_ERROR( ltr390uv_get_resolution_it(handle, &resolution_it), TAG, "read resolution integration time for get uv sensitivity failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_get_resolution_it(device, &resolution_it), TAG, "read resolution integration time for get uv sensitivity failed" );
 
     /* set sensitivity by linearly scaling against known value in the datasheet */
     float gain_scale = gain_multiplier / LTR390UV_GAIN_MAX;
@@ -343,8 +351,10 @@ static inline esp_err_t ltr390uv_calculate_uv_sensitivity(ltr390uv_handle_t hand
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t ltr390uv_get_sensor_counts(ltr390uv_handle_t handle, uint32_t *const sensor_counts) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK(handle && sensor_counts);
+    ESP_ARG_CHECK(dev && sensor_counts);
 
     /* initialize local variables */
     esp_err_t    ret           = ESP_OK;
@@ -366,14 +376,14 @@ static inline esp_err_t ltr390uv_get_sensor_counts(ltr390uv_handle_t handle, uin
     } while (data_is_ready == false);
 
     /* validate operation mode */
-    switch (handle->dev_config.operation_mode) {
+    switch (dev->config.operation_mode) {
         case LTR390UV_OM_ALS:
             /* attempt i2c read transaction */
-            ESP_GOTO_ON_ERROR( ltr390uv_i2c_read_from(handle, LTR390UV_REG_ALS_DATA_0_R, rx, BIT24_UINT8_BUFFER_SIZE), err, TAG, "read als counts failed" );
+            ESP_GOTO_ON_ERROR( ltr390uv_i2c_read_from(dev, LTR390UV_REG_ALS_DATA_0_R, rx, BIT24_UINT8_BUFFER_SIZE), err, TAG, "read als counts failed" );
             break;
         case LTR390UV_OM_UVS:
             /* attempt i2c read transaction */
-            ESP_GOTO_ON_ERROR( ltr390uv_i2c_read_from(handle, LTR390UV_REG_UVS_DATA_0_R, rx, BIT24_UINT8_BUFFER_SIZE), err, TAG, "read uvs counts failed" );
+            ESP_GOTO_ON_ERROR( ltr390uv_i2c_read_from(dev, LTR390UV_REG_UVS_DATA_0_R, rx, BIT24_UINT8_BUFFER_SIZE), err, TAG, "read uvs counts failed" );
             break;
         default:
             ESP_LOGE(TAG, "Invalid operation mode");
@@ -390,11 +400,13 @@ static inline esp_err_t ltr390uv_get_sensor_counts(ltr390uv_handle_t handle, uin
 }
 
 esp_err_t ltr390uv_get_control_register(ltr390uv_handle_t handle, ltr390uv_control_register_t *const reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(handle, LTR390UV_REG_MAIN_CTRL_RW, &reg->reg), TAG, "read control register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(dev, LTR390UV_REG_MAIN_CTRL_RW, &reg->reg), TAG, "read control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -403,8 +415,10 @@ esp_err_t ltr390uv_get_control_register(ltr390uv_handle_t handle, ltr390uv_contr
 }
 
 esp_err_t ltr390uv_set_control_register(ltr390uv_handle_t handle, const ltr390uv_control_register_t reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy and initialize register */
     ltr390uv_control_register_t ctrl = { .reg = reg.reg };
@@ -413,7 +427,7 @@ esp_err_t ltr390uv_set_control_register(ltr390uv_handle_t handle, const ltr390uv
     ctrl.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(handle, LTR390UV_REG_MAIN_CTRL_RW, ctrl.reg), TAG, "write control register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(dev, LTR390UV_REG_MAIN_CTRL_RW, ctrl.reg), TAG, "write control register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -422,11 +436,13 @@ esp_err_t ltr390uv_set_control_register(ltr390uv_handle_t handle, const ltr390uv
 }
 
 esp_err_t ltr390uv_get_measure_register(ltr390uv_handle_t handle, ltr390uv_measure_register_t *const reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(handle, LTR390UV_REG_ALS_UVS_MEAS_RW, &reg->reg), TAG, "read measure register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(dev, LTR390UV_REG_ALS_UVS_MEAS_RW, &reg->reg), TAG, "read measure register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -435,8 +451,10 @@ esp_err_t ltr390uv_get_measure_register(ltr390uv_handle_t handle, ltr390uv_measu
 }
 
 esp_err_t ltr390uv_set_measure_register(ltr390uv_handle_t handle, const ltr390uv_measure_register_t reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy and initialize register */
     ltr390uv_measure_register_t msr = { .reg = reg.reg };
@@ -444,7 +462,7 @@ esp_err_t ltr390uv_set_measure_register(ltr390uv_handle_t handle, const ltr390uv
     msr.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(handle, LTR390UV_REG_ALS_UVS_MEAS_RW, msr.reg), TAG, "write measure register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(dev, LTR390UV_REG_ALS_UVS_MEAS_RW, msr.reg), TAG, "write measure register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -453,11 +471,13 @@ esp_err_t ltr390uv_set_measure_register(ltr390uv_handle_t handle, const ltr390uv
 }
 
 esp_err_t ltr390uv_get_gain_register(ltr390uv_handle_t handle, ltr390uv_gain_register_t *const reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(handle, LTR390UV_REG_ALS_UVS_GAIN_RW, &reg->reg), TAG, "read gain register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(dev, LTR390UV_REG_ALS_UVS_GAIN_RW, &reg->reg), TAG, "read gain register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -466,15 +486,17 @@ esp_err_t ltr390uv_get_gain_register(ltr390uv_handle_t handle, ltr390uv_gain_reg
 }
 
 esp_err_t ltr390uv_set_gain_register(ltr390uv_handle_t handle, const ltr390uv_gain_register_t reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy and initialize register */
     ltr390uv_gain_register_t gain = { .reg = reg.reg };
     gain.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(handle, LTR390UV_REG_ALS_UVS_GAIN_RW, gain.reg), TAG, "write gain register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(dev, LTR390UV_REG_ALS_UVS_GAIN_RW, gain.reg), TAG, "write gain register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -483,11 +505,13 @@ esp_err_t ltr390uv_set_gain_register(ltr390uv_handle_t handle, const ltr390uv_ga
 }
 
 esp_err_t ltr390uv_get_interrupt_config_register(ltr390uv_handle_t handle, ltr390uv_interrupt_config_register_t *const reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(handle, LTR390UV_REG_INT_CFG_RW, &reg->reg), TAG, "read interrupt configuration register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(dev, LTR390UV_REG_INT_CFG_RW, &reg->reg), TAG, "read interrupt configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -496,8 +520,10 @@ esp_err_t ltr390uv_get_interrupt_config_register(ltr390uv_handle_t handle, ltr39
 }
 
 esp_err_t ltr390uv_set_interrupt_config_register(ltr390uv_handle_t handle, const ltr390uv_interrupt_config_register_t reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy and initialize register */
     ltr390uv_interrupt_config_register_t irq = { .reg = reg.reg };
@@ -506,7 +532,7 @@ esp_err_t ltr390uv_set_interrupt_config_register(ltr390uv_handle_t handle, const
     irq.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(handle, LTR390UV_REG_INT_CFG_RW, irq.reg), TAG, "write interrupt configuration register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(dev, LTR390UV_REG_INT_CFG_RW, irq.reg), TAG, "write interrupt configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -515,11 +541,13 @@ esp_err_t ltr390uv_set_interrupt_config_register(ltr390uv_handle_t handle, const
 }
 
 esp_err_t ltr390uv_get_status_register(ltr390uv_handle_t handle, ltr390uv_status_register_t *const reg) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(handle, LTR390UV_REG_MAIN_STS_R, &reg->reg), TAG, "read status register failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(dev, LTR390UV_REG_MAIN_STS_R, &reg->reg), TAG, "read status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
@@ -539,33 +567,32 @@ esp_err_t ltr390uv_init(i2c_master_bus_handle_t master_handle, const ltr390uv_co
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, ltr390uv device handle initialization failed", ltr390uv_config->i2c_address);
 
     /* validate memory availability for handle */
-    ltr390uv_handle_t out_handle;
-    out_handle = (ltr390uv_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ltr390uv device, init failed");
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)calloc(1, sizeof(ltr390uv_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ltr390uv device, init failed");
 
     /* copy configuration */
-    out_handle->dev_config = *ltr390uv_config;
+    dev->config = *ltr390uv_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     /* attempt soft-reset */
-    ESP_GOTO_ON_ERROR(ltr390uv_reset(out_handle), err_handle, TAG, "soft-reset for init failed");
+    ESP_GOTO_ON_ERROR(ltr390uv_reset((ltr390uv_handle_t)dev), err_handle, TAG, "soft-reset for init failed");
 
     /* set device handle */
-    *ltr390uv_handle = out_handle;
+    *ltr390uv_handle = (ltr390uv_handle_t)dev;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(LTR390UV_APPSTART_DELAY_MS));
@@ -574,10 +601,10 @@ esp_err_t ltr390uv_init(i2c_master_bus_handle_t master_handle, const ltr390uv_co
 
     err_handle:
         /* clean up handle instance */
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -585,12 +612,13 @@ esp_err_t ltr390uv_init(i2c_master_bus_handle_t master_handle, const ltr390uv_co
 esp_err_t ltr390uv_get_ambient_light(ltr390uv_handle_t handle, float *const ambient_light) {
     uint32_t counts;
     float gain_multiplier, resolution_it;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK(handle && ambient_light);
+    ESP_ARG_CHECK(dev && ambient_light);
 
     /* validate operation mode */
-    if(handle->dev_config.operation_mode != LTR390UV_OM_ALS) {
+    if(dev->config.operation_mode != LTR390UV_OM_ALS) {
         /* attempt i2c write transaction */
         ESP_RETURN_ON_ERROR( ltr390uv_set_mode(handle, LTR390UV_OM_ALS), TAG, "write operation mode for get ambient light failed" );
     }
@@ -599,25 +627,26 @@ esp_err_t ltr390uv_get_ambient_light(ltr390uv_handle_t handle, float *const ambi
     ESP_RETURN_ON_ERROR( ltr390uv_get_sensor_counts(handle, &counts), TAG, "read light counts for get ambient light failed" );
 
     /* attempt to determine gain multiplier */
-    ESP_RETURN_ON_ERROR( ltr390uv_get_gain_multiplier(handle, &gain_multiplier), TAG, "read gain multiplier for get ambient light failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_get_gain_multiplier(dev, &gain_multiplier), TAG, "read gain multiplier for get ambient light failed" );
 
     /* attempt to determine resolution integration time */
-    ESP_RETURN_ON_ERROR( ltr390uv_get_resolution_it(handle, &resolution_it), TAG, "read resolution integration time for get ambient light failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_get_resolution_it(dev, &resolution_it), TAG, "read resolution integration time for get ambient light failed" );
 
     /* convert light counts to lux */
-    *ambient_light = ((0.6f * counts) / (gain_multiplier * resolution_it)) * handle->dev_config.window_factor;
+    *ambient_light = ((0.6f * counts) / (gain_multiplier * resolution_it)) * dev->config.window_factor;
 
     return ESP_OK;
 }
 
 esp_err_t ltr390uv_get_als(ltr390uv_handle_t handle, uint32_t *const sensor_counts) {
     uint32_t counts;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK(handle && sensor_counts);
 
     /* validate operation mode */
-    if(handle->dev_config.operation_mode != LTR390UV_OM_ALS) {
+    if(dev->config.operation_mode != LTR390UV_OM_ALS) {
         /* attempt i2c write transaction */
         ESP_RETURN_ON_ERROR( ltr390uv_set_mode(handle, LTR390UV_OM_ALS), TAG, "write operation mode for get als failed" );
     }
@@ -634,12 +663,13 @@ esp_err_t ltr390uv_get_als(ltr390uv_handle_t handle, uint32_t *const sensor_coun
 esp_err_t ltr390uv_get_ultraviolet_index(ltr390uv_handle_t handle, float *const ultraviolet_index) {
     uint32_t counts;
     float uv_sensitivity;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK(handle && ultraviolet_index);
+    ESP_ARG_CHECK(dev && ultraviolet_index);
 
     /* validate operation mode */
-    if(handle->dev_config.operation_mode != LTR390UV_OM_UVS) {
+    if(dev->config.operation_mode != LTR390UV_OM_UVS) {
         /* attempt i2c write transaction */
         ESP_RETURN_ON_ERROR( ltr390uv_set_mode(handle, LTR390UV_OM_UVS), TAG, "write operation mode for get ultraviolet index failed" );
     }
@@ -648,22 +678,23 @@ esp_err_t ltr390uv_get_ultraviolet_index(ltr390uv_handle_t handle, float *const 
     ESP_RETURN_ON_ERROR( ltr390uv_get_sensor_counts(handle, &counts), TAG, "read light counts for get ultraviolet index failed" );
 
     /* attempt to determine uv sensitivity */
-    ESP_RETURN_ON_ERROR( ltr390uv_calculate_uv_sensitivity(handle, &uv_sensitivity), TAG, "read uv sensitivity for get ultraviolet index failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_calculate_uv_sensitivity(dev, &uv_sensitivity), TAG, "read uv sensitivity for get ultraviolet index failed" );
 
     /* convert light counts to uvi */
-    *ultraviolet_index = (counts / uv_sensitivity) * handle->dev_config.window_factor;
+    *ultraviolet_index = (counts / uv_sensitivity) * dev->config.window_factor;
 
     return ESP_OK;
 }
 
 esp_err_t ltr390uv_get_uvs(ltr390uv_handle_t handle, uint32_t *const sensor_counts) {
     uint32_t counts;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK(handle && sensor_counts);
+    ESP_ARG_CHECK(dev && sensor_counts);
 
     /* validate operation mode */
-    if(handle->dev_config.operation_mode != LTR390UV_OM_UVS) {
+    if(dev->config.operation_mode != LTR390UV_OM_UVS) {
         /* attempt i2c write transaction */
         ESP_RETURN_ON_ERROR( ltr390uv_set_mode(handle, LTR390UV_OM_UVS), TAG, "write operation mode for get uvs failed" );
     }
@@ -741,13 +772,14 @@ esp_err_t ltr390uv_get_status(ltr390uv_handle_t handle, bool *const data_ready, 
 
 esp_err_t ltr390uv_get_thresholds(ltr390uv_handle_t handle, uint32_t *const lower_threshold, uint32_t *const upper_threshold) {
     bit24_uint8_buffer_t lower, upper;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transactions */
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_from(handle, LTR390UV_REG_ALS_THRES_LO_0_RW, lower, BIT24_UINT8_BUFFER_SIZE), TAG, "read lower threshold failed" );
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_from(handle, LTR390UV_REG_ALS_THRES_UP_0_RW, upper, BIT24_UINT8_BUFFER_SIZE), TAG, "read upper threshold failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_from(dev, LTR390UV_REG_ALS_THRES_LO_0_RW, lower, BIT24_UINT8_BUFFER_SIZE), TAG, "read lower threshold failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_from(dev, LTR390UV_REG_ALS_THRES_UP_0_RW, upper, BIT24_UINT8_BUFFER_SIZE), TAG, "read upper threshold failed" );
 
     /* set output parameters */  
     *lower_threshold = (lower[2] << 16) | (lower[1] << 8) | lower[0];
@@ -757,8 +789,10 @@ esp_err_t ltr390uv_get_thresholds(ltr390uv_handle_t handle, uint32_t *const lowe
 }
 
 esp_err_t ltr390uv_set_thresholds(ltr390uv_handle_t handle, const uint32_t lower_threshold, const uint32_t upper_threshold) {
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     bit32_uint8_buffer_t lower;
     lower[0] = LTR390UV_REG_ALS_THRES_LO_0_RW;
@@ -772,8 +806,8 @@ esp_err_t ltr390uv_set_thresholds(ltr390uv_handle_t handle, const uint32_t lower
     upper[2] = upper_threshold >> 8;
     upper[3] = upper_threshold >> 16;
 
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write(handle, lower, BIT32_UINT8_BUFFER_SIZE), TAG, "write lower threshold failed" );
-    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write(handle, upper, BIT32_UINT8_BUFFER_SIZE), TAG, "write upper threshold failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write(dev, lower, BIT32_UINT8_BUFFER_SIZE), TAG, "write lower threshold failed" );
+    ESP_RETURN_ON_ERROR( ltr390uv_i2c_write(dev, upper, BIT32_UINT8_BUFFER_SIZE), TAG, "write upper threshold failed" );
 
     return ESP_OK;
 }
@@ -798,9 +832,10 @@ esp_err_t ltr390uv_set_mode(ltr390uv_handle_t handle, const ltr390uv_operation_m
     ltr390uv_interrupt_config_register_t ic_reg;
     ltr390uv_measure_register_t m_reg;
     ltr390uv_gain_register_t    g_reg;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_get_measure_register(handle, &m_reg), TAG, "read measure register for reset failed" );
@@ -812,16 +847,16 @@ esp_err_t ltr390uv_set_mode(ltr390uv_handle_t handle, const ltr390uv_operation_m
     c_reg.bits.operation_mode    = mode;
     ic_reg.bits.irq_enabled      = true;
     ic_reg.bits.irq_light_source = LTR390UV_LSI_ALS;
-    m_reg.bits.sensor_resolution = handle->dev_config.als_sensor_resolution;
-    m_reg.bits.measurement_rate  = handle->dev_config.als_measurement_rate;
-    g_reg.bits.measurement_gain  = handle->dev_config.als_measurement_gain;
-    handle->dev_config.operation_mode = LTR390UV_OM_ALS;
+    m_reg.bits.sensor_resolution = dev->config.als_sensor_resolution;
+    m_reg.bits.measurement_rate  = dev->config.als_measurement_rate;
+    g_reg.bits.measurement_gain  = dev->config.als_measurement_gain;
+    dev->config.operation_mode = LTR390UV_OM_ALS;
     if(mode == LTR390UV_OM_UVS) {
         ic_reg.bits.irq_light_source = LTR390UV_LSI_UVS;
-        m_reg.bits.sensor_resolution = handle->dev_config.uvs_sensor_resolution;
-        m_reg.bits.measurement_rate  = handle->dev_config.uvs_measurement_rate;
-        g_reg.bits.measurement_gain  = handle->dev_config.uvs_measurement_gain;
-        handle->dev_config.operation_mode = LTR390UV_OM_UVS;
+        m_reg.bits.sensor_resolution = dev->config.uvs_sensor_resolution;
+        m_reg.bits.measurement_rate  = dev->config.uvs_measurement_rate;
+        g_reg.bits.measurement_gain  = dev->config.uvs_measurement_gain;
+        dev->config.operation_mode = LTR390UV_OM_UVS;
     }
 
     /* attempt i2c write transactions */
@@ -1013,9 +1048,10 @@ esp_err_t ltr390uv_reset(ltr390uv_handle_t handle) {
     ltr390uv_interrupt_config_register_t ic_reg;
     ltr390uv_measure_register_t m_reg;
     ltr390uv_gain_register_t    g_reg;
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_get_control_register(handle, &c_reg), TAG, "read control register for reset failed" );
@@ -1039,14 +1075,14 @@ esp_err_t ltr390uv_reset(ltr390uv_handle_t handle) {
     c_reg.bits.sensor_enabled    = true;
     ic_reg.bits.irq_enabled      = true;
     ic_reg.bits.irq_light_source = LTR390UV_LSI_ALS;
-    m_reg.bits.sensor_resolution = handle->dev_config.als_sensor_resolution;
-    m_reg.bits.measurement_rate  = handle->dev_config.als_measurement_rate;
-    g_reg.bits.measurement_gain  = handle->dev_config.als_measurement_gain;
-    if(handle->dev_config.operation_mode == LTR390UV_OM_UVS) {
+    m_reg.bits.sensor_resolution = dev->config.als_sensor_resolution;
+    m_reg.bits.measurement_rate  = dev->config.als_measurement_rate;
+    g_reg.bits.measurement_gain  = dev->config.als_measurement_gain;
+    if(dev->config.operation_mode == LTR390UV_OM_UVS) {
         ic_reg.bits.irq_light_source = LTR390UV_LSI_UVS;
-        m_reg.bits.sensor_resolution = handle->dev_config.uvs_sensor_resolution;
-        m_reg.bits.measurement_rate  = handle->dev_config.uvs_measurement_rate;
-        g_reg.bits.measurement_gain  = handle->dev_config.uvs_measurement_gain;
+        m_reg.bits.sensor_resolution = dev->config.uvs_sensor_resolution;
+        m_reg.bits.measurement_rate  = dev->config.uvs_measurement_rate;
+        g_reg.bits.measurement_gain  = dev->config.uvs_measurement_gain;
     }
 
     /* attempt i2c write transactions */
@@ -1062,10 +1098,12 @@ esp_err_t ltr390uv_reset(ltr390uv_handle_t handle) {
 }
 
 esp_err_t ltr390uv_remove(ltr390uv_handle_t handle) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ltr390uv_device_t* dev = (ltr390uv_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t ltr390uv_delete(ltr390uv_handle_t handle) {
@@ -1084,7 +1122,7 @@ esp_err_t ltr390uv_delete(ltr390uv_handle_t handle) {
 }
 
 const char* ltr390uv_get_fw_version(void) {
-    return LTR390UV_FW_VERSION_STR;
+    return (char*)LTR390UV_FW_VERSION_STR;
 }
 
 int32_t ltr390uv_get_fw_version_number(void) {

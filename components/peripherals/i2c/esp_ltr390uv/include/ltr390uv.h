@@ -221,23 +221,11 @@ typedef struct ltr390uv_config_s {
     ltr390uv_measurement_gains_t    uvs_measurement_gain;   /*!< ltr390uv uvs measurement gain */
 } ltr390uv_config_t;
 
-/**
- * @brief LTR390UV context structure.
- */
-struct ltr390uv_context_t {
-    ltr390uv_config_t                           dev_config;             /*!< ltr390uv device configuration */
-    i2c_master_dev_handle_t                     i2c_handle;             /*!< ltr390uv i2c device handle */
-};
 
 /**
- * @brief LTR390UV context structure definition.
+ * @brief LTR390UV opaque handle structure definition.
  */
-typedef struct ltr390uv_context_t ltr390uv_context_t;
-
-/**
- * @brief LTR390UV handle structure definition.
- */
-typedef struct ltr390uv_context_t *ltr390uv_handle_t;
+typedef void* ltr390uv_handle_t;
 
 
 
