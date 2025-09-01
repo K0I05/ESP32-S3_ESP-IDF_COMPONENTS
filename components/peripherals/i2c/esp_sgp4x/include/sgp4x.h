@@ -92,24 +92,11 @@ typedef struct {
     sgp4x_versions_t        dev_version;        /*!< sgp4x version */
 } sgp4x_config_t;
 
-/**
- * @brief SGP4X context structure.
- */
-struct sgp4x_context_t {
-    sgp4x_config_t          dev_config;     /*!< sgp4x device configuration */
-    i2c_master_dev_handle_t i2c_handle;     /*!< sgp4x i2c device handle */
-    uint64_t                serial_number;  /*!< sgp4x serial number */
-};
 
 /**
- * @brief SGP4X context structure definition.
+ * @brief SGP4X opaque handle structure definition.
  */
-typedef struct sgp4x_context_t sgp4x_context_t;
-
-/**
- * @brief SGP4X handle structure definition.
- */
-typedef struct sgp4x_context_t *sgp4x_handle_t;
+typedef void* sgp4x_handle_t;
 
 
 /**
