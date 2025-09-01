@@ -106,7 +106,7 @@ typedef struct __attribute__((packed)) ds18b20_scratchpad_s {
 } ds18b20_scratchpad_t;
 
 /**
- * @brief DS18B20 device configuration structure.
+ * @brief DS18B20 device configuration structure definition.
  */
 typedef struct ds18b20_config_s {
     ds18b20_resolutions_t     resolution;       /*!< ds18b20 temperature resolution */

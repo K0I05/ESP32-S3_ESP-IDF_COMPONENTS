@@ -139,23 +139,11 @@ typedef struct veml6040_config_s {
     veml6040_triggers_t                 trigger_method;         /*!< veml6040 trigger method */
 } veml6040_config_t;
 
-/**
- * @brief VEML6040 context structure.
- */
-struct veml6040_context_t {
-    veml6040_config_t                   dev_config;             /*!< veml6040 device configuration */
-    i2c_master_dev_handle_t             i2c_handle;             /*!< veml6040 i2c device handle */
-};
 
 /**
- * @brief VEML6040 context structure definition.
+ * @brief VEML6040 opaque handle structure definition.
  */
-typedef struct veml6040_context_t veml6040_context_t;
-
-/**
- * @brief VEML6040 handle structure definition.
- */
-typedef struct veml6040_context_t *veml6040_handle_t;
+typedef void* veml6040_handle_t;
 
 /**
  * @brief Reads configuration register from VEML6040.
