@@ -235,7 +235,7 @@ typedef struct tlv493d_data_s {
 
  
 /**
- * @brief TLV493D configuration structure.
+ * @brief TLV493D configuration structure definition.
  */
 typedef struct tlv493d_config_s {
     uint16_t i2c_address;            /*!< tlv493d i2c device address */
@@ -246,26 +246,11 @@ typedef struct tlv493d_config_s {
     bool irq_pin_enabled;           /*!< tlv493d interrupt pin enabled when true */
 } tlv493d_config_t;
 
-/**
- * @brief TLV493D context structure.
- */
-struct tlv493d_context_t {
-    tlv493d_config_t dev_config; /*!< tlv493d device configuration */
-    i2c_master_dev_handle_t     i2c_handle; /*!< tlv493d I2C device handle */
-    tlv493d_factory_setting1_register_t factory_setting1_reg;
-    tlv493d_factory_setting2_register_t factory_setting2_reg;
-    tlv493d_factory_setting3_register_t factory_setting3_reg;
-};
 
 /**
- * @brief TLV493D context structure definition.
+ * @brief TLV493D opaque handle structure definition.
  */
-typedef struct tlv493d_context_t tlv493d_context_t;
-
-/**
- * @brief TLV493D handle structure definition.
- */
-typedef struct tlv493d_context_t *tlv493d_handle_t;
+typedef void* tlv493d_handle_t;
 
 
 /**

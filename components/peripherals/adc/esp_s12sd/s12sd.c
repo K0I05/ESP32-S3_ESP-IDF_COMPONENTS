@@ -77,7 +77,7 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
 /**
- * @brief S12SD device descriptor context structure.
+ * @brief S12SD device descriptor structure definition.
  */
 typedef struct s12sd_device_s {
     s12sd_config_t              config;         /*!< s12sd adc configuration */
@@ -288,7 +288,7 @@ esp_err_t s12sd_delete(s12sd_handle_t handle) {
 }
 
 const char* s12sd_get_fw_version(void) {
-    return (char *)S12SD_FW_VERSION_STR;
+    return (char*)S12SD_FW_VERSION_STR;
 }
 
 int32_t s12sd_get_fw_version_number(void) {

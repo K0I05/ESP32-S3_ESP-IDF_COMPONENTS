@@ -79,7 +79,7 @@ typedef enum tbi2cxxx_types_e {
 
 
 /**
- * @brief TBI2CXXX configuration structure.
+ * @brief TBI2CXXX configuration structure definition.
  */
 typedef struct tbi2cxxx_config_s {
     uint16_t            i2c_address;    /*!< tbi2cxxx i2c device address */
@@ -87,23 +87,11 @@ typedef struct tbi2cxxx_config_s {
     tbi2cxxx_types_t    tb_type;
 } tbi2cxxx_config_t;
 
-/**
- * @brief TBI2CXXX context structure.
- */
-struct tbi2cxxx_context_t {
-    tbi2cxxx_config_t       dev_config;
-    i2c_master_dev_handle_t i2c_handle; /*!< I2C device handle */
-};
 
 /**
- * @brief TBI2CXXX context structure definition.
+ * @brief TBI2CXXX opaque handle structure definition.
  */
-typedef struct tbi2cxxx_context_t tbi2cxxx_context_t;
-
-/**
- * @brief TBI2CXXX handle structure definition.
- */
-typedef struct tbi2cxxx_context_t *tbi2cxxx_handle_t;
+typedef void* tbi2cxxx_handle_t;
 
 
 

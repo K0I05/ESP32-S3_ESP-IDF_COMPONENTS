@@ -78,34 +78,45 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief TLV493D device descriptor structure definition.
+ */
+typedef struct tlv493d_device_s {
+    tlv493d_config_t config; /*!< tlv493d device configuration */
+    i2c_master_dev_handle_t     i2c_handle; /*!< tlv493d I2C device handle */
+    tlv493d_factory_setting1_register_t factory_setting1_reg;
+    tlv493d_factory_setting2_register_t factory_setting2_reg;
+    tlv493d_factory_setting3_register_t factory_setting3_reg;
+} tlv493d_device_t;
+
 /*
 * static constant declarations
 */
 static const char *TAG = "tlv493d";
 
 /**
- * @brief TLV493D I2C read byte from register address transaction.
+ * @brief TLV493D I2C HAL read byte from register address transaction.
  * 
- * @param handle TLV493D device handle.
+ * @param device TLV493D device descriptor.
  * @param reg_addr TLV493D register address to read from.
  * @param byte TLV493D read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t tlv493d_i2c_read_byte_from(tlv493d_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t tlv493d_i2c_read_byte_from(tlv493d_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c read from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c read from failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_TX_RX_DELAY_MS));
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_receive(device->i2c_handle, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -114,21 +125,21 @@ static inline esp_err_t tlv493d_i2c_read_byte_from(tlv493d_handle_t handle, cons
 }
 
 /**
- * @brief TLV493D I2C write byte to register address transaction.
+ * @brief TLV493D I2C HAL write byte to register address transaction.
  * 
- * @param handle TLV493D device handle.
+ * @param device TLV493D device descriptor.
  * @param reg_addr TLV493D register address to write to.
  * @param byte TLV493D write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t tlv493d_i2c_write_byte_to(tlv493d_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t tlv493d_i2c_write_byte_to(tlv493d_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write to failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write to failed" );
                         
     return ESP_OK;
 }
@@ -151,11 +162,13 @@ static inline uint8_t tlv493d_get_even_parity(uint8_t parity) {
 
 
 static inline esp_err_t tlv493d_get_temperature_msb_register(tlv493d_handle_t handle, tlv493d_temperature_msb_register_t *const reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(handle, TLV493D_REG_TEMP_MSB_R, &reg->reg), TAG, "read bz, t, ff, and pd register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(dev, TLV493D_REG_TEMP_MSB_R, &reg->reg), TAG, "read bz, t, ff, and pd register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -164,11 +177,13 @@ static inline esp_err_t tlv493d_get_temperature_msb_register(tlv493d_handle_t ha
 }
 
 static inline esp_err_t tlv493d_get_bz_lsb_register(tlv493d_handle_t handle, tlv493d_bz_lsb_register_t *const reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(handle, TLV493D_REG_BZ_LSB_R, &reg->reg), TAG, "read bz, t, ff, and pd register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(dev, TLV493D_REG_BZ_LSB_R, &reg->reg), TAG, "read bz, t, ff, and pd register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -177,11 +192,13 @@ static inline esp_err_t tlv493d_get_bz_lsb_register(tlv493d_handle_t handle, tlv
 }
 
 static inline esp_err_t tlv493d_get_factory_setting1_register(tlv493d_handle_t handle, tlv493d_factory_setting1_register_t *const reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(handle, TLV493D_REG_FACTSET1_R, &reg->reg), TAG, "read factory setting 1 configuration register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(dev, TLV493D_REG_FACTSET1_R, &reg->reg), TAG, "read factory setting 1 configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -190,11 +207,13 @@ static inline esp_err_t tlv493d_get_factory_setting1_register(tlv493d_handle_t h
 }
 
 static inline esp_err_t tlv493d_get_factory_setting2_register(tlv493d_handle_t handle, tlv493d_factory_setting2_register_t *const reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(handle, TLV493D_REG_FACTSET2_R, &reg->reg), TAG, "read factory setting 2 register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(dev, TLV493D_REG_FACTSET2_R, &reg->reg), TAG, "read factory setting 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -203,11 +222,13 @@ static inline esp_err_t tlv493d_get_factory_setting2_register(tlv493d_handle_t h
 }
 
 static inline esp_err_t tlv493d_get_factory_setting3_register(tlv493d_handle_t handle, tlv493d_factory_setting3_register_t *const reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(handle, TLV493D_REG_FACTSET3_R, &reg->reg), TAG, "read factory setting 3 register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_read_byte_from(dev, TLV493D_REG_FACTSET3_R, &reg->reg), TAG, "read factory setting 3 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -216,11 +237,13 @@ static inline esp_err_t tlv493d_get_factory_setting3_register(tlv493d_handle_t h
 }
 
 static inline esp_err_t tlv493d_set_mode1_register(tlv493d_handle_t handle, const tlv493d_mode1_register_t reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_write_byte_to(handle, TLV493D_REG_MOD1_W, reg.reg), TAG, "write mode 1 register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_write_byte_to(dev, TLV493D_REG_MOD1_W, reg.reg), TAG, "write mode 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -230,11 +253,13 @@ static inline esp_err_t tlv493d_set_mode1_register(tlv493d_handle_t handle, cons
 
 
 static inline esp_err_t tlv493d_set_mode2_register(tlv493d_handle_t handle, const tlv493d_mode2_register_t reg) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( tlv493d_i2c_write_byte_to(handle, TLV493D_REG_MOD2_W, reg.reg), TAG, "write mode 2 register failed" );
+    ESP_RETURN_ON_ERROR( tlv493d_i2c_write_byte_to(dev, TLV493D_REG_MOD2_W, reg.reg), TAG, "write mode 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(TLV493D_CMD_DELAY_MS));
@@ -260,10 +285,11 @@ static inline esp_err_t tlv493d_get_fixed_magnetic_axes(tlv493d_handle_t handle,
     tlv493d_temperature_msb_register_t  temperature_msb_reg;
     tlv493d_bx_by_lsb_register_t        bx_by_lsb_reg;
     tlv493d_bz_lsb_register_t           bz_lsb_reg;
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
 
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set start time (us) for timeout monitoring */
     //start_time = esp_timer_get_time(); 
@@ -286,11 +312,11 @@ static inline esp_err_t tlv493d_get_fixed_magnetic_axes(tlv493d_handle_t handle,
     /* attempt i2c write and read transaction */
     //ESP_GOTO_ON_ERROR( i2c_master_transmit_receive(tlv493d_handle->i2c_dev_handle, tx_buffer, I2C_UINT8_SIZE, rx_buffer, I2C_UINT56_SIZE, I2C_XFR_TIMEOUT_MS), err, TAG, "unable to write to i2c device handle, get measurement failed");
 	
-    ESP_GOTO_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx_buffer, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), err, TAG, "unable to write to i2c device handle, get measurement failed");
+    ESP_GOTO_ON_ERROR( i2c_master_transmit(dev->i2c_handle, tx_buffer, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), err, TAG, "unable to write to i2c device handle, get measurement failed");
 	
     vTaskDelay(pdMS_TO_TICKS(5));
     
-    ESP_GOTO_ON_ERROR( i2c_master_receive(handle->i2c_handle, rx_buffer, BIT56_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), err, TAG, "unable to read from i2c device handle, get measurement failed");
+    ESP_GOTO_ON_ERROR( i2c_master_receive(dev->i2c_handle, rx_buffer, BIT56_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), err, TAG, "unable to read from i2c device handle, get measurement failed");
 	
 
     //data = rx[0] | (rx[1] << 8);
@@ -338,10 +364,12 @@ static inline esp_err_t tlv493d_get_fixed_magnetic_axes(tlv493d_handle_t handle,
 
 
 static inline esp_err_t tlv493d_configure_power_mode1_register(tlv493d_handle_t handle, tlv493d_mode1_register_t *const reg) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
 
-    switch(handle->dev_config.power_mode) {
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    switch(dev->config.power_mode) {
         case TLV493D_POWER_DOWN_MODE:
             reg->bits.fast_mode_enabled      = false;
             reg->bits.low_power_mode_enabled = false;
@@ -365,10 +393,12 @@ static inline esp_err_t tlv493d_configure_power_mode1_register(tlv493d_handle_t 
 }
 
 static inline esp_err_t tlv493d_configure_power_mode2_register(tlv493d_handle_t handle, tlv493d_mode2_register_t *const reg) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
 
-    switch(handle->dev_config.power_mode) {
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    switch(dev->config.power_mode) {
         case TLV493D_POWER_DOWN_MODE:
             reg->bits.low_power_period = TLV493D_LOW_POWER_PERIOD_100MS;
             break;
@@ -402,23 +432,22 @@ esp_err_t tlv493d_init(i2c_master_bus_handle_t master_handle, const tlv493d_conf
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, tlv493d device handle initialization failed", tlv493d_config->i2c_address);
 
     /* validate memory availability for handle */
-    tlv493d_handle_t out_handle;
-    out_handle = (tlv493d_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c tlv493d device, init failed");
+    tlv493d_device_t* dev = (tlv493d_device_t*)calloc(1, sizeof(tlv493d_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c tlv493d device, init failed");
 
     /* copy configuration */
-    out_handle->dev_config = *tlv493d_config;
+    dev->config = *tlv493d_config;
 
     /* set device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay before next i2c transaction */
@@ -449,14 +478,14 @@ esp_err_t tlv493d_init(i2c_master_bus_handle_t master_handle, const tlv493d_conf
     //mode1_reg.bits.factory_setting      = out_handle->factorysetting1_reg.bits.factory_setting;
     //mode1_reg.bits.irq_pin_enabled      = out_handle->irq_pin_enabled;
     mode1_reg.bits.i2c_slave_address    = TLV493D_I2C_ADDRESS_00;
-    ESP_GOTO_ON_ERROR(tlv493d_configure_power_mode1_register(out_handle, &mode1_reg), err_handle, TAG, "configure power mode 1 register for init failed");
+    ESP_GOTO_ON_ERROR(tlv493d_configure_power_mode1_register((tlv493d_handle_t)dev, &mode1_reg), err_handle, TAG, "configure power mode 1 register for init failed");
     //reserved2_reg.bits.factory_setting  = out_handle->factorysetting2_reg.bits.factory_setting;
     //mode2_reg.bits.factory_setting      = out_handle->factorysetting3_reg.bits.factory_setting;
     //mode2_reg.bits.parity_test_enabled  = out_handle->parity_test_enabled;
     //mode2_reg.bits.temperature_disabled = out_handle->temperature_disabled;
-    ESP_GOTO_ON_ERROR(tlv493d_configure_power_mode2_register(out_handle, &mode2_reg), err_handle, TAG, "configure power mode 2 register for init failed");
+    ESP_GOTO_ON_ERROR(tlv493d_configure_power_mode2_register((tlv493d_handle_t)dev, &mode2_reg), err_handle, TAG, "configure power mode 2 register for init failed");
 
-    ESP_GOTO_ON_ERROR(tlv493d_set_mode2_register(out_handle, mode2_reg), err_handle, TAG, "write mode 2 register for init failed");
+    ESP_GOTO_ON_ERROR(tlv493d_set_mode2_register((tlv493d_handle_t)dev, mode2_reg), err_handle, TAG, "write mode 2 register for init failed");
 
     /* sum registers */
     uint8_t result = 0x00;
@@ -471,7 +500,7 @@ esp_err_t tlv493d_init(i2c_master_bus_handle_t master_handle, const tlv493d_conf
 
     mode1_reg.bits.parity = result;
 
-    ESP_GOTO_ON_ERROR(tlv493d_set_mode1_register(out_handle, mode1_reg), err_handle, TAG, "write mode 1 register for init failed");
+    ESP_GOTO_ON_ERROR(tlv493d_set_mode1_register((tlv493d_handle_t)dev, mode1_reg), err_handle, TAG, "write mode 1 register for init failed");
 
     ESP_LOGW(TAG, "mode 1 0x%02x (%s)", mode1_reg.reg, uint8_to_binary(mode1_reg.reg));
     ESP_LOGW(TAG, "mode 2 0x%02x (%s)", mode2_reg.reg, uint8_to_binary(mode2_reg.reg));
@@ -504,15 +533,15 @@ esp_err_t tlv493d_init(i2c_master_bus_handle_t master_handle, const tlv493d_conf
     vTaskDelay(pdMS_TO_TICKS(150));
 
     /* set device handle */
-    *tlv493d_handle = out_handle;
+    *tlv493d_handle = (tlv493d_handle_t)dev;
 
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -544,11 +573,13 @@ esp_err_t tlv493d_get_data_status(tlv493d_handle_t handle, bool *const ready) {
 }
 
 esp_err_t tlv493d_remove(tlv493d_handle_t handle) {
+    tlv493d_device_t* dev = (tlv493d_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t tlv493d_delete(tlv493d_handle_t handle) {
