@@ -128,25 +128,12 @@ typedef struct sht4x_config_s {
     sht4x_heater_modes_t heater_mode;       /*!< sht4x measurement heater mode setting */
 } sht4x_config_t;
 
-/**
- * @brief SHT4X context structure.
- */
-struct sht4x_context_t {
-    sht4x_config_t           dev_config;      /*!< sht4x device configuration */
-    i2c_master_dev_handle_t  i2c_handle;      /*!< sht4x i2c device handle */
-    uint32_t                 serial_number;   /*!< sht4x device serial number */
-};
 
 
 /**
- * @brief SHT4X context structure definition.
+ * @brief SHT4X opaque handle structure definition.
  */
-typedef struct sht4x_context_t sht4x_context_t;
-
-/**
- * @brief SHT4X handle structure definition.
- */
-typedef struct sht4x_context_t* sht4x_handle_t;
+typedef void* sht4x_handle_t;
 
 
 /**

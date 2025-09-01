@@ -82,6 +82,15 @@
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief SHT4X device descriptor structure definition.
+ */
+typedef struct sht4x_device_s {
+    sht4x_config_t           config;          /*!< sht4x device configuration */
+    i2c_master_dev_handle_t  i2c_handle;      /*!< sht4x i2c device handle */
+    uint32_t                 serial_number;   /*!< sht4x device serial number */
+} sht4x_device_t;
+
 /*
 * static constant declarations
 */
@@ -94,56 +103,56 @@ static const char *TAG = "sht4x";
 
 
 /**
- * @brief SHT4X I2C read transaction.
+ * @brief SHT4X I2C HAL read transaction.
  * 
- * @param handle SHT4X device handle.
+ * @param device SHT4X device descriptor.
  * @param buffer Buffer to store results from read transaction.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t sht4x_i2c_read(sht4x_handle_t handle, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t sht4x_i2c_read(sht4x_device_t *const device, uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_receive(device->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief SHT4X I2C write transaction.
+ * @brief SHT4X I2C HAL write transaction.
  * 
- * @param handle SHT4X device handle.
+ * @param device SHT4X device descriptor.
  * @param buffer Buffer to write for write transaction.
  * @param size Length of buffer to write for write transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t sht4x_i2c_write(sht4x_handle_t handle, const uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t sht4x_i2c_write(sht4x_device_t *const device, const uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief SHT4X I2C write command to register address transaction.
+ * @brief SHT4X I2C HAL write command to register address transaction.
  * 
- * @param handle SHT4X device handle.
+ * @param device SHT4X device descriptor.
  * @param reg_addr SHT4X command register address to write to.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t sht4x_i2c_write_command(sht4x_handle_t handle, const uint8_t reg_addr) {
+static inline esp_err_t sht4x_i2c_write_command(sht4x_device_t *const device, const uint8_t reg_addr) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -169,13 +178,13 @@ static inline uint8_t sht4x_calculate_crc8(const uint8_t data[], const uint8_t l
 /**
  * @brief Gets SHT4X measurement duration in milli-seconds from device handle.  See datasheet for details.
  *
- * @param[in] handle SHT4X device handle.
+ * @param[in] device SHT4X device descriptor.
  * @return size_t Measurement duration in milliseconds.
  */
-static inline size_t sht4x_get_duration_ms(sht4x_handle_t handle) {
+static inline size_t sht4x_get_duration_ms(sht4x_device_t *const device) {
     /* validate arguments */
-    if (!handle) return 2;
-    switch (handle->dev_config.heater_mode) {
+    if (!device) return 2;
+    switch (device->config.heater_mode) {
         case SHT4X_HEATER_HIGH_LONG:
         case SHT4X_HEATER_MEDIUM_LONG:
         case SHT4X_HEATER_LOW_LONG:
@@ -185,7 +194,7 @@ static inline size_t sht4x_get_duration_ms(sht4x_handle_t handle) {
         case SHT4X_HEATER_LOW_SHORT:
             return 110;
         default:
-            switch (handle->dev_config.repeat_mode) {
+            switch (device->config.repeat_mode) {
                 case SHT4X_REPEAT_HIGH:
                     return 10;
                 case SHT4X_REPEAT_MEDIUM:
@@ -199,26 +208,26 @@ static inline size_t sht4x_get_duration_ms(sht4x_handle_t handle) {
 /**
  * @brief Gets SHT4X measurement tick duration from device handle.
  *
- * @param[in] handle SHT4X device handle.
+ * @param[in] device SHT4X device descriptor.
  * @return size_t Measurement duration in ticks.
  */
-static inline size_t sht4x_get_tick_duration(sht4x_handle_t handle) {
+static inline size_t sht4x_get_tick_duration(sht4x_device_t *const device) {
     /* validate arguments */
-    if (!handle) return 1;
-    size_t res = pdMS_TO_TICKS(sht4x_get_duration_ms(handle));
+    if (!device) return 1;
+    size_t res = pdMS_TO_TICKS(sht4x_get_duration_ms(device));
     return res == 0 ? 1 : res;
 }
 
 /**
  * @brief Gets SHT4X measurement command from device handle parameters.  See datasheet for details.
  *
- * @param[in] handle SHT4X device handle.
+ * @param[in] device SHT4X device descriptor.
  * @return uint8_t SHT4X command value.
  */
-static inline uint8_t sht4x_get_command(sht4x_handle_t handle) {
+static inline uint8_t sht4x_get_command(sht4x_device_t *const device) {
     /* validate arguments */
-    if (!handle) return SHT4X_CMD_MEAS_LOW;
-    switch (handle->dev_config.heater_mode) {
+    if (!device) return SHT4X_CMD_MEAS_LOW;
+    switch (device->config.heater_mode) {
         case SHT4X_HEATER_HIGH_LONG:
             return SHT4X_CMD_MEAS_H_HIGH_LONG;
         case SHT4X_HEATER_HIGH_SHORT:
@@ -232,7 +241,7 @@ static inline uint8_t sht4x_get_command(sht4x_handle_t handle) {
         case SHT4X_HEATER_LOW_SHORT:
             return SHT4X_CMD_MEAS_H_LOW_SHORT;
         default:
-            switch (handle->dev_config.repeat_mode) {
+            switch (device->config.repeat_mode) {
                 case SHT4X_REPEAT_HIGH:
                     return SHT4X_CMD_MEAS_HIGH;
                 case SHT4X_REPEAT_MEDIUM:
@@ -282,18 +291,19 @@ static inline esp_err_t sht4x_calculate_dewpoint(const float temperature, const 
 static inline esp_err_t sht4x_get_serial_number(sht4x_handle_t handle, uint32_t *const serial_number) {
     const bit8_uint8_buffer_t tx = { SHT4X_CMD_SERIAL };
     bit48_uint8_buffer_t      rx = { 0 };
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_write(handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get serial number failed");
+    ESP_RETURN_ON_ERROR( sht4x_i2c_write(dev, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get serial number failed");
 	
     /* delay before attempting i2c read transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_TX_RX_DELAY_MS));
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_read(handle, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to i2c device handle, get serial number failed");
+    ESP_RETURN_ON_ERROR( sht4x_i2c_read(dev, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to i2c device handle, get serial number failed");
 	
     /* set serial number */
     *serial_number = ((uint32_t)rx[0] << 24) | ((uint32_t)rx[1] << 16) | ((uint32_t)rx[3] << 8) | rx[4];
@@ -316,33 +326,32 @@ esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, device handle initialization failed", sht4x_config->i2c_address);
 
     /* validate memory availability for handle */
-    sht4x_handle_t out_handle;
-    out_handle = (sht4x_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for device, device handle initialization failed");
+    sht4x_device_t* dev = (sht4x_device_t*)calloc(1, sizeof(sht4x_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for device, device handle initialization failed");
 
     /* copy configuration */
-    out_handle->dev_config = *sht4x_config;
+    dev->config = *sht4x_config;
 
     /* set device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "unable to add device to master bus, device handle initialization failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "unable to add device to master bus, device handle initialization failed");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_CMD_DELAY_MS));
 
     /* attempt to reset the device */
-    ESP_GOTO_ON_ERROR(sht4x_reset(out_handle), err_handle, TAG, "unable to soft-reset device, device handle initialization failed");
+    ESP_GOTO_ON_ERROR(sht4x_reset((sht4x_handle_t)dev), err_handle, TAG, "unable to soft-reset device, device handle initialization failed");
 
     /* set device handle */
-    *sht4x_handle = out_handle;
+    *sht4x_handle = (sht4x_handle_t)dev;
 
     /* application start delay */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_APPSTART_DELAY_MS));
@@ -350,10 +359,10 @@ esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -365,16 +374,17 @@ esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature,
     esp_err_t ret               = ESP_OK;
     bit8_uint8_buffer_t tx      = { 0 };
     bit48_uint8_buffer_t rx     = { 0 };
+    sht4x_device_t* dev         = (sht4x_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && (temperature || humidity) );
+    ESP_ARG_CHECK( dev && (temperature || humidity) );
     
     /* get command and measurement duration from handle settings */
-    tx[0]       = sht4x_get_command(handle);
-    delay_ticks = sht4x_get_tick_duration(handle);
+    tx[0]       = sht4x_get_command(dev);
+    delay_ticks = sht4x_get_tick_duration(dev);
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_write(handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get measurement failed");
+    ESP_RETURN_ON_ERROR( sht4x_i2c_write(dev, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get measurement failed");
 	
 	/* delay task - allow time for the sensor to process measurement request */
     if(delay_ticks) vTaskDelay(delay_ticks);
@@ -382,7 +392,7 @@ esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature,
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     do {
         /* attempt i2c read transaction */
-        ret = sht4x_i2c_read(handle, rx, BIT48_UINT8_BUFFER_SIZE);
+        ret = sht4x_i2c_read(dev, rx, BIT48_UINT8_BUFFER_SIZE);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(SHT4X_RETRY_DELAY_MS));
@@ -418,65 +428,77 @@ esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature
 }
 
 esp_err_t sht4x_get_repeat_mode(sht4x_handle_t handle, sht4x_repeat_modes_t *const mode) {
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set output parameter */
-    *mode = handle->dev_config.repeat_mode;
+    *mode = dev->config.repeat_mode;
 
     return ESP_OK;
 }
 esp_err_t sht4x_set_repeat_mode(sht4x_handle_t handle, const sht4x_repeat_modes_t mode) {
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set handle setting */
-    handle->dev_config.repeat_mode = mode;
+    dev->config.repeat_mode = mode;
 
     return ESP_OK;
 }
 
 esp_err_t sht4x_get_heater_mode(sht4x_handle_t handle, sht4x_heater_modes_t *const mode) {
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set output parameter */
-    *mode = handle->dev_config.heater_mode;
+    *mode = dev->config.heater_mode;
 
     return ESP_OK;
 }
 
 esp_err_t sht4x_set_heater_mode(sht4x_handle_t handle, const sht4x_heater_modes_t mode) {
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set handle setting */
-    handle->dev_config.heater_mode = mode;
+    dev->config.heater_mode = mode;
 
     return ESP_OK;
 }
 
 esp_err_t sht4x_reset(sht4x_handle_t handle) {
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_write_command(handle, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
+    ESP_RETURN_ON_ERROR( sht4x_i2c_write_command(dev, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
 
     /* delay before next command - soft-reset */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
 
     /* sht4x attempt to read device serial number */
-    ESP_RETURN_ON_ERROR(sht4x_get_serial_number(handle, &handle->serial_number), TAG, "unable to read serial number, device reset failed");
+    ESP_RETURN_ON_ERROR(sht4x_get_serial_number(handle, &dev->serial_number), TAG, "unable to read serial number, device reset failed");
 
     return ESP_OK;
 }
 
 esp_err_t sht4x_remove(sht4x_handle_t handle) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    sht4x_device_t* dev = (sht4x_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t sht4x_delete(sht4x_handle_t handle) {
@@ -495,7 +517,7 @@ esp_err_t sht4x_delete(sht4x_handle_t handle) {
 }
 
 const char* sht4x_get_fw_version(void) {
-    return SHT4X_FW_VERSION_STR;
+    return (char*)SHT4X_FW_VERSION_STR;
 }
 
 int32_t sht4x_get_fw_version_number(void) {
