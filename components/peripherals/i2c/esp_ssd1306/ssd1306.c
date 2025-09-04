@@ -356,13 +356,13 @@ esp_err_t ssd1306_set_pixel(ssd1306_handle_t handle, uint8_t xpos, uint8_t ypos,
 
 	ESP_LOGD(TAG, "ypos=%d _page=%d _bits=%d wk0=0x%02x wk1=0x%02x", ypos, _page, _bits, wk0, wk1);
 
+	if (dev->config.flip_enabled) wk1 = ssd1306_rotate_byte(wk1);
+
 	if (invert) {
 		wk0 = wk0 & ~wk1;
 	} else {
 		wk0 = wk0 | wk1;
 	}
-
-	if (dev->config.flip_enabled) wk0 = ssd1306_rotate_byte(wk0);
 
 	ESP_LOGD(TAG, "wk0=0x%02x wk1=0x%02x", wk0, wk1);
 
