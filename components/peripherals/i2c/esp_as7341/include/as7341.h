@@ -489,7 +489,7 @@ typedef struct as7341_channels_spectral_data_s {
 } as7341_channels_spectral_data_t;
 
 /**
- * @brief AS7341 configuration structure.
+ * @brief AS7341 configuration structure definition.
  */
 typedef struct as7341_config_s {
     uint16_t                    i2c_address;          /*!< as7341 i2c device address */
@@ -499,25 +499,12 @@ typedef struct as7341_config_s {
     as7341_spectral_gains_t     spectral_gain;
 } as7341_config_t;
 
-/**
- * @brief AS7341 context structure.
- */
-struct as7341_context_t {
-    as7341_config_t             dev_config;     /*!< as7341 device configuration */
-    i2c_master_dev_handle_t     i2c_handle;     /*!< as7341 i2c device handle */
-    uint8_t                     part_id;
-    uint8_t                     revision_id;
-};
+
 
 /**
- * @brief AS7341 context structure definitions.
+ * @brief AS7341 opaque handle structure definition.
  */
-typedef struct as7341_context_t as7341_context_t;
-
-/**
- * @brief AS7341 handle structure definition.
- */
-typedef struct as7341_context_t *as7341_handle_t;
+typedef void* as7341_handle_t;
 
 
 

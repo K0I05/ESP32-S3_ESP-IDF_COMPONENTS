@@ -142,6 +142,15 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief AS7341 device descriptor structure definition.
+ */
+typedef struct as7341_device_s {
+    as7341_config_t             config;         /*!< as7341 device configuration */
+    i2c_master_dev_handle_t     i2c_handle;     /*!< as7341 i2c device handle */
+    uint8_t                     part_id;
+    uint8_t                     revision_id;
+} as7341_device_t;
 
 /*
 * static constant declarations
@@ -151,61 +160,61 @@ static const char *TAG = "as7341";
 
 
 /**
- * @brief AS7341 I2C write byte to register address transaction.
+ * @brief AS7341 I2C HAL write byte to register address transaction.
  * 
- * @param handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @param reg_addr AS7341 register address to write to.
  * @param byte AS7341 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_i2c_write_byte_to(as7341_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t as7341_i2c_write_byte_to(as7341_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief AS7341 I2C read from register address transaction.  This is a write and then read process.
+ * @brief AS7341 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @param reg_addr AS7341 register address to read from.
  * @param buffer Buffer to store results from read transaction.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_i2c_read_from(as7341_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t as7341_i2c_read_from(as7341_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief AS7341 I2C read halfword from register address transaction.
+ * @brief AS7341 I2C HAL read halfword from register address transaction.
  * 
- * @param handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @param reg_addr AS7341 register address to read from.
  * @param word AS7341 read transaction return halfword.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_i2c_read_word_from(as7341_handle_t handle, const uint8_t reg_addr, uint16_t *const word) {
+static inline esp_err_t as7341_i2c_read_word_from(as7341_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit16_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_word_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_word_from failed" );
 
     /* set output parameter */
     *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
@@ -214,21 +223,21 @@ static inline esp_err_t as7341_i2c_read_word_from(as7341_handle_t handle, const 
 }
 
 /**
- * @brief AS7341 I2C read byte from register address transaction.
+ * @brief AS7341 I2C HAL read byte from register address transaction.
  * 
- * @param handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @param reg_addr AS7341 register address to read from.
  * @param byte AS7341 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_i2c_read_byte_from(as7341_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t as7341_i2c_read_byte_from(as7341_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as7341_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -299,34 +308,34 @@ static inline esp_err_t as7341_get_integration_time(as7341_handle_t handle, floa
 /**
  * @brief Configures SMUX registers for low channels F1-F4, Clear and NIR.
  * 
- * @param as7341_handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_lo_channels(as7341_handle_t handle) {
+static inline esp_err_t as7341_setup_smux_lo_channels(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write config transactions (F1, F2, F3, F4, NIR, CLEAR) */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x00, 0x30), TAG, "write F3 left set to ADC2 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x01, 0x01), TAG, "write F1 left set to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x03, 0x00), TAG, "write F8 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x04, 0x00), TAG, "write F6 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x05, 0x42), TAG, "write F4 left connected to ADC3/F2 connected to ADC1 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x06, 0x00), TAG, "write F5 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x07, 0x00), TAG, "write F7 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x08, 0x50), TAG, "write CLEAR connected ADC4 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x09, 0x00), TAG, "write F5 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0a, 0x00), TAG, "write F7 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0c, 0x20), TAG, "write F2 right connected to ADC1 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0d, 0x04), TAG, "write F4 right connected to ADC3 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0e, 0x00), TAG, "write F6/F8 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0f, 0x30), TAG, "write F3 right connected to ADC2 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x10, 0x01), TAG, "write F1 right connected to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x11, 0x50), TAG, "write CLEAR right connected to ADC4 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x13, 0x06), TAG, "write NIR connected to ADC5 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x00, 0x30), TAG, "write F3 left set to ADC2 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x01, 0x01), TAG, "write F1 left set to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x03, 0x00), TAG, "write F8 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x04, 0x00), TAG, "write F6 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x05, 0x42), TAG, "write F4 left connected to ADC3/F2 connected to ADC1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x06, 0x00), TAG, "write F5 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x07, 0x00), TAG, "write F7 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x08, 0x50), TAG, "write CLEAR connected ADC4 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x09, 0x00), TAG, "write F5 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0a, 0x00), TAG, "write F7 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0c, 0x20), TAG, "write F2 right connected to ADC1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0d, 0x04), TAG, "write F4 right connected to ADC3 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0e, 0x00), TAG, "write F6/F8 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0f, 0x30), TAG, "write F3 right connected to ADC2 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x10, 0x01), TAG, "write F1 right connected to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x11, 0x50), TAG, "write CLEAR right connected to ADC4 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x13, 0x06), TAG, "write NIR connected to ADC5 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -337,34 +346,34 @@ static inline esp_err_t as7341_setup_smux_lo_channels(as7341_handle_t handle) {
 /**
  * @brief Configures SMUX registers for high channels F5-F8, Clear and NIR.
  * 
- * @param as7341_handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_hi_channels(as7341_handle_t handle) {
+static inline esp_err_t as7341_setup_smux_hi_channels(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write config transactions (F5, F6, F7, F8, NIR, CLEAR) */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x00, 0x00), TAG, "write F3 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x01, 0x00), TAG, "write F1 left disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x03, 0x40), TAG, "write F8 left connected to ADC3 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x04, 0x02), TAG, "write F6 left connected to ADC1 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x05, 0x00), TAG, "write F4/F2 disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x06, 0x10), TAG, "write F5 left connected to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x07, 0x03), TAG, "write F7 left connected to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x08, 0x50), TAG, "write CLEAR connected to ADC4 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x09, 0x10), TAG, "write F5 right connected to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0a, 0x03), TAG, "write F7 right connected to ADC0 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0c, 0x00), TAG, "write F2 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0d, 0x00), TAG, "write F4 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0e, 0x24), TAG, "write F8 right connected to ADC2/F6 right connected to ADC1 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0f, 0x00), TAG, "write F3 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x10, 0x00), TAG, "write F1 right disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x11, 0x50), TAG, "write CLEAR right connected to ADC4 register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x13, 0x06), TAG, "write NIR connected to ADC5 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x00, 0x00), TAG, "write F3 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x01, 0x00), TAG, "write F1 left disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x03, 0x40), TAG, "write F8 left connected to ADC3 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x04, 0x02), TAG, "write F6 left connected to ADC1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x05, 0x00), TAG, "write F4/F2 disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x06, 0x10), TAG, "write F5 left connected to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x07, 0x03), TAG, "write F7 left connected to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x08, 0x50), TAG, "write CLEAR connected to ADC4 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x09, 0x10), TAG, "write F5 right connected to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0a, 0x03), TAG, "write F7 right connected to ADC0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0c, 0x00), TAG, "write F2 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0d, 0x00), TAG, "write F4 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0e, 0x24), TAG, "write F8 right connected to ADC2/F6 right connected to ADC1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0f, 0x00), TAG, "write F3 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x10, 0x00), TAG, "write F1 right disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x11, 0x50), TAG, "write CLEAR right connected to ADC4 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x13, 0x06), TAG, "write NIR connected to ADC5 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -417,34 +426,34 @@ static inline esp_err_t as7341_set_smux_hi_channels(as7341_handle_t handle) {
 /**
  * @brief Configures SMUX registers for flicker detection.
  * 
- * @param as7341_handle AS7341 device handle.
+ * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_flicker_detection(as7341_handle_t handle) {
+static inline esp_err_t as7341_setup_smux_flicker_detection(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write config transactions */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x00, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x01, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x03, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x04, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x05, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x06, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x07, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x08, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x09, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0a, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0c, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0d, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0e, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x0f, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x10, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x11, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, 0x13, 0x60), TAG, "write flicker connected to ADC5 to left of 0x13 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x00, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x01, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x02, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x03, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x04, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x05, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x06, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x07, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x08, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x09, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0a, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0b, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0c, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0d, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0e, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x0f, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x10, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x11, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x12, 0x00), TAG, "write reserved or disabled register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, 0x13, 0x60), TAG, "write flicker connected to ADC5 to left of 0x13 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -453,14 +462,16 @@ static inline esp_err_t as7341_setup_smux_flicker_detection(as7341_handle_t hand
 }
 
 esp_err_t as7341_get_led_register(as7341_handle_t handle, as7341_led_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to enable low register bank */
     as7341_enable_lo_register_bank(handle);
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_LED, &reg->reg), TAG, "read LED register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_LED, &reg->reg), TAG, "read LED register failed" );
 
     /* attempt to enable high register bank */
     as7341_enable_hi_register_bank(handle);
@@ -472,14 +483,16 @@ esp_err_t as7341_get_led_register(as7341_handle_t handle, as7341_led_register_t 
 }
 
 esp_err_t as7341_set_led_register(as7341_handle_t handle, const as7341_led_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
      /* attempt to enable low register bank */
     as7341_enable_lo_register_bank(handle);
     
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_LED, reg.reg), TAG, "write LED register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_LED, reg.reg), TAG, "write LED register failed" );
 
     /* attempt to enable high register bank */
     as7341_enable_hi_register_bank(handle);
@@ -491,11 +504,13 @@ esp_err_t as7341_set_led_register(as7341_handle_t handle, const as7341_led_regis
 }
 
 esp_err_t as7341_get_astatus_register(as7341_handle_t handle, as7341_astatus_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_ASTATUS, &reg->reg), TAG, "read astatus register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ASTATUS, &reg->reg), TAG, "read astatus register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -504,11 +519,13 @@ esp_err_t as7341_get_astatus_register(as7341_handle_t handle, as7341_astatus_reg
 }
 
 esp_err_t as7341_get_status2_register(as7341_handle_t handle, as7341_status2_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_STATUS2, &reg->reg), TAG, "read status 2 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_STATUS2, &reg->reg), TAG, "read status 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -529,11 +546,13 @@ esp_err_t as7341_disable_enable_register(as7341_handle_t handle) {
 }
 
 esp_err_t as7341_get_enable_register(as7341_handle_t handle, as7341_enable_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_ENABLE, &reg->reg), TAG, "read enable register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ENABLE, &reg->reg), TAG, "read enable register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -542,8 +561,10 @@ esp_err_t as7341_get_enable_register(as7341_handle_t handle, as7341_enable_regis
 }
 
 esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_enable_register_t enable = { .reg = reg.reg };
@@ -554,7 +575,7 @@ esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable
     enable.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_ENABLE, enable.reg), TAG, "write enable register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ENABLE, enable.reg), TAG, "write enable register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -563,11 +584,13 @@ esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable
 }
 
 esp_err_t as7341_get_auxiliary_id_register(as7341_handle_t handle, as7341_auxiliary_id_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_AUXID, &reg->reg), TAG, "read auxiliary id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_AUXID, &reg->reg), TAG, "read auxiliary id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -576,11 +599,13 @@ esp_err_t as7341_get_auxiliary_id_register(as7341_handle_t handle, as7341_auxili
 }
 
 esp_err_t as7341_get_revision_id_register(as7341_handle_t handle, as7341_revision_id_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_REVID, &reg->reg), TAG, "read revision id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_REVID, &reg->reg), TAG, "read revision id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -589,12 +614,14 @@ esp_err_t as7341_get_revision_id_register(as7341_handle_t handle, as7341_revisio
 }
 
 esp_err_t as7341_get_part_id_register(as7341_handle_t handle, as7341_part_id_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_ID, &reg->reg), TAG, "read part id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ID, &reg->reg), TAG, "read part id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -603,11 +630,13 @@ esp_err_t as7341_get_part_id_register(as7341_handle_t handle, as7341_part_id_reg
 }
 
 esp_err_t as7341_get_config_register(as7341_handle_t handle, as7341_config_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_CONFIG, &reg->reg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG, &reg->reg), TAG, "read configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -616,8 +645,10 @@ esp_err_t as7341_get_config_register(as7341_handle_t handle, as7341_config_regis
 }
 
 esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_config_register_t config = { .reg = reg.reg };
@@ -626,7 +657,7 @@ esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config
     config.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_CONFIG, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG, config.reg), TAG, "write configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -635,11 +666,13 @@ esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config
 }
 
 esp_err_t as7341_get_config0_register(as7341_handle_t handle, as7341_config0_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_CONFIG0, &reg->reg), TAG, "read configuration 0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG0, &reg->reg), TAG, "read configuration 0 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -648,8 +681,10 @@ esp_err_t as7341_get_config0_register(as7341_handle_t handle, as7341_config0_reg
 }
 
 esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_config0_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_config0_register_t config0 = { .reg = reg.reg };
@@ -660,7 +695,7 @@ esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_confi
     config0.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_CONFIG0, config0.reg), TAG, "write configuration 0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG0, config0.reg), TAG, "write configuration 0 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -669,11 +704,13 @@ esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_confi
 }
 
 esp_err_t as7341_get_config1_register(as7341_handle_t handle, as7341_config1_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_CONFIG1, &reg->reg), TAG, "read configuration 1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG1, &reg->reg), TAG, "read configuration 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -682,8 +719,10 @@ esp_err_t as7341_get_config1_register(as7341_handle_t handle, as7341_config1_reg
 }
 
 esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_config1_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_config1_register_t config1 = { .reg = reg.reg };
@@ -692,7 +731,7 @@ esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_confi
     config1.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_CONFIG1, config1.reg), TAG, "write configuration 1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG1, config1.reg), TAG, "write configuration 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -701,11 +740,13 @@ esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_confi
 }
 
 esp_err_t as7341_get_config6_register(as7341_handle_t handle, as7341_config6_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_CONFIG6, &reg->reg), TAG, "read configuration 6 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG6, &reg->reg), TAG, "read configuration 6 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -714,8 +755,10 @@ esp_err_t as7341_get_config6_register(as7341_handle_t handle, as7341_config6_reg
 }
 
 esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_config6_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_config6_register_t config6 = { .reg = reg.reg };
@@ -725,7 +768,7 @@ esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_confi
     config6.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_CONFIG6, config6.reg), TAG, "write configuration 6 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG6, config6.reg), TAG, "write configuration 6 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -734,11 +777,13 @@ esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_confi
 }
 
 esp_err_t as7341_get_atime_register(as7341_handle_t handle, uint8_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_ATIME, reg), TAG, "read atime register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ATIME, reg), TAG, "read atime register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -747,11 +792,13 @@ esp_err_t as7341_get_atime_register(as7341_handle_t handle, uint8_t *const reg) 
 }
 
 esp_err_t as7341_set_atime_register(as7341_handle_t handle, const uint8_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_ATIME, reg), TAG, "write atime register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ATIME, reg), TAG, "write atime register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -760,11 +807,13 @@ esp_err_t as7341_set_atime_register(as7341_handle_t handle, const uint8_t reg) {
 }
 
 esp_err_t as7341_get_astep_register(as7341_handle_t handle, uint16_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_word_from(handle, AS7341_ASTEP_L, reg), TAG, "read astep register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_word_from(dev, AS7341_ASTEP_L, reg), TAG, "read astep register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -773,11 +822,13 @@ esp_err_t as7341_get_astep_register(as7341_handle_t handle, uint16_t *const reg)
 }
 
 esp_err_t as7341_set_astep_register(as7341_handle_t handle, const uint16_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_ASTEP_L, reg), TAG, "write astep register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ASTEP_L, reg), TAG, "write astep register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -786,11 +837,13 @@ esp_err_t as7341_set_astep_register(as7341_handle_t handle, const uint16_t reg) 
 }
 
 esp_err_t as7341_get_flicker_detection_status_register(as7341_handle_t handle, as7341_flicker_detection_status_register_t *const reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(handle, AS7341_FD_STATUS, &reg->reg), TAG, "read flicker detection status register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_FD_STATUS, &reg->reg), TAG, "read flicker detection status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -799,8 +852,10 @@ esp_err_t as7341_get_flicker_detection_status_register(as7341_handle_t handle, a
 }
 
 esp_err_t as7341_set_flicker_detection_status_register(as7341_handle_t handle, const as7341_flicker_detection_status_register_t reg) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     as7341_flicker_detection_status_register_t flicker_detection_status = { .reg = reg.reg };
@@ -809,7 +864,7 @@ esp_err_t as7341_set_flicker_detection_status_register(as7341_handle_t handle, c
     flicker_detection_status.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(handle, AS7341_FD_STATUS, flicker_detection_status.reg), TAG, "write flicker detection status register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_FD_STATUS, flicker_detection_status.reg), TAG, "write flicker detection status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -901,52 +956,51 @@ esp_err_t as7341_init(i2c_master_bus_handle_t master_handle, const as7341_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, as7341 device handle initialization failed", as7341_config->i2c_address);
 
     /* validate memory availability for handle */
-    as7341_handle_t out_handle;
-    out_handle = (as7341_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as7341 device, init failed");
+    as7341_device_t* dev = (as7341_device_t*)calloc(1, sizeof(as7341_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as7341 device, init failed");
 
     /* copy configuration */
-    out_handle->dev_config = *as7341_config;
+    dev->config = *as7341_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
 
     /* attempt to enable power */
-    ESP_GOTO_ON_ERROR(as7341_enable_power(out_handle), err_handle, TAG, "enable power for init failed");
+    ESP_GOTO_ON_ERROR(as7341_enable_power((as7341_handle_t)dev), err_handle, TAG, "enable power for init failed");
 
     /* attempt to read part id */
-    ESP_GOTO_ON_ERROR(as7341_get_part_id_register(out_handle, &part_id), err_handle, TAG, "read part id register for init failed");
+    ESP_GOTO_ON_ERROR(as7341_get_part_id_register((as7341_handle_t)dev, &part_id), err_handle, TAG, "read part id register for init failed");
 
     /* attempt to read revision id */
-    ESP_GOTO_ON_ERROR(as7341_get_revision_id_register(out_handle, &revision_id), err_handle, TAG, "read revision id register for init failed");
+    ESP_GOTO_ON_ERROR(as7341_get_revision_id_register((as7341_handle_t)dev, &revision_id), err_handle, TAG, "read revision id register for init failed");
 
     /* copy configuration */
-    out_handle->part_id = part_id.bits.identifier;
-    out_handle->revision_id = revision_id.bits.identifier;
+    dev->part_id = part_id.bits.identifier;
+    dev->revision_id = revision_id.bits.identifier;
 
     /* attempt to write atime configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_atime(out_handle, out_handle->dev_config.atime), err_handle, TAG, "write atime for init failed");
+    ESP_GOTO_ON_ERROR(as7341_set_atime((as7341_handle_t)dev, dev->config.atime), err_handle, TAG, "write atime for init failed");
 
     /* attempt to write astep configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_astep(out_handle, out_handle->dev_config.astep), err_handle, TAG, "write astep for init failed");
+    ESP_GOTO_ON_ERROR(as7341_set_astep((as7341_handle_t)dev, dev->config.astep), err_handle, TAG, "write astep for init failed");
 
     /*attempt to write spectral gain configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_spectral_gain(out_handle, out_handle->dev_config.spectral_gain), err_handle, TAG, "write spectral gain for init failed");
+    ESP_GOTO_ON_ERROR(as7341_set_spectral_gain((as7341_handle_t)dev, dev->config.spectral_gain), err_handle, TAG, "write spectral gain for init failed");
 
     /* set device handle */
-    *as7341_handle = out_handle;
+    *as7341_handle = (as7341_handle_t)dev;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_APPSTART_DELAY_MS));
@@ -954,10 +1008,10 @@ esp_err_t as7341_init(i2c_master_bus_handle_t master_handle, const as7341_config
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -968,9 +1022,10 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     uint64_t    start_time       = esp_timer_get_time();
     bool        data_is_ready    = false;
     uint8_t     rx[12]           = { 0 };
+    as7341_device_t* dev = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt to read integration time */
     ESP_GOTO_ON_ERROR( as7341_get_integration_time(handle, &integration_time), err, TAG, "read integration time, for get adc measurements failed." );
@@ -997,7 +1052,7 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     } while (data_is_ready == false);
 
     /* attempt to read spectral adc data from low channels */
-    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(handle, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read low channel measurements for get adc measurements failed" );
+    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(dev, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read low channel measurements for get adc measurements failed" );
 
     /* set adc data for low channels */
     spectral_data->f1 = (uint16_t)rx[0]  | (uint16_t)(rx[1] << 8);
@@ -1035,7 +1090,7 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     } while (data_is_ready == false);
 
     /* attempt to read spectral adc data from high channels */
-    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(handle, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read high channel measurements for get adc measurements failed" );
+    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(dev, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read high channel measurements for get adc measurements failed" );
 
     /* set adc data for high channels */
     spectral_data->f5    = (uint16_t)rx[0]  | (uint16_t)(rx[1] << 8);
@@ -1505,11 +1560,13 @@ esp_err_t as7341_disable_led(as7341_handle_t handle) {
 }
 
 esp_err_t as7341_remove(as7341_handle_t handle) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t as7341_delete(as7341_handle_t handle) {
