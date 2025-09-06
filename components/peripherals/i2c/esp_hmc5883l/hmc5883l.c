@@ -84,6 +84,24 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief HMC5883L device descriptor structure definition.
+ */
+typedef struct hmc5883l_device_s {
+    hmc5883l_config_t                       config;
+    i2c_master_dev_handle_t                 i2c_handle;     /*!< I2C device handle */
+    //i2c_hmc5883l_configuration1_register_t  config1_reg;
+    //i2c_hmc5883l_configuration2_register_t  config2_reg;
+    //i2c_hmc5883l_mode_register_t            mode_reg;
+    //i2c_hmc5883l_status_register_t          status_reg;
+    uint32_t                                dev_id;
+    float                                   declination;        /*!< magnetic declination angle http://www.magnetic-declination.com/ */
+    bool                                    gain_calibrated;
+    bool                                    offset_calibrated;
+    hmc5883l_offset_axes_data_t         offset_axes;
+    hmc5883l_gain_error_axes_data_t     gain_error_axes;
+} hmc5883l_device_t;
+
 /*
 * static constant declarations
 */
@@ -106,41 +124,41 @@ static const float hmc5883l_gain_values [] = {
 */
 
 /**
- * @brief HMC5883L I2C write byte to register address transaction.
+ * @brief HMC5883L I2C HAL write byte to register address transaction.
  * 
- * @param handle HMC5883L device handle.
+ * @param device HMC5883L device descriptor.
  * @param reg_addr HMC5883L register address to write to.
  * @param byte HMC5883L write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t hmc5883l_i2c_write_byte_to(hmc5883l_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t hmc5883l_i2c_write_byte_to(hmc5883l_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief HMC5883L I2C read byte from register address transaction.
+ * @brief HMC5883L I2C HAL read byte from register address transaction.
  * 
- * @param handle HMC5883L device handle.
+ * @param device HMC5883L device descriptor.
  * @param reg_addr HMC5883L register address to read from.
  * @param byte HMC5883L read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t hmc5883l_i2c_read_byte_from(hmc5883l_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t hmc5883l_i2c_read_byte_from(hmc5883l_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "hmc5883l_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "hmc5883l_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -149,34 +167,36 @@ static inline esp_err_t hmc5883l_i2c_read_byte_from(hmc5883l_handle_t handle, co
 }
 
 /**
- * @brief HMC5883L I2C read from register address transaction.  This is a write and then read process.
+ * @brief HMC5883L I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle HMC5883L device handle.
+ * @param device HMC5883L device descriptor.
  * @param reg_addr HMC5883L register address to read from.
  * @param buffer HMC5883L read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t hmc5883l_i2c_read_from(hmc5883l_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t hmc5883l_i2c_read_from(hmc5883l_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "hmc5883l_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "hmc5883l_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 esp_err_t hmc5883l_get_identification_register(hmc5883l_handle_t handle, uint32_t *const reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* hmc5883l attempt to read device identification */
     uint8_t ident_a; uint8_t ident_b; uint8_t ident_c;
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_IDENT_A, &ident_a), TAG, "read register IDENT_A failed");
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_IDENT_B, &ident_b), TAG, "read register IDENT_B failed");
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_IDENT_C, &ident_c), TAG, "read register IDENT_C failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_IDENT_A, &ident_a), TAG, "read register IDENT_A failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_IDENT_B, &ident_b), TAG, "read register IDENT_B failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_IDENT_C, &ident_c), TAG, "read register IDENT_C failed");
 
     /* construct device identification */
     *reg = ident_a | (ident_b << 8) | (ident_c << 16);
@@ -188,11 +208,13 @@ esp_err_t hmc5883l_get_identification_register(hmc5883l_handle_t handle, uint32_
 }
 
 esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883l_configuration1_register_t *const reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_CONFIG_A, &reg->reg), TAG, "read configuration 1 register failed" );
+    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_CONFIG_A, &reg->reg), TAG, "read configuration 1 register failed" );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -201,8 +223,10 @@ esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883
 }
 
 esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const hmc5883l_configuration1_register_t reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     hmc5883l_configuration1_register_t config1 = { .reg = reg.reg };
@@ -211,7 +235,7 @@ esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const h
     config1.bits.reserved = 0;
 
     /* attempt to write measurement mode */
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(handle, HMC5883L_REG_CONFIG_A, config1.reg), TAG, "write configuration 1 register failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_CONFIG_A, config1.reg), TAG, "write configuration 1 register failed");
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -220,11 +244,13 @@ esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const h
 }
 
 esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883l_configuration2_register_t *const reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_CONFIG_B, &reg->reg), TAG, "read configuration 2 register failed" );
+    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_CONFIG_B, &reg->reg), TAG, "read configuration 2 register failed" );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -233,8 +259,10 @@ esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883
 }
 
 esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const hmc5883l_configuration2_register_t reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     hmc5883l_configuration2_register_t config2 = { .reg = reg.reg };
@@ -243,7 +271,7 @@ esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const h
     config2.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(handle, HMC5883L_REG_CONFIG_B, config2.reg), TAG, "write configuration 2 register failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_CONFIG_B, config2.reg), TAG, "write configuration 2 register failed");
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -252,11 +280,13 @@ esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const h
 }
 
 esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_register_t *const reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_MODE, &reg->reg), TAG, "read mode register failed" );
+    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_MODE, &reg->reg), TAG, "read mode register failed" );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -265,14 +295,16 @@ esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_reg
 }
 
 esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mode_register_t reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     hmc5883l_mode_register_t mode = { .reg = reg.reg };
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(handle, HMC5883L_REG_MODE, mode.reg), TAG, "write mode register failed");
+    ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_MODE, mode.reg), TAG, "write mode register failed");
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -281,11 +313,13 @@ esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mo
 }
 
 esp_err_t hmc5883l_get_status_register(hmc5883l_handle_t handle, hmc5883l_status_register_t *const reg) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(handle, HMC5883L_REG_STATUS, &reg->reg), TAG, "read status register failed" );
+    ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_STATUS, &reg->reg), TAG, "read status register failed" );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
@@ -309,40 +343,39 @@ esp_err_t hmc5883l_init(i2c_master_bus_handle_t master_handle, const hmc5883l_co
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, hmc5883l device handle initialization failed", hmc5883l_config->i2c_address);
 
     /* validate memory availability for handle */
-    hmc5883l_handle_t out_handle;
-    out_handle = (hmc5883l_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c hmc5883l device");
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)calloc(1, sizeof(hmc5883l_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c hmc5883l device");
 
     /* copy configuration */
-    out_handle->dev_config = *hmc5883l_config;
+    dev->config = *hmc5883l_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus failed");
     }
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     /* attempt to read registers */
-    ESP_GOTO_ON_ERROR(hmc5883l_get_configuration1_register(out_handle, &config1_reg), err_handle, TAG, "read configuration 1 register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_get_configuration1_register((hmc5883l_handle_t)dev, &config1_reg), err_handle, TAG, "read configuration 1 register failed");
 
-    ESP_GOTO_ON_ERROR(hmc5883l_get_configuration2_register(out_handle, &config2_reg), err_handle, TAG, "read configuration 2 register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_get_configuration2_register((hmc5883l_handle_t)dev, &config2_reg), err_handle, TAG, "read configuration 2 register failed");
 
-    ESP_GOTO_ON_ERROR(hmc5883l_get_mode_register(out_handle, &mode_reg), err_handle, TAG, "read mode register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_get_mode_register((hmc5883l_handle_t)dev, &mode_reg), err_handle, TAG, "read mode register failed");
 
-    ESP_GOTO_ON_ERROR(hmc5883l_get_identification_register(out_handle, &out_handle->dev_id), err_handle, TAG, "read identification register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_get_identification_register((hmc5883l_handle_t)dev, &dev->dev_id), err_handle, TAG, "read identification register failed");
     
     /* validate device identifier */
-    if (out_handle->dev_id != HMC5883L_DEV_ID) {
-        ESP_LOGE(TAG, "Unknown ID: %lu (device) != %lu (reference)", out_handle->dev_id, HMC5883L_DEV_ID);
+    if (dev->dev_id != HMC5883L_DEV_ID) {
+        ESP_LOGE(TAG, "Unknown ID: %lu (device) != %lu (reference)", dev->dev_id, HMC5883L_DEV_ID);
         ESP_GOTO_ON_FALSE(false, ESP_ERR_NOT_FOUND, err_handle, TAG, "i2c hmc5883l device identifier validation failed");
     }
 
@@ -350,21 +383,21 @@ esp_err_t hmc5883l_init(i2c_master_bus_handle_t master_handle, const hmc5883l_co
     config1_reg.bits.bias       = hmc5883l_config->bias;
     config1_reg.bits.data_rate  = hmc5883l_config->rate;
     config1_reg.bits.sample_avg = hmc5883l_config->sample;
-    ESP_GOTO_ON_ERROR(hmc5883l_set_configuration1_register(out_handle, config1_reg), err_handle, TAG, "write configuration 1 register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_set_configuration1_register((hmc5883l_handle_t)dev, config1_reg), err_handle, TAG, "write configuration 1 register failed");
 
     /* attempt to write configuration 2 register */
     config2_reg.bits.gain       = hmc5883l_config->gain;
-    ESP_GOTO_ON_ERROR(hmc5883l_set_configuration2_register(out_handle, config2_reg), err_handle, TAG, "write configuration 2 register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_set_configuration2_register((hmc5883l_handle_t)dev, config2_reg), err_handle, TAG, "write configuration 2 register failed");
 
     /* attempt to write mode register */
     mode_reg.bits.mode          = hmc5883l_config->mode;
-    ESP_GOTO_ON_ERROR(hmc5883l_set_mode_register(out_handle, mode_reg), err_handle, TAG, "write mode register failed");
+    ESP_GOTO_ON_ERROR(hmc5883l_set_mode_register((hmc5883l_handle_t)dev, mode_reg), err_handle, TAG, "write mode register failed");
 
     /* copy configuration */
-    out_handle->declination     = hmc5883l_config->declination;
+    dev->declination     = hmc5883l_config->declination;
 
     /* set device handle */
-    *hmc5883l_handle = out_handle;
+    *hmc5883l_handle = (hmc5883l_handle_t)dev;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(HMC5883L_APPSTART_DELAY_MS));
@@ -372,17 +405,19 @@ esp_err_t hmc5883l_init(i2c_master_bus_handle_t master_handle, const hmc5883l_co
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
 
 esp_err_t hmc5883l_get_fixed_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_axes_data_t *const axes_data) {
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle && axes_data );
+    ESP_ARG_CHECK( dev && axes_data );
 
     /* initialize local variables */
     esp_err_t    ret       = ESP_OK;
@@ -404,7 +439,7 @@ esp_err_t hmc5883l_get_fixed_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_ax
     } while (!is_ready);
     
     /* attempt i2c read transaction */
-    ESP_GOTO_ON_ERROR( hmc5883l_i2c_read_from(handle, HMC5883L_REG_DATA_OUT_X_MSB, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read uncompensated compass data for get fixed measurement failed" );
+    ESP_GOTO_ON_ERROR( hmc5883l_i2c_read_from(dev, HMC5883L_REG_DATA_OUT_X_MSB, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read uncompensated compass data for get fixed measurement failed" );
 
     /* convert 2-byte data to int16 data type - 2s complement */
     axes_data->x_axis = (int16_t)(rx[0] << 8) | rx[1];
@@ -423,9 +458,10 @@ esp_err_t hmc5883l_get_fixed_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_ax
 
 esp_err_t hmc5883l_get_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_magnetic_axes_data_t *const axes_data) {
     hmc5883l_configuration2_register_t config2;
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && axes_data );
+    ESP_ARG_CHECK( dev && axes_data );
 
     /* attempt i2c read transaction */
     ESP_ERROR_CHECK( hmc5883l_get_configuration2_register(handle, &config2) );
@@ -438,18 +474,18 @@ esp_err_t hmc5883l_get_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_magnetic
     ESP_ERROR_CHECK( hmc5883l_get_fixed_magnetic_axes(handle, &raw) );
 
     /* handle calibration corrections and compensation factors */
-    if(handle->gain_calibrated == true && handle->offset_calibrated == true) {
-        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity * handle->gain_error_axes.x_axis + handle->offset_axes.x_axis;
-        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity * handle->gain_error_axes.y_axis + handle->offset_axes.y_axis;
-        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity * handle->gain_error_axes.z_axis + handle->offset_axes.z_axis;
-    } else if(handle->gain_calibrated == true && handle->offset_calibrated == false) {
-        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity * handle->gain_error_axes.x_axis;
-        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity * handle->gain_error_axes.y_axis;
-        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity * handle->gain_error_axes.z_axis;
-    } else if(handle->gain_calibrated == false && handle->offset_calibrated == true) {
-        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity + handle->offset_axes.x_axis;
-        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity + handle->offset_axes.y_axis;
-        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity + handle->offset_axes.z_axis;
+    if(dev->gain_calibrated == true && dev->offset_calibrated == true) {
+        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity * dev->gain_error_axes.x_axis + dev->offset_axes.x_axis;
+        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity * dev->gain_error_axes.y_axis + dev->offset_axes.y_axis;
+        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity * dev->gain_error_axes.z_axis + dev->offset_axes.z_axis;
+    } else if(dev->gain_calibrated == true && dev->offset_calibrated == false) {
+        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity * dev->gain_error_axes.x_axis;
+        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity * dev->gain_error_axes.y_axis;
+        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity * dev->gain_error_axes.z_axis;
+    } else if(dev->gain_calibrated == false && dev->offset_calibrated == true) {
+        axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity + dev->offset_axes.x_axis;
+        axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity + dev->offset_axes.y_axis;
+        axes_data->z_axis  = (float)raw.z_axis * gain_sensitivity + dev->offset_axes.z_axis;
     } else {
         axes_data->x_axis  = (float)raw.x_axis * gain_sensitivity;
         axes_data->y_axis  = (float)raw.y_axis * gain_sensitivity;
@@ -477,9 +513,10 @@ esp_err_t hmc5883l_get_calibrated_offsets(hmc5883l_handle_t handle, const hmc588
     hmc5883l_axes_data_t            raw_axes;
     hmc5883l_magnetic_axes_data_t   scaled_axes;
     hmc5883l_gain_error_axes_data_t gain_error_axes;
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
     ESP_ERROR_CHECK( hmc5883l_get_configuration1_register(handle, &config1) );
@@ -545,8 +582,8 @@ esp_err_t hmc5883l_get_calibrated_offsets(hmc5883l_handle_t handle, const hmc588
         gain_error_axes.y_axis = (float)((HMC5883L_XY_EXCITATION/fabs(scaled_axes.y_axis))+gain_error_axes.y_axis)/2;
         gain_error_axes.z_axis = (float)((HMC5883L_Z_EXCITATION/fabs(scaled_axes.z_axis))+gain_error_axes.z_axis)/2;
 
-        handle->gain_calibrated = true;
-        handle->gain_error_axes = gain_error_axes;
+        dev->gain_calibrated = true;
+        dev->gain_error_axes = gain_error_axes;
 
         ESP_LOGW(TAG, "Gain Offset X-Axis: %f", gain_error_axes.x_axis);
         ESP_LOGW(TAG, "Gain Offset Y-Axis: %f", gain_error_axes.y_axis);
@@ -641,8 +678,8 @@ esp_err_t hmc5883l_get_calibrated_offsets(hmc5883l_handle_t handle, const hmc588
         offset_axes.y_axis = (max_offset_axes.y_axis + min_offset_axes.y_axis) / 2;
         offset_axes.z_axis = (max_offset_axes.z_axis + min_offset_axes.z_axis) / 2;
 
-        handle->offset_calibrated = true;
-        handle->offset_axes = offset_axes;
+        dev->offset_calibrated = true;
+        dev->offset_axes = offset_axes;
 
         ESP_LOGW(TAG, "Offset X-Axis: %f", offset_axes.x_axis);
         ESP_LOGW(TAG, "Offset Y-Axis: %f", offset_axes.y_axis);
@@ -857,10 +894,12 @@ esp_err_t hmc5883l_get_gain_sensitivity(hmc5883l_handle_t handle, float *const s
 }
 
 esp_err_t hmc5883l_remove(hmc5883l_handle_t handle) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t hmc5883l_delete(hmc5883l_handle_t handle) {

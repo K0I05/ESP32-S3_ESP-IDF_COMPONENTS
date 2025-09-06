@@ -216,7 +216,7 @@ typedef struct hmc5883l_gain_error_axes_data_s {
 } hmc5883l_gain_error_axes_data_t;
 
 /**
- * @brief HMC5883L device configuration structure.
+ * @brief HMC5883L device configuration structure definition.
  */
 typedef struct hmc5883l_config_s {
     uint16_t                    i2c_address;    /*!< ens160 i2c device address */
@@ -229,33 +229,11 @@ typedef struct hmc5883l_config_s {
     float                           declination;    /*!< magnetic declination angle http://www.magnetic-declination.com/ */
 } hmc5883l_config_t;
 
-/**
- * @brief HMC5883L context structure.
- */
-struct hmc5883l_context_t {
-    hmc5883l_config_t                       dev_config;
-    i2c_master_dev_handle_t                 i2c_handle;     /*!< I2C device handle */
-    //i2c_hmc5883l_configuration1_register_t  config1_reg;
-    //i2c_hmc5883l_configuration2_register_t  config2_reg;
-    //i2c_hmc5883l_mode_register_t            mode_reg;
-    //i2c_hmc5883l_status_register_t          status_reg;
-    uint32_t                                dev_id;
-    float                                   declination;        /*!< magnetic declination angle http://www.magnetic-declination.com/ */
-    bool                                    gain_calibrated;
-    bool                                    offset_calibrated;
-    hmc5883l_offset_axes_data_t         offset_axes;
-    hmc5883l_gain_error_axes_data_t     gain_error_axes;
-};
 
 /**
- * @brief HMC5883L context structure definition.
+ * @brief HMC5883L opaque handle structure definition.
  */
-typedef struct hmc5883l_context_t hmc5883l_context_t;
-
-/**
- * @brief HMC5883L handle structure definition.
- */
-typedef struct hmc5883l_context_t *hmc5883l_handle_t;
+typedef void* hmc5883l_handle_t;
 
 
 /**
