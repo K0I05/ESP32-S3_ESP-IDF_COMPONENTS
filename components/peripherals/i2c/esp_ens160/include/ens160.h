@@ -254,26 +254,12 @@ typedef struct ens160_config_s {
     ens160_interrupt_pin_polarities_t   irq_pin_polarity;       /*!< interrupt pin polarity configuration  */
 } ens160_config_t;
 
-/**
- * @brief ENS160 context structure.
- */
-struct ens160_context_t {
-    ens160_config_t                     dev_config;             /*!< ens160 configuration */
-    i2c_master_dev_handle_t             i2c_handle;             /*!< ens160 i2c device handle */
-    uint16_t                            part_id;                /*!< ens160 part identifier */
-    //i2c_ens160_operating_modes_t            mode;               /*!< ens160 operating mode */
-    //float                                   temperature_comp;   /*!< ens160 temperature compensation in degrees Celsius */
-    //float                                   humidity_comp;      /*!< ens160 humidity compensation in percentage */
-};
+
 
 /**
- * @brief ENS160 context structure definition.
+ * @brief ENS160 opaque handle structure definition.
  */
-typedef struct ens160_context_t ens160_context_t;
-/**
- * @brief ENS160 handle structure definition.
- */
-typedef struct ens160_context_t *ens160_handle_t;
+typedef void* ens160_handle_t;
 
 
 /**
