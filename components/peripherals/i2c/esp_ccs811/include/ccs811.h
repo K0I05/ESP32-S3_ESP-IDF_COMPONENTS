@@ -213,7 +213,7 @@ typedef struct ccs811_measure_mode_row_s {
 } ccs811_measure_mode_row_t;
 
 /**
- * @brief CCS811 configuration structure.
+ * @brief CCS811 configuration structure definition.
  */
 typedef struct {
     uint16_t                 i2c_address;               /*!< ccs811 i2c device address */
@@ -232,27 +232,12 @@ typedef struct {
     float                    humidity;                   /*!< user-defined humidity environmental data */
 } ccs811_config_t;
 
-/**
- * @brief CCS811 context structure.
- */
-struct ccs811_context_t {
-    ccs811_config_t                         dev_config;             /*!< ccs811 device configuration */
-    i2c_master_dev_handle_t                 i2c_handle;             /*!< I2C device handle */
-    uint8_t                                 hardware_id;            /*!< ccs811 hardware identifier (static 0x81) */
-    uint8_t                                 hardware_version;       /*!< ccs811 hardware version (0x1X) */
-    ccs811_firmware_version_format_t        bootloader_version;     /*!< ccs811 firmware bootloader version */
-    ccs811_firmware_version_format_t        application_version;    /*!< ccs811 firmware application version */
-};
+
 
 /**
- * @brief CCS811 context structure definitions
-*/
-typedef struct ccs811_context_t ccs811_context_t;
-
-/**
- * @brief CCS811 handle structure definition.
+ * @brief CCS811 opaque handle structure definition.
  */
-typedef struct ccs811_context_t *ccs811_handle_t;
+typedef void* ccs811_handle_t;
 
 
 /**

@@ -95,6 +95,18 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief CCS811 device descriptor structure definition.
+ */
+typedef struct ccs811_device_s {
+    ccs811_config_t                         config;                 /*!< ccs811 device configuration */
+    i2c_master_dev_handle_t                 i2c_handle;             /*!< I2C device handle */
+    uint8_t                                 hardware_id;            /*!< ccs811 hardware identifier (static 0x81) */
+    uint8_t                                 hardware_version;       /*!< ccs811 hardware version (0x1X) */
+    ccs811_firmware_version_format_t        bootloader_version;     /*!< ccs811 firmware bootloader version */
+    ccs811_firmware_version_format_t        application_version;    /*!< ccs811 firmware application version */
+} ccs811_device_t;
+
 
 /*
 * static constant declarations
@@ -147,41 +159,41 @@ static const struct ccs811_measure_mode_row_s ccs811_measure_mode_definition_tab
 */
 
 /**
- * @brief CCS811 I2C read from register address transaction.  This is a write and then read process.
+ * @brief CCS811 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 register address to read from.
  * @param buffer CCS811 read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_read_from(ccs811_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t ccs811_i2c_read_from(ccs811_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief CCS811 I2C read halfword from register address transaction.
+ * @brief CCS811 I2C HAL read halfword from register address transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 register address to read from.
  * @param word CCS811 read transaction return word.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_read_word_from(ccs811_handle_t handle, const uint8_t reg_addr, uint16_t *const word) {
+static inline esp_err_t ccs811_i2c_read_word_from(ccs811_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit16_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_word_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_word_from failed" );
 
     /* set output parameter */
     *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
@@ -190,21 +202,21 @@ static inline esp_err_t ccs811_i2c_read_word_from(ccs811_handle_t handle, const 
 }
 
 /**
- * @brief CCS811 I2C read byte from register address transaction.
+ * @brief CCS811 I2C HAL read byte from register address transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 register address to read from.
  * @param byte CCS811 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_read_byte_from(ccs811_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t ccs811_i2c_read_byte_from(ccs811_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -213,78 +225,78 @@ static inline esp_err_t ccs811_i2c_read_byte_from(ccs811_handle_t handle, const 
 }
 
 /**
- * @brief CCS811 I2C write command to register address transaction.
+ * @brief CCS811 I2C HAL write command to register address transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 command register address to write to.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_write_command(ccs811_handle_t handle, const uint8_t reg_addr) {
+static inline esp_err_t ccs811_i2c_write_command(ccs811_device_t *const device, const uint8_t reg_addr) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_command, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_command, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief CCS811 I2C write transaction.
+ * @brief CCS811 I2C HAL write transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param buffer Buffer to write for write transaction.
  * @param size Length of buffer to write for write transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_write(ccs811_handle_t handle, const uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t ccs811_i2c_write(ccs811_device_t *const device, const uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief CCS811 I2C write halfword to register address transaction.
+ * @brief CCS811 I2C HAL write halfword to register address transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 register address to write to.
  * @param word CCS811 write transaction input word.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_write_word_to(ccs811_handle_t handle, const uint8_t reg_addr, const uint16_t word) {
+static inline esp_err_t ccs811_i2c_write_word_to(ccs811_device_t *const device, const uint8_t reg_addr, const uint16_t word) {
     const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)(word & 0xff), (uint8_t)((word >> 8) & 0xff) }; // register, lsb, msb
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_word_to, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_word_to, i2c write failed" );
                         
     return ESP_OK;
 }
 
 /**
- * @brief CCS811 I2C write byte to register address transaction.
+ * @brief CCS811 I2C HAL write byte to register address transaction.
  * 
- * @param handle CCS811 device handle.
+ * @param device CCS811 device descriptor.
  * @param reg_addr CCS811 register address to write to.
  * @param byte CCS811 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ccs811_i2c_write_byte_to(ccs811_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t ccs811_i2c_write_byte_to(ccs811_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_byte_to, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "ccs811_i2c_write_byte_to, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -296,14 +308,14 @@ static inline esp_err_t ccs811_i2c_write_byte_to(ccs811_handle_t handle, const u
  * @param[in] ccs811_handle CCS811 device handle.
  * @return duration in microseconds.
  */
-static inline uint64_t ccs811_get_duration_us(ccs811_handle_t handle) {
+static inline uint64_t ccs811_get_duration_us(ccs811_device_t *const device) {
     ccs811_measure_mode_register_t mmode;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_get_measure_mode_register(handle, &mmode), TAG, "read measure mode register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_get_measure_mode_register((ccs811_handle_t)device, &mmode), TAG, "read measure mode register failed" );
 
     switch (mmode.bits.drive_mode) {
         case CCS811_DRIVE_MODE_IDLE:
@@ -322,28 +334,34 @@ static inline uint64_t ccs811_get_duration_us(ccs811_handle_t handle) {
 }
 
 esp_err_t ccs811_get_status_register(ccs811_handle_t handle, ccs811_status_register_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(handle, CCS811_REG_STATUS_R, &reg->reg), TAG, "read status register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(dev, CCS811_REG_STATUS_R, &reg->reg), TAG, "read status register failed" );
     
     return ESP_OK;
 }
 
 esp_err_t ccs811_get_measure_mode_register(ccs811_handle_t handle, ccs811_measure_mode_register_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(handle, CCS811_REG_MEAS_MODE_RW, &reg->reg), TAG, "read measure mode register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(dev, CCS811_REG_MEAS_MODE_RW, &reg->reg), TAG, "read measure mode register failed" );
     
     return ESP_OK;
 }
 
 esp_err_t ccs811_set_measure_mode_register(ccs811_handle_t handle, const ccs811_measure_mode_register_t reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set reserved bits */
     ccs811_measure_mode_register_t measure_mode = { .reg = reg.reg };
@@ -351,26 +369,29 @@ esp_err_t ccs811_set_measure_mode_register(ccs811_handle_t handle, const ccs811_
     measure_mode.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_write_byte_to(handle, CCS811_REG_MEAS_MODE_RW, measure_mode.reg), TAG, "write measure mode register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_write_byte_to(dev, CCS811_REG_MEAS_MODE_RW, measure_mode.reg), TAG, "write measure mode register failed" );
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_get_error_register(ccs811_handle_t handle, ccs811_error_code_register_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(handle, CCS811_REG_ERROR_ID_R, &reg->reg), TAG, "read error identifier register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(dev, CCS811_REG_ERROR_ID_R, &reg->reg), TAG, "read error identifier register failed" );
     
     return ESP_OK;
 }
 
 esp_err_t ccs811_set_environmental_data_register(ccs811_handle_t handle, const float temperature, const float humidity) {
     bit40_uint8_buffer_t tx = { CCS811_REG_ENV_DATA_W, 0, 0, 0, 0 };
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate temperature range (-25 to 50 C) */
     ESP_RETURN_ON_FALSE(!(temperature < CCS811_TEMPERATURE_RANGE_MIN), ESP_ERR_INVALID_ARG, TAG, "Temperature must within a range of -25 to 50 degrees Celsius");
@@ -397,11 +418,11 @@ esp_err_t ccs811_set_environmental_data_register(ccs811_handle_t handle, const f
 	tx[4] = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_write(handle, tx, BIT40_UINT8_BUFFER_SIZE), TAG, "write environmental data failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_write(dev, tx, BIT40_UINT8_BUFFER_SIZE), TAG, "write environmental data failed" );
 
     /* set handle environmental data parameters */
-    handle->dev_config.humidity = humidity;
-    handle->dev_config.temperature = temperature;
+    dev->config.humidity = humidity;
+    dev->config.temperature = temperature;
 
     return ESP_OK;
 }
@@ -410,9 +431,10 @@ esp_err_t ccs811_set_thresholds_register(ccs811_handle_t handle, const uint16_t 
     bit48_uint8_buffer_t        tx                 = { CCS811_REG_THRESHOLDS_W, 0, 0, 0, 0, 0 };
     ccs811_threshold_value_t    low_to_med_value   = { .value = low_to_med };
     ccs811_threshold_value_t    med_to_high_value  = { .value = med_to_high };
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate eCO2 threshold ranges (400 to 32768) */
     ESP_RETURN_ON_FALSE(!(low_to_med >= med_to_high),           ESP_ERR_INVALID_ARG, TAG, "Low to medium threshold must be less than medium to high threshold");
@@ -430,24 +452,28 @@ esp_err_t ccs811_set_thresholds_register(ccs811_handle_t handle, const uint16_t 
     tx[5] = hysteresis;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_write(handle, tx, BIT48_UINT8_BUFFER_SIZE), TAG, "write thresholds failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_write(dev, tx, BIT48_UINT8_BUFFER_SIZE), TAG, "write thresholds failed" );
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_get_baseline_register(ccs811_handle_t handle, uint16_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
      /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_word_from(handle, CCS811_REG_BASELINE_RW, reg), TAG, "read baseline register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_word_from(dev, CCS811_REG_BASELINE_RW, reg), TAG, "read baseline register failed" );
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_set_baseline_register(ccs811_handle_t handle, const uint16_t baseline) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ccs811_i2c_write_word_to(handle, CCS811_REG_BASELINE_RW, baseline), TAG, "write baseline register failed" );
@@ -456,31 +482,37 @@ esp_err_t ccs811_set_baseline_register(ccs811_handle_t handle, const uint16_t ba
 }
 
 esp_err_t ccs811_get_hardware_identifier_register(ccs811_handle_t handle, uint8_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(handle, CCS811_REG_HW_ID_R, reg), TAG, "read hardware identifier register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(dev, CCS811_REG_HW_ID_R, reg), TAG, "read hardware identifier register failed" );
     
     return ESP_OK;
 }
 
 esp_err_t ccs811_get_hardware_version_register(ccs811_handle_t handle, uint8_t *const reg) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(handle, CCS811_REG_HW_VERSION_R, reg), TAG, "read hardware version register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_byte_from(dev, CCS811_REG_HW_VERSION_R, reg), TAG, "read hardware version register failed" );
     
     return ESP_OK;
 }
 
 esp_err_t ccs811_start_application(ccs811_handle_t handle) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+    
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_write_command(handle, CCS811_REG_APP_START_W), TAG, "write application start register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_write_command(dev, CCS811_REG_APP_START_W), TAG, "write application start register failed" );
 
     return ESP_OK;
 }
@@ -491,21 +523,21 @@ esp_err_t ccs811_start_application(ccs811_handle_t handle) {
  * @param handle 
  * @return esp_err_t 
  */
-static inline esp_err_t ccs811_init_io(ccs811_handle_t handle) {
+static inline esp_err_t ccs811_init_io(ccs811_device_t *const device) {
     gpio_config_t io_conf = {};
     uint64_t      gpio_pin_sel;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* validate and init gpio for reset and/or wake pins */
-    if(handle->dev_config.reset_io_enabled == true && handle->dev_config.wake_io_enabled == true) {
+    if(device->config.reset_io_enabled == true && device->config.wake_io_enabled == true) {
         // validate reset io num
-        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(handle->dev_config.reset_io_num), TAG, "reset gpio number is invalid, ccs811 device handle initialization failed");
+        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(device->config.reset_io_num), TAG, "reset gpio number is invalid, ccs811 device handle initialization failed");
         // validate wake io num
-        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(handle->dev_config.wake_io_num), TAG, "wake gpio number is invalid, ccs811 device handle initialization failed");
+        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(device->config.wake_io_num), TAG, "wake gpio number is invalid, ccs811 device handle initialization failed");
         // set gpio pin bit mask
-        gpio_pin_sel = ((1ULL<<handle->dev_config.reset_io_num) | (1ULL<<handle->dev_config.wake_io_num));
+        gpio_pin_sel = ((1ULL<<device->config.reset_io_num) | (1ULL<<device->config.wake_io_num));
         // interrupt disabled
         io_conf.intr_type = GPIO_INTR_DISABLE; 
         // bit mask of the pins
@@ -518,11 +550,11 @@ static inline esp_err_t ccs811_init_io(ccs811_handle_t handle) {
         io_conf.pull_up_en = 1; 
         // configure gpio with the given settings
         ESP_RETURN_ON_ERROR( gpio_config(&io_conf), TAG, "set gpio configuration for reset and wake failed" );
-    } else if(handle->dev_config.reset_io_enabled == true && handle->dev_config.wake_io_enabled == false) {
+    } else if(device->config.reset_io_enabled == true && device->config.wake_io_enabled == false) {
         // validate reset io num
-        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(handle->dev_config.reset_io_num),  TAG, "reset gpio number is invalid, ccs811 device handle initialization failed");
+        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(device->config.reset_io_num),  TAG, "reset gpio number is invalid, ccs811 device handle initialization failed");
         // set gpio pin bit mask
-        gpio_pin_sel = (1ULL<<handle->dev_config.reset_io_num);
+        gpio_pin_sel = (1ULL<<device->config.reset_io_num);
         // interrupt disabled
         io_conf.intr_type = GPIO_INTR_DISABLE; 
         // bit mask of the pins
@@ -535,11 +567,11 @@ static inline esp_err_t ccs811_init_io(ccs811_handle_t handle) {
         io_conf.pull_up_en = 1; 
         // configure gpio with the given settings
         ESP_RETURN_ON_ERROR( gpio_config(&io_conf), TAG, "set gpio configuration for reset failed" );
-    } else if(handle->dev_config.reset_io_enabled == false && handle->dev_config.wake_io_enabled == true) {
+    } else if(device->config.reset_io_enabled == false && device->config.wake_io_enabled == true) {
         // validate wake io num
-        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(handle->dev_config.wake_io_num), TAG, "wake gpio number is invalid, ccs811 device handle initialization failed");
+        ESP_RETURN_ON_ERROR(GPIO_IS_VALID_GPIO(device->config.wake_io_num), TAG, "wake gpio number is invalid, ccs811 device handle initialization failed");
         // set gpio pin bit mask
-        gpio_pin_sel = (1ULL<<handle->dev_config.wake_io_num);
+        gpio_pin_sel = (1ULL<<device->config.wake_io_num);
         // interrupt disabled
         io_conf.intr_type = GPIO_INTR_DISABLE;
         // bit mask of the pins
@@ -555,27 +587,27 @@ static inline esp_err_t ccs811_init_io(ccs811_handle_t handle) {
     }
 
     /* validate reset gpio to set io state */
-    if(handle->dev_config.reset_io_enabled == true) {
+    if(device->config.reset_io_enabled == true) {
         /* active low for reset gpio */
-        ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.reset_io_num, 1), TAG, "set reset gpio level high failed (gpio: %i)", handle->dev_config.reset_io_num );
+        ESP_RETURN_ON_ERROR( gpio_set_level(device->config.reset_io_num, 1), TAG, "set reset gpio level high failed (gpio: %i)", device->config.reset_io_num );
     }
 
     /* validate wake gpio to wake the device for i2c transactions */
-    if(handle->dev_config.wake_io_enabled == true) {
+    if(device->config.wake_io_enabled == true) {
         /* active low for wake gpio */
-        ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.wake_io_num, 0), TAG, "set wake gpio level low failed (gpio: %i)", handle->dev_config.wake_io_num );
+        ESP_RETURN_ON_ERROR( gpio_set_level(device->config.wake_io_num, 0), TAG, "set wake gpio level low failed (gpio: %i)", device->config.wake_io_num );
     }
 
     return ESP_OK;
 }
 
-static inline esp_err_t ccs811_setup(ccs811_handle_t handle) {
+static inline esp_err_t ccs811_setup(ccs811_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read status register */
     ccs811_status_register_t status_reg;
-    ESP_RETURN_ON_ERROR(ccs811_get_status_register(handle, &status_reg), TAG, "read status register failed");
+    ESP_RETURN_ON_ERROR(ccs811_get_status_register((ccs811_handle_t)device, &status_reg), TAG, "read status register failed");
 
     /* validate application firmware mode */
     if(status_reg.bits.firmware_mode != CCS811_FW_MODE_APP) {
@@ -583,35 +615,35 @@ static inline esp_err_t ccs811_setup(ccs811_handle_t handle) {
         ESP_RETURN_ON_FALSE(status_reg.bits.app_valid, ESP_ERR_INVALID_STATE, TAG, "no valid application for i2c ccs811 device");
 
         /* attempt tp switch to application mode - start application */
-        ESP_RETURN_ON_ERROR(ccs811_start_application(handle), TAG, "application start failed");
+        ESP_RETURN_ON_ERROR(ccs811_start_application((ccs811_handle_t)device), TAG, "application start failed");
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(CCS811_RESET_DELAY_MS));
 
         /* attempt to read status register */
-        ESP_RETURN_ON_ERROR(ccs811_get_status_register(handle, &status_reg), TAG, "read status register failed");
+        ESP_RETURN_ON_ERROR(ccs811_get_status_register((ccs811_handle_t)device, &status_reg), TAG, "read status register failed");
 
         /* validate application firmware mode switch */
         ESP_RETURN_ON_FALSE(status_reg.bits.firmware_mode == CCS811_FW_MODE_APP, ESP_ERR_INVALID_STATE, TAG, "unable to start application for i2c ccs811 device");
     }
 
     /* attempt to read hardware identifier */
-    ESP_RETURN_ON_ERROR(ccs811_get_hardware_identifier_register(handle, &handle->hardware_id), TAG, "read hardware identifier failed");
+    ESP_RETURN_ON_ERROR(ccs811_get_hardware_identifier_register((ccs811_handle_t)device, &device->hardware_id), TAG, "read hardware identifier failed");
 
     /* attempt to read hardware version */
-    ESP_RETURN_ON_ERROR(ccs811_get_hardware_version_register(handle, &handle->hardware_version), TAG, "read hardware version failed");
+    ESP_RETURN_ON_ERROR(ccs811_get_hardware_version_register((ccs811_handle_t)device, &device->hardware_version), TAG, "read hardware version failed");
 
     ccs811_measure_mode_register_t measure_mode_reg;
 
     /* attempt to read measure mode register */
-    ESP_RETURN_ON_ERROR(ccs811_get_measure_mode_register(handle, &measure_mode_reg), TAG, "read measure mode register failed");
+    ESP_RETURN_ON_ERROR(ccs811_get_measure_mode_register((ccs811_handle_t)device, &measure_mode_reg), TAG, "read measure mode register failed");
 
-    measure_mode_reg.bits.drive_mode             = handle->dev_config.drive_mode;
-    measure_mode_reg.bits.irq_data_ready_enabled = handle->dev_config.irq_data_ready_enabled;
-    measure_mode_reg.bits.irq_threshold_enabled  = handle->dev_config.irq_threshold_enabled;
+    measure_mode_reg.bits.drive_mode             = device->config.drive_mode;
+    measure_mode_reg.bits.irq_data_ready_enabled = device->config.irq_data_ready_enabled;
+    measure_mode_reg.bits.irq_threshold_enabled  = device->config.irq_threshold_enabled;
 
     /* attempt to write measure mode register */
-    ESP_RETURN_ON_ERROR(ccs811_set_measure_mode_register(handle, measure_mode_reg), TAG, "write measure mode register failed");
+    ESP_RETURN_ON_ERROR(ccs811_set_measure_mode_register((ccs811_handle_t)device, measure_mode_reg), TAG, "write measure mode register failed");
 
     return ESP_OK;
 }
@@ -628,37 +660,36 @@ esp_err_t ccs811_init(i2c_master_bus_handle_t master_handle, const ccs811_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, ccs811 device handle initialization failed", ccs811_config->i2c_address);
 
     /* validate memory availability for handle */
-    ccs811_handle_t out_handle;
-    out_handle = (ccs811_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ccs811 device");
+    ccs811_device_t* dev = (ccs811_device_t*)calloc(1, sizeof(ccs811_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ccs811 device");
 
     /* copy configuration */
-    out_handle->dev_config = *ccs811_config;
+    dev->config = *ccs811_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus failed");
     }
 
     /* attempt to init gpio wake and reset */
-    ESP_GOTO_ON_ERROR(ccs811_init_io(out_handle), err_handle, TAG, "init wake and reset GPIO failed");
+    ESP_GOTO_ON_ERROR(ccs811_init_io(dev), err_handle, TAG, "init wake and reset GPIO failed");
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(100));
 
     /* attempt to soft-reset */
-    ESP_GOTO_ON_ERROR(ccs811_reset(out_handle), err_handle, TAG, "soft-reset failed");
+    ESP_GOTO_ON_ERROR(ccs811_reset((ccs811_handle_t)dev), err_handle, TAG, "soft-reset failed");
 
     
     /* set device handle */
-    *ccs811_handle = out_handle;
+    *ccs811_handle = dev;
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(CCS811_APPSTART_DELAY_MS));
@@ -666,10 +697,10 @@ esp_err_t ccs811_init(i2c_master_bus_handle_t master_handle, const ccs811_config
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -680,9 +711,10 @@ esp_err_t ccs811_get_measurement(ccs811_handle_t handle, uint16_t *eco2, uint16_
     bool            data_is_ready   = false;
     bool            has_error       = false;
     bit64_uint8_buffer_t   rx              = { };
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set start time for timeout monitoring */
     start_time = esp_timer_get_time(); 
@@ -696,7 +728,7 @@ esp_err_t ccs811_get_measurement(ccs811_handle_t handle, uint16_t *eco2, uint16_
         vTaskDelay(pdMS_TO_TICKS(CCS811_DATA_READY_DELAY_MS));
 
         /* validate timeout condition */
-        if (ESP_TIMEOUT_CHECK(start_time, ccs811_get_duration_us(handle)))
+        if (ESP_TIMEOUT_CHECK(start_time, ccs811_get_duration_us(dev)))
             return ESP_ERR_TIMEOUT;
     } while (data_is_ready == false);
 
@@ -715,7 +747,7 @@ esp_err_t ccs811_get_measurement(ccs811_handle_t handle, uint16_t *eco2, uint16_
     }
 
     /* attempt i2c write and then read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_from(handle, CCS811_REG_ALG_RESULT_DATA_R, rx, BIT64_UINT8_BUFFER_SIZE), TAG, "read alg result data failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_from(dev, CCS811_REG_ALG_RESULT_DATA_R, rx, BIT64_UINT8_BUFFER_SIZE), TAG, "read alg result data failed" );
 
     /* set eco2 and etvoc values */
     *eco2  = rx[1] | (rx[0] << 8);  // big endian order (msb | lsb)
@@ -802,12 +834,13 @@ esp_err_t ccs811_get_firmware_mode(ccs811_handle_t handle, ccs811_firmware_modes
 
 esp_err_t ccs811_get_ntc_resistance(ccs811_handle_t handle, const uint32_t r_ref, uint32_t *const resistance) {
     bit32_uint8_buffer_t rx = { 0 };
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_read_from(handle, CCS811_REG_NTC_R, rx, BIT32_UINT8_BUFFER_SIZE), TAG, "read ntc register failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_read_from(dev, CCS811_REG_NTC_R, rx, BIT32_UINT8_BUFFER_SIZE), TAG, "read ntc register failed" );
 
     uint16_t v_ref = (uint16_t)(rx[0] << 8) | rx[1];
     uint16_t v_ntc = (uint16_t)(rx[2] << 8) | rx[3];
@@ -849,6 +882,7 @@ esp_err_t ccs811_get_error_status(ccs811_handle_t handle, bool *const error) {
 
 esp_err_t ccs811_reset(ccs811_handle_t handle) {
     bit40_uint8_buffer_t tx  = { 0 };
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
 
     const static uint8_t sw_reset[4] = CCS811_SW_RESET_DATA;
 
@@ -860,29 +894,31 @@ esp_err_t ccs811_reset(ccs811_handle_t handle) {
     tx[4] = sw_reset[3];
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ccs811_i2c_write(handle, tx, BIT40_UINT8_BUFFER_SIZE), TAG, "unable to write soft-reset, reset failed" );
+    ESP_RETURN_ON_ERROR( ccs811_i2c_write(dev, tx, BIT40_UINT8_BUFFER_SIZE), TAG, "unable to write soft-reset, reset failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(CCS811_RESET_DELAY_MS));
 
     /* attempt setup */
-    ESP_RETURN_ON_ERROR(ccs811_setup(handle), TAG, "unable to setup device, reset failed");
+    ESP_RETURN_ON_ERROR(ccs811_setup(dev), TAG, "unable to setup device, reset failed");
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_io_wake(ccs811_handle_t handle) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate wake io state */
-    ESP_RETURN_ON_FALSE(handle->dev_config.wake_io_enabled, ESP_ERR_INVALID_ARG, TAG, "wake gpio must be enabled");
+    ESP_RETURN_ON_FALSE(dev->config.wake_io_enabled, ESP_ERR_INVALID_ARG, TAG, "wake gpio must be enabled");
 
     /* active low for wake - set wake gpio low */
-    ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.wake_io_num, 0), TAG, "set wake gpio level low failed (gpio: %i)", handle->dev_config.wake_io_num );
+    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.wake_io_num, 0), TAG, "set wake gpio level low failed (gpio: %i)", dev->config.wake_io_num );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(CCS811_WAKE_DELAY_MS));
@@ -891,43 +927,49 @@ esp_err_t ccs811_io_wake(ccs811_handle_t handle) {
 }
 
 esp_err_t ccs811_io_sleep(ccs811_handle_t handle) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate wake io state */
-    ESP_RETURN_ON_FALSE(handle->dev_config.wake_io_enabled, ESP_ERR_INVALID_ARG, TAG, "wake gpio must be enabled");
+    ESP_RETURN_ON_FALSE(dev->config.wake_io_enabled, ESP_ERR_INVALID_ARG, TAG, "wake gpio must be enabled");
 
     /* active high for sleep - set wake gpio high */
-    ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.wake_io_num, 1), TAG, "set wake gpio level high failed (gpio: %i)", handle->dev_config.wake_io_num );
+    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.wake_io_num, 1), TAG, "set wake gpio level high failed (gpio: %i)", dev->config.wake_io_num );
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_io_reset(ccs811_handle_t handle) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate reset io state */
-    ESP_RETURN_ON_FALSE(handle->dev_config.reset_io_enabled, ESP_ERR_INVALID_ARG, TAG, "reset gpio must be enabled");
+    ESP_RETURN_ON_FALSE(dev->config.reset_io_enabled, ESP_ERR_INVALID_ARG, TAG, "reset gpio must be enabled");
 
     /* active low for reset - set reset gpio low */
-    ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.reset_io_num, 0), TAG, "set reset gpio level low failed (gpio: %i)", handle->dev_config.reset_io_num );
+    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.reset_io_num, 0), TAG, "set reset gpio level low failed (gpio: %i)", dev->config.reset_io_num );
 
     /* delay reset gpio in low state - for reset to take effect */
     vTaskDelay(pdMS_TO_TICKS(CCS811_RESET_DELAY_MS));
 
     /* set reset gpio high - normal state */
-    ESP_RETURN_ON_ERROR( gpio_set_level(handle->dev_config.reset_io_num, 1), TAG, "set reset gpio level high failed (gpio: %i)", handle->dev_config.reset_io_num );
+    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.reset_io_num, 1), TAG, "set reset gpio level high failed (gpio: %i)", dev->config.reset_io_num );
 
     return ESP_OK;
 }
 
 esp_err_t ccs811_remove(ccs811_handle_t handle) {
+    ccs811_device_t* dev = (ccs811_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t ccs811_delete(ccs811_handle_t handle) {

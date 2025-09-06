@@ -110,7 +110,7 @@ Usage:
 #define SSD1306_CMD_VERTICAL               0xA3
 
 #define SSD1306_TEXTBOX_DISPLAY_MAX_LEN	   50
-#define SSD1306_TEXT_DISPLAY_MAX_LEN	   18
+#define SSD1306_TEXT_DISPLAY_MAX_LEN	   16
 #define SSD1306_TEXT_X2_DISPLAY_MAX_LEN	   8
 #define SSD1306_TEXT_X3_DISPLAY_MAX_LEN	   5
 
@@ -160,7 +160,7 @@ typedef union ssd1306_out_column_t {
 
 
 /**
- * @brief SSD1306 I2C write transaction.
+ * @brief SSD1306 I2C HAL write transaction.
  * 
  * @param device SSD1306 device descriptor.
  * @param buffer Buffer to write for write transaction.
@@ -356,6 +356,8 @@ esp_err_t ssd1306_set_pixel(ssd1306_handle_t handle, uint8_t xpos, uint8_t ypos,
 
 	ESP_LOGD(TAG, "ypos=%d _page=%d _bits=%d wk0=0x%02x wk1=0x%02x", ypos, _page, _bits, wk0, wk1);
 
+	if (dev->config.flip_enabled) wk1 = ssd1306_rotate_byte(wk1);
+
 	if (invert) {
 		wk0 = wk0 & ~wk1;
 	} else {
@@ -377,7 +379,7 @@ esp_err_t ssd1306_set_line(ssd1306_handle_t handle, uint8_t x0, uint8_t y0, uint
 	int16_t dx, dy, sx, sy, err, e2, i, tmp; 
 
 	/* validate parameters */
-	ESP_ARG_CHECK( handle );
+	ESP_ARG_CHECK( dev );
 
 	/* Check for overflow */
 	if (x0 >= dev->width) {
@@ -634,12 +636,12 @@ esp_err_t ssd1306_enable_display(ssd1306_handle_t handle) {
 	uint8_t out_index = 0;
 
 	/* validate parameters */
-	ESP_ARG_CHECK( handle );
+	ESP_ARG_CHECK( dev );
 
 	out_buf[out_index++] = SSD1306_CONTROL_BYTE_CMD_STREAM; // 00
 	out_buf[out_index++] = SSD1306_CMD_DISPLAY_ON; // AF
 
-	ESP_RETURN_ON_ERROR(ssd1306_i2c_write(handle, out_buf, out_index), TAG, "write contrast configuration failed");
+	ESP_RETURN_ON_ERROR(ssd1306_i2c_write(dev, out_buf, out_index), TAG, "write contrast configuration failed");
 
 	/* set handle parameter */
 	dev->config.display_enabled = true;
@@ -653,12 +655,12 @@ esp_err_t ssd1306_disable_display(ssd1306_handle_t handle) {
 	uint8_t out_index = 0;
 
 	/* validate parameters */
-	ESP_ARG_CHECK( handle );
+	ESP_ARG_CHECK( dev );
 
 	out_buf[out_index++] = SSD1306_CONTROL_BYTE_CMD_STREAM; // 00
 	out_buf[out_index++] = SSD1306_CMD_DISPLAY_OFF; // AE
 
-	ESP_RETURN_ON_ERROR(ssd1306_i2c_write(handle, out_buf, out_index), TAG, "write contrast configuration failed");
+	ESP_RETURN_ON_ERROR(ssd1306_i2c_write(dev, out_buf, out_index), TAG, "write contrast configuration failed");
 
 	/* set handle parameter */
 	dev->config.display_enabled = false;
@@ -740,6 +742,7 @@ esp_err_t ssd1306_display_bitmap(ssd1306_handle_t handle, uint8_t xpos, uint8_t 
 /* this works fine for a 128x32 but the pages repeat after page 3, e.g. pages 0-3 and 4-7 are the same */
 esp_err_t ssd1306_display_bitmap__(ssd1306_handle_t handle, uint8_t xpos, uint8_t ypos, const uint8_t *bitmap, uint8_t width, uint8_t height, bool invert) {
 	ssd1306_device_t* dev = (ssd1306_device_t*)handle;
+
 	/* validate parameters */
 	ESP_ARG_CHECK( dev );
 
@@ -984,6 +987,9 @@ esp_err_t ssd1306_display_text_x3(ssd1306_handle_t handle, uint8_t page, const c
 esp_err_t ssd1306_display_textbox_banner(ssd1306_handle_t handle, uint8_t page, uint8_t segment, const char *text, uint8_t box_width, bool invert, uint8_t delay) {
 	ssd1306_device_t* dev = (ssd1306_device_t*)handle;
 
+	/* validate parameters */
+	ESP_ARG_CHECK( dev );
+
 	if (page >= dev->pages) return ESP_ERR_INVALID_SIZE;
 	uint8_t text_box_pixel = box_width * 8;
 	if (segment + text_box_pixel > dev->width) return ESP_ERR_INVALID_SIZE;
@@ -1022,6 +1028,9 @@ esp_err_t ssd1306_display_textbox_banner(ssd1306_handle_t handle, uint8_t page, 
 
 esp_err_t ssd1306_display_textbox_ticker(ssd1306_handle_t handle, uint8_t page, uint8_t segment, const char *text, uint8_t box_width, bool invert, uint8_t delay) {
 	ssd1306_device_t* dev = (ssd1306_device_t*)handle;
+
+	/* validate parameters */
+	ESP_ARG_CHECK( dev );
 
 	if (page >= dev->pages) return ESP_ERR_INVALID_SIZE;
 	uint8_t text_box_pixel = box_width * 8;
@@ -1104,7 +1113,7 @@ esp_err_t ssd1306_set_contrast(ssd1306_handle_t handle, uint8_t contrast) {
 	uint8_t out_index = 0;
 
 	/* validate parameters */
-	ESP_ARG_CHECK( handle );
+	ESP_ARG_CHECK( dev );
 
 	out_buf[out_index++] = SSD1306_CONTROL_BYTE_CMD_STREAM; // 00
 	out_buf[out_index++] = SSD1306_CMD_SET_CONTRAST; // 81
@@ -1459,7 +1468,7 @@ esp_err_t ssd1306_display_fadeout(ssd1306_handle_t handle) {
 	uint8_t image[1];
 
 	/* validate parameters */
-	ESP_ARG_CHECK( handle );
+	ESP_ARG_CHECK( dev );
 
 	for(uint8_t page = 0; page < dev->pages; page++) {
 		image[0] = 0xFF;
