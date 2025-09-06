@@ -65,7 +65,7 @@ void i2c0_mmc56x3_task( void *pvParameters ) {
             ESP_LOGI(APP_TAG, "Compass Y-Axis:  %f mG", magnetic_axes.y_axis);
             ESP_LOGI(APP_TAG, "Compass Z-Axis:  %f mG", magnetic_axes.z_axis);
             ESP_LOGI(APP_TAG, "Compass Heading: %f °", mmc56x3_convert_to_heading(magnetic_axes));
-            ESP_LOGI(APP_TAG, "True Heading:    %f °", mmc56x3_convert_to_true_heading(dev_hdl->dev_config.declination, magnetic_axes));
+            //ESP_LOGI(APP_TAG, "True Heading:    %f °", mmc56x3_convert_to_true_heading(dev_hdl->dev_config.declination, magnetic_axes));
         }
         //
         ESP_LOGI(APP_TAG, "######################## MMC56X3 - END ###########################");

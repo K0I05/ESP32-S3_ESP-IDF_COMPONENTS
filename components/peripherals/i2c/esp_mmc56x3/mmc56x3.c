@@ -88,6 +88,15 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/**
+ * @brief MMC56X3 device descriptor structure definition.
+ */
+typedef struct mmc56x3_device_s {
+    mmc56x3_config_t                config;
+    i2c_master_dev_handle_t         i2c_handle;         /*!< I2C device handle */
+    uint8_t                         product_id;             /*!< mmc56x3 product identifier */
+} mmc56x3_device_t;
+
 /*
 * static constant declarations
 */
@@ -100,41 +109,41 @@ static const char *TAG = "mmc56x3";
 
 
 /**
- * @brief MMC56X3 I2C read from register address transaction.  This is a write and then read process.
+ * @brief MMC56X3 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle MMC56X3 device handle.
+ * @param device MMC56X3 device descriptor.
  * @param reg_addr MMC56X3 register address to read from.
  * @param buffer Buffer to store results from read transaction.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t mmc56x3_i2c_read_from(mmc56x3_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t mmc56x3_i2c_read_from(mmc56x3_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "mmc56x3_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "mmc56x3_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief MMC56X3 I2C read byte from register address transaction.
+ * @brief MMC56X3 I2C HAL read byte from register address transaction.
  * 
- * @param handle MMC56X3 device handle.
+ * @param device MMC56X3 device descriptor.
  * @param reg_addr MMC56X3 register address to read from.
  * @param byte MMC56X3 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t mmc56x3_i2c_read_byte_from(mmc56x3_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t mmc56x3_i2c_read_byte_from(mmc56x3_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "mmc56x3_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "mmc56x3_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -143,31 +152,33 @@ static inline esp_err_t mmc56x3_i2c_read_byte_from(mmc56x3_handle_t handle, cons
 }
 
 /**
- * @brief MMC56X3 I2C write byte to register address transaction.
+ * @brief MMC56X3 I2C HAL write byte to register address transaction.
  * 
- * @param handle MMC56X3 device handle.
+ * @param device MMC56X3 device descriptor.
  * @param reg_addr MMC56X3 register address to write to.
  * @param byte MMC56X3 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t mmc56x3_i2c_write_byte_to(mmc56x3_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t mmc56x3_i2c_write_byte_to(mmc56x3_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
 
 esp_err_t mmc56x3_get_status_register(mmc56x3_handle_t handle, mmc56x3_status_register_t *const reg) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_STATUS_1_R, &reg->reg), TAG, "mmc56x3 read status register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_STATUS_1_R, &reg->reg), TAG, "mmc56x3 read status register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -176,15 +187,17 @@ esp_err_t mmc56x3_get_status_register(mmc56x3_handle_t handle, mmc56x3_status_re
 }
 
 esp_err_t mmc56x3_set_control0_register(mmc56x3_handle_t handle, const mmc56x3_control0_register_t reg) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set reserved to 0 */
     mmc56x3_control0_register_t control0 = { .reg = reg.reg };
     control0.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_CONTROL_0_W, control0.reg), TAG, "write control 0 register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_CONTROL_0_W, control0.reg), TAG, "write control 0 register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -193,13 +206,15 @@ esp_err_t mmc56x3_set_control0_register(mmc56x3_handle_t handle, const mmc56x3_c
 }
 
 esp_err_t mmc56x3_set_control1_register(mmc56x3_handle_t handle, const mmc56x3_control1_register_t reg) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     mmc56x3_control1_register_t control1 = { .reg = reg.reg };
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_CONTROL_1_W, control1.reg), TAG, "write control 1 register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_CONTROL_1_W, control1.reg), TAG, "write control 1 register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -208,15 +223,17 @@ esp_err_t mmc56x3_set_control1_register(mmc56x3_handle_t handle, const mmc56x3_c
 }
 
 esp_err_t mmc56x3_set_control2_register(mmc56x3_handle_t handle, const mmc56x3_control2_register_t reg) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set reserved to 0 */
     mmc56x3_control2_register_t control2 = { .reg = reg.reg };
     control2.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_CONTROL_2_W, control2.reg), TAG, "write control 2 register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_CONTROL_2_W, control2.reg), TAG, "write control 2 register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -225,11 +242,13 @@ esp_err_t mmc56x3_set_control2_register(mmc56x3_handle_t handle, const mmc56x3_c
 }
 
 esp_err_t mmc56x3_get_product_id_register(mmc56x3_handle_t handle, uint8_t *const reg) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_PRODUCT_ID_R, reg), TAG, "mmc56x3 read product identifier register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_PRODUCT_ID_R, reg), TAG, "mmc56x3 read product identifier register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -254,33 +273,32 @@ esp_err_t mmc56x3_init(i2c_master_bus_handle_t master_handle, const mmc56x3_conf
     }
 
     /* validate memory availability for handle */
-    mmc56x3_handle_t out_handle;
-    out_handle = (mmc56x3_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c mmc56x3 device, init failed");
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)calloc(1, sizeof(mmc56x3_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c mmc56x3 device, init failed");
 
     /* copy configuration */
-    out_handle->dev_config = *mmc56x3_config;
+    dev->config = *mmc56x3_config;
 
     /* set device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
 
     /* attempt to reset the device */
-    ESP_GOTO_ON_ERROR( mmc56x3_reset(out_handle), err_handle, TAG, "unable to issue soft-reset, init failed" );
+    ESP_GOTO_ON_ERROR( mmc56x3_reset((mmc56x3_handle_t)dev), err_handle, TAG, "unable to issue soft-reset, init failed" );
 
     /* set device handle */
-    *mmc56x3_handle = out_handle;
+    *mmc56x3_handle = (mmc56x3_handle_t)dev;
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_APPSTART_DELAY_MS));
@@ -288,10 +306,10 @@ esp_err_t mmc56x3_init(i2c_master_bus_handle_t master_handle, const mmc56x3_conf
     return ESP_OK;
 
     err_handle:
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
@@ -301,12 +319,13 @@ esp_err_t mmc56x3_get_temperature(mmc56x3_handle_t handle, float *const temperat
     uint64_t  start_time      = 0;
     bool      data_is_ready   = false;
     uint8_t   temp_reg;
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate mode */
-    if(handle->dev_config.continuous_mode_enabled == false) {
+    if(dev->config.continuous_mode_enabled == false) {
         /* register */
         mmc56x3_control0_register_t ctrl0;
         
@@ -334,7 +353,7 @@ esp_err_t mmc56x3_get_temperature(mmc56x3_handle_t handle, float *const temperat
     } while (data_is_ready == false);
 
     /* attempt i2c data read transactions */
-    ESP_GOTO_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_TOUT_R, &temp_reg), err, TAG, "read temperature failed" );
+    ESP_GOTO_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_TOUT_R, &temp_reg), err, TAG, "read temperature failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -355,12 +374,13 @@ esp_err_t mmc56x3_get_magnetic_axes(mmc56x3_handle_t handle, mmc56x3_magnetic_ax
     bool                            data_is_ready   = false;
     mmc56x3_control0_register_t     ctrl0;
     bit72_uint8_buffer_t            rx = { 0 };
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate mode */
-    if(handle->dev_config.continuous_mode_enabled == false) {
+    if(dev->config.continuous_mode_enabled == false) {
         /* trigger magnetic measurement */
         ctrl0.bits.sample_m = true;
 
@@ -385,7 +405,7 @@ esp_err_t mmc56x3_get_magnetic_axes(mmc56x3_handle_t handle, mmc56x3_magnetic_ax
     } while (data_is_ready == false);
 
     /* attempt i2c data write-read transactions */
-    ESP_GOTO_ON_ERROR( mmc56x3_i2c_read_from(handle, MMC56X3_REG_XOUT_0_R, rx, BIT72_UINT8_BUFFER_SIZE), err, TAG, "read magnetic axes failed" );
+    ESP_GOTO_ON_ERROR( mmc56x3_i2c_read_from(dev, MMC56X3_REG_XOUT_0_R, rx, BIT72_UINT8_BUFFER_SIZE), err, TAG, "read magnetic axes failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -453,19 +473,21 @@ esp_err_t mmc56x3_get_data_status(mmc56x3_handle_t handle, bool *const magnetic_
 }
 
 esp_err_t mmc56x3_set_measure_mode(mmc56x3_handle_t handle, const bool continuous) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* validate data rate if continuous mode is enabled */
     if(continuous == true) {
-        ESP_RETURN_ON_FALSE(handle->dev_config.data_rate > 0, ESP_ERR_INVALID_ARG, TAG, "data rate (odr) must be non-zero in continuous measurement mode, set mode failed");
+        ESP_RETURN_ON_FALSE(dev->config.data_rate > 0, ESP_ERR_INVALID_ARG, TAG, "data rate (odr) must be non-zero in continuous measurement mode, set mode failed");
     }
 
     /* registers */
     mmc56x3_control0_register_t ctrl0;
     mmc56x3_control2_register_t ctrl2;
 
-    ctrl0.bits.auto_sr_enabled = handle->dev_config.auto_sr_enabled;
+    ctrl0.bits.auto_sr_enabled = dev->config.auto_sr_enabled;
 
     if(continuous == true) {
         ctrl0.bits.continuous_freq_enabled  = true; // turn on cmm_freq_en bit
@@ -481,14 +503,16 @@ esp_err_t mmc56x3_set_measure_mode(mmc56x3_handle_t handle, const bool continuou
     /* attempt control 2 register write */
     ESP_RETURN_ON_ERROR( mmc56x3_set_control2_register(handle, ctrl2), TAG, "write control 2 register, set mode failed" );
 
-    handle->dev_config.continuous_mode_enabled = continuous;
+    dev->config.continuous_mode_enabled = continuous;
 
     return ESP_OK;
 }
 
 esp_err_t mmc56x3_set_data_rate(mmc56x3_handle_t handle, const uint16_t rate) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* register */
     mmc56x3_control2_register_t ctrl2;
@@ -526,14 +550,16 @@ esp_err_t mmc56x3_set_data_rate(mmc56x3_handle_t handle, const uint16_t rate) {
         ESP_RETURN_ON_ERROR( mmc56x3_set_control2_register(handle, ctrl2), TAG, "write control 2 register failed" );
     }
 
-    handle->dev_config.data_rate = rate;
+    dev->config.data_rate = rate;
 
     return ESP_OK;
 }
 
 esp_err_t mmc56x3_set_measure_bandwidth(mmc56x3_handle_t handle, const mmc56x3_measurement_times_t bandwidth) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy register */
     mmc56x3_control1_register_t ctrl1;
@@ -542,7 +568,7 @@ esp_err_t mmc56x3_set_measure_bandwidth(mmc56x3_handle_t handle, const mmc56x3_m
     /* attempt control 1 register write */
     ESP_RETURN_ON_ERROR( mmc56x3_set_control1_register(handle, ctrl1), TAG, "unable to write control 1 register, set measure bandwidth failed" );
 
-    handle->dev_config.measurement_bandwidth = bandwidth;
+    dev->config.measurement_bandwidth = bandwidth;
 
     return ESP_OK;
 }
@@ -569,14 +595,16 @@ esp_err_t mmc56x3_enable_periodical_set(mmc56x3_handle_t handle, const mmc56x3_m
 }
 
 esp_err_t mmc56x3_disable_periodical_set(mmc56x3_handle_t handle) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* copy registers */
     mmc56x3_control0_register_t ctrl0;
     mmc56x3_control2_register_t ctrl2;
 
-    if(handle->dev_config.auto_sr_enabled == false) {
+    if(dev->config.auto_sr_enabled == false) {
         ctrl0.bits.auto_sr_enabled = false;
     } else {
         ctrl0.bits.auto_sr_enabled = true;
@@ -612,13 +640,15 @@ esp_err_t mmc56x3_magnetic_set_reset(mmc56x3_handle_t handle) {
 }
 
 esp_err_t mmc56x3_set_selftest_thresholds(mmc56x3_handle_t handle, const mmc56x3_selftest_axes_data_t axes_data) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transactions for each axis */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_X_TH_W, axes_data.x_axis), TAG, "write self-test x-axis threshold register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_Y_TH_W, axes_data.y_axis), TAG, "write self-test y-axis threshold register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_Z_TH_W, axes_data.z_axis), TAG, "write self-test z-axis threshold register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_X_TH_W, axes_data.x_axis), TAG, "write self-test x-axis threshold register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_Y_TH_W, axes_data.y_axis), TAG, "write self-test y-axis threshold register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_Z_TH_W, axes_data.z_axis), TAG, "write self-test z-axis threshold register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -627,13 +657,15 @@ esp_err_t mmc56x3_set_selftest_thresholds(mmc56x3_handle_t handle, const mmc56x3
 }
 
 esp_err_t mmc56x3_get_selftest_set_values(mmc56x3_handle_t handle, mmc56x3_selftest_axes_data_t *const axes_data) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c read transactions for each axis */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_ST_X_SV_RW, &axes_data->x_axis), TAG, "read self-test x-axis set value register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_ST_Y_SV_RW, &axes_data->y_axis), TAG, "read self-test y-axis set value register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(handle, MMC56X3_REG_ST_Z_SV_RW, &axes_data->z_axis), TAG, "read self-test z-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_ST_X_SV_RW, &axes_data->x_axis), TAG, "read self-test x-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_ST_Y_SV_RW, &axes_data->y_axis), TAG, "read self-test y-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_read_byte_from(dev, MMC56X3_REG_ST_Z_SV_RW, &axes_data->z_axis), TAG, "read self-test z-axis set value register failed" );
     
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -642,13 +674,15 @@ esp_err_t mmc56x3_get_selftest_set_values(mmc56x3_handle_t handle, mmc56x3_selft
 }
 
 esp_err_t mmc56x3_set_selftest_set_values(mmc56x3_handle_t handle, const mmc56x3_selftest_axes_data_t axes_data) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* attempt i2c write transactions for each axis */
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_X_SV_RW, axes_data.x_axis), TAG, "write self-test x-axis set value register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_Y_SV_RW, axes_data.y_axis), TAG, "write self-test y-axis set value register failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(handle, MMC56X3_REG_ST_Z_SV_RW, axes_data.z_axis), TAG, "write self-test z-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_X_SV_RW, axes_data.x_axis), TAG, "write self-test x-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_Y_SV_RW, axes_data.y_axis), TAG, "write self-test y-axis set value register failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_i2c_write_byte_to(dev, MMC56X3_REG_ST_Z_SV_RW, axes_data.z_axis), TAG, "write self-test z-axis set value register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(MMC56X3_CMD_DELAY_MS));
@@ -657,8 +691,10 @@ esp_err_t mmc56x3_set_selftest_set_values(mmc56x3_handle_t handle, const mmc56x3
 }
 
 esp_err_t mmc56x3_reset(mmc56x3_handle_t handle) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* set register soft-reset to true */
     mmc56x3_control1_register_t ctrl1 = { .bits.sw_reset = true };
@@ -676,19 +712,21 @@ esp_err_t mmc56x3_reset(mmc56x3_handle_t handle) {
     ESP_RETURN_ON_ERROR( mmc56x3_set_measure_mode(handle, false), TAG, "disable continuous mode set failed" );
 
     /* configure the device */
-    ESP_RETURN_ON_ERROR( mmc56x3_set_measure_bandwidth(handle, handle->dev_config.measurement_bandwidth), TAG, "unable to set measure bandwidth, init failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_set_data_rate(handle, handle->dev_config.data_rate), TAG, "unable to issue soft-reset, init failed" );
-    ESP_RETURN_ON_ERROR( mmc56x3_set_measure_mode(handle, handle->dev_config.continuous_mode_enabled), TAG, "unable to set measure mode, init failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_set_measure_bandwidth(handle, dev->config.measurement_bandwidth), TAG, "unable to set measure bandwidth, init failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_set_data_rate(handle, dev->config.data_rate), TAG, "unable to issue soft-reset, init failed" );
+    ESP_RETURN_ON_ERROR( mmc56x3_set_measure_mode(handle, dev->config.continuous_mode_enabled), TAG, "unable to set measure mode, init failed" );
 
     return ESP_OK;
 }
 
 esp_err_t mmc56x3_remove(mmc56x3_handle_t handle) {
+    mmc56x3_device_t* dev = (mmc56x3_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t mmc56x3_delete(mmc56x3_handle_t handle) {

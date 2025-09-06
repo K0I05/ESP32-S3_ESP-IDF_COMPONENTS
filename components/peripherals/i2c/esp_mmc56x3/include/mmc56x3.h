@@ -176,7 +176,7 @@ typedef struct mmc56x3_selftest_axes_data_s {
 } mmc56x3_selftest_axes_data_t;
 
 /**
- * @brief MMC56X3 configuration structure.
+ * @brief MMC56X3 configuration structure definition.
  */
 typedef struct mmc56x3_config_s {
     uint16_t                        i2c_address;            /*!< mmc56x3 i2c device address */
@@ -188,23 +188,11 @@ typedef struct mmc56x3_config_s {
     float                           declination;            /*!< magnetic declination angle http://www.magnetic-declination.com/ */
 } mmc56x3_config_t;
 
-/**
- * @brief MMC56X3 context structure.
- */
-struct mmc56x3_context_t {
-    mmc56x3_config_t                dev_config;
-    i2c_master_dev_handle_t         i2c_handle;         /*!< I2C device handle */
-    uint8_t                         product_id;             /*!< mmc56x3 product identifier */
-};
 
 /**
- * @brief MMC56X3 context structure definition.
+ * @brief MMC56X3 opaque handle structure definition.
  */
-typedef struct mmc56x3_context_t mmc56x3_context_t;
-/**
- * @brief MMC56X3 handle structure definition.
- */
-typedef struct mmc56x3_context_t *mmc56x3_handle_t;
+typedef void* mmc56x3_handle_t;
 
 
 
