@@ -552,7 +552,7 @@ esp_err_t ens160_init(i2c_master_bus_handle_t master_handle, const ens160_config
     ESP_GOTO_ON_ERROR( ens160_get_part_id_register((ens160_handle_t)dev, &dev->part_id), err_handle, TAG, "read part identifier register failed" );
 
     /* set device handle */
-    *ens160_handle = dev;
+    *ens160_handle = (ens160_handle_t)dev;
 
     /* app-start task delay  */
     vTaskDelay(pdMS_TO_TICKS(ENS160_APPSTART_DELAY_MS));
@@ -576,7 +576,7 @@ esp_err_t ens160_get_measurement(ens160_handle_t handle, ens160_air_quality_data
     uint16_t                        tvoc_data;
     uint16_t                        etoh_data;
     uint16_t                        eco2_data;
-    ens160_device_t* dev = (ens160_device_t*)handle;
+    ens160_device_t*                dev             = (ens160_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( dev );
@@ -623,7 +623,7 @@ esp_err_t ens160_get_raw_measurement(ens160_handle_t handle, ens160_air_quality_
     uint64_t        start_time          = 0;
     bool            gpr_data_is_ready   = false;
     bit64_uint8_buffer_t rx             = { 0 };
-    ens160_device_t* dev = (ens160_device_t*)handle;
+    ens160_device_t* dev                = (ens160_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( dev );
