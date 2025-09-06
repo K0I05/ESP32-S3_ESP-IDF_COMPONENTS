@@ -76,6 +76,15 @@ void i2c0_at24cxxx_task( void *pvParameters ) {
         uint16_t size = 0;
         uint8_t b;
         uint8_t c;
+        at24cxxx_memory_mapping_t memory_map;
+        ret = at24cxxx_get_memory_map(dev_hdl, &memory_map);
+        if(ret != ESP_OK) {   
+            ESP_LOGE(APP_TAG, "at24cxxx device get memory map failed (%s)", esp_err_to_name(ret));
+        } else {
+            ESP_LOGI(APP_TAG, "at24cxxx device memory size: %d Kbits", memory_map.memory_size_kbits);
+            ESP_LOGI(APP_TAG, "at24cxxx device page size: %d bytes", memory_map.page_size_bytes);
+            ESP_LOGI(APP_TAG, "at24cxxx device number of pages: %d", memory_map.number_of_pages);
+        }
 
         if(count == 5) {
             ret = at24cxxx_erase(dev_hdl);
@@ -89,14 +98,14 @@ void i2c0_at24cxxx_task( void *pvParameters ) {
             i2c0_at24cxxx_setup(dev_hdl);
         }
 
-        char *data_0 = (char*)calloc(1, dev_hdl->memory_map.page_size_bytes);
+        char *data_0 = (char*)calloc(1, memory_map.page_size_bytes);
         ret = at24cxxx_read_page(dev_hdl, 0, (uint8_t*)data_0, &size);
         if(ret != ESP_OK) {   
             ESP_LOGE(APP_TAG, "at24cxxx device read page failed (%s)", esp_err_to_name(ret));
         }
         ESP_LOGI(APP_TAG, "%s", data_0);
 
-        char *data_1 = (char*)calloc(1, dev_hdl->memory_map.page_size_bytes);
+        char *data_1 = (char*)calloc(1, memory_map.page_size_bytes);
         ret = at24cxxx_read_page(dev_hdl, 64+1, (uint8_t*)data_1, &size);
         if(ret != ESP_OK) {   
             ESP_LOGE(APP_TAG, "at24cxxx device read page failed (%s)", esp_err_to_name(ret));

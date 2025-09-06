@@ -141,31 +141,26 @@ typedef struct at24cxxx_config_s {
     at24cxxx_types_t    eeprom_type;       /*!< at24cxxx EEPROM type, see `at24cxxx_eeprom_types_t` enumerator for supported EEPROM types */
 } at24cxxx_config_t;
 
-/**
- * @brief AT24CXXX context structure.
- */
-struct at24cxxx_context_t {
-    at24cxxx_config_t           dev_config;    /*!< at24cxxx device configuration */
-    i2c_master_dev_handle_t     i2c_handle;    /*!< at24cxxx i2c device handle */
-    at24cxxx_memory_mapping_t   memory_map;    /*!< at24cxxx memory map structure */
-    uint8_t                    *buffer;        /*!< at24cxxx data buffer */
-};
 
-/**
- * @brief AT24CXXX context structure definition.
- */
-typedef struct at24cxxx_context_t at24cxxx_context_t;
 
 
 /**
- * @brief AT24CXXX handle structure definition.
+ * @brief AT24CXXX opaque handle structure definition.
  */
-typedef struct at24cxxx_context_t* at24cxxx_handle_t;
+typedef void* at24cxxx_handle_t;
 
 /**
  * public function and subroutine declarations
  */
 
+/**
+ * @brief 
+ * 
+ * @param handle 
+ * @param memory_map 
+ * @return esp_err_t 
+ */
+esp_err_t at24cxxx_get_memory_map(at24cxxx_handle_t handle, at24cxxx_memory_mapping_t *const memory_map);
 
 /**
  * @brief Initializes an AT24CXXX device onto the I2C master bus.
