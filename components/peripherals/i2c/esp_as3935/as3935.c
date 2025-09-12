@@ -64,6 +64,14 @@
 #define ENSURE_TRUE(ACTION) do { BaseType_t __res = (ACTION); assert(__res == pdTRUE); (void)__res; } while (0)
 
 /**
+ * @brief AS3935 device structure definition.
+ */
+typedef struct as3935_device_s {
+    as3935_config_t             config;         /*!< as3935 configuration */
+    i2c_master_dev_handle_t     i2c_handle;     /*!< as3935 I2C device handle */
+} as3935_device_t;
+
+/**
  * @brief AS3935 monitor event base definition.
  */
 ESP_EVENT_DEFINE_BASE(ESP_AS3935_EVENT);
@@ -80,42 +88,42 @@ static const char *TAG = "as3935";
 */
 
 /**
- * @brief AS3935 I2C read from register address transaction.  This is a write and then read process.
+ * @brief AS3935 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
- * @param handle AS3935 device handle.
+ * @param device AS3935 device descriptor.
  * @param reg_addr AS3935 register address to read from.
  * @param buffer Buffer to store results from read transaction.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as3935_i2c_read_from(as3935_handle_t handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t as3935_i2c_read_from(as3935_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "as3935_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "as3935_i2c_read_from failed" );
 
     return ESP_OK;
 }
 
 
 /**
- * @brief AS3935 I2C read byte from register address transaction.
+ * @brief AS3935 I2C HAL read byte from register address transaction.
  * 
- * @param handle AS3935 device handle.
+ * @param device AS3935 device descriptor.
  * @param reg_addr AS3935 register address to read from.
  * @param byte AS3935 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as3935_i2c_read_byte_from(as3935_handle_t handle, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t as3935_i2c_read_byte_from(as3935_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as3935_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "as3935_i2c_read_byte_from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -124,21 +132,21 @@ static inline esp_err_t as3935_i2c_read_byte_from(as3935_handle_t handle, const 
 }
 
 /**
- * @brief AS3935 I2C write byte to register address transaction.
+ * @brief AS3935 I2C HAL write byte to register address transaction.
  * 
- * @param handle AS3935 device handle.
+ * @param device AS3935 device descriptor.
  * @param reg_addr AS3935 register address to write to.
  * @param byte AS3935 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as3935_i2c_write_byte_to(as3935_handle_t handle, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t as3935_i2c_write_byte_to(as3935_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
     return ESP_OK;
 }
@@ -400,58 +408,70 @@ esp_err_t as3935_monitor_remove_handler(as3935_monitor_handle_t monitor_handle, 
 }
 
 esp_err_t as3935_get_0x00_register(as3935_handle_t handle, as3935_0x00_register_t *const reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(handle, AS3935_REG_00, &reg->reg) );
+    ESP_ARG_CHECK( dev );
+
+    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(dev, AS3935_REG_00, &reg->reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_set_0x00_register(as3935_handle_t handle, const as3935_0x00_register_t reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     as3935_0x00_register_t reg_0x00 = { .reg = reg.reg };
     reg_0x00.bits.reserved = 0;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_REG_00, reg_0x00.reg) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_REG_00, reg_0x00.reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_get_0x01_register(as3935_handle_t handle, as3935_0x01_register_t *const reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(handle, AS3935_REG_01, &reg->reg) );
+    ESP_ARG_CHECK( dev );
+
+    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(dev, AS3935_REG_01, &reg->reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_set_0x01_register(as3935_handle_t handle, const as3935_0x01_register_t reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     as3935_0x01_register_t reg_0x01 = { .reg = reg.reg };
     reg_0x01.bits.reserved = 0;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_REG_01, reg_0x01.reg) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_REG_01, reg_0x01.reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_get_0x02_register(as3935_handle_t handle, as3935_0x02_register_t *const reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(handle, AS3935_REG_02, &reg->reg) );
+    ESP_ARG_CHECK( dev );
+
+    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(dev, AS3935_REG_02, &reg->reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_set_0x02_register(as3935_handle_t handle, const as3935_0x02_register_t reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     as3935_0x02_register_t reg_0x02 = { .reg = reg.reg };
     reg_0x02.bits.reserved = 0;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_REG_02, reg_0x02.reg) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_REG_02, reg_0x02.reg) );
 
     return ESP_OK;
 }
@@ -460,13 +480,14 @@ esp_err_t as3935_get_0x03_register(as3935_handle_t handle, as3935_0x03_register_
     const uint8_t rx_retry_max  = 5;
     uint8_t rx_retry_count      = 0;
     esp_err_t ret               = ESP_OK;
+    as3935_device_t* dev        = (as3935_device_t*)handle;
 
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     // retry to overcome unexpected nack
     do {
         /* attempt i2c read transaction */
-        ret = as3935_i2c_read_byte_from(handle, AS3935_REG_03, &reg->reg);
+        ret = as3935_i2c_read_byte_from(dev, AS3935_REG_03, &reg->reg);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -479,56 +500,64 @@ esp_err_t as3935_get_0x03_register(as3935_handle_t handle, as3935_0x03_register_
 }
 
 esp_err_t as3935_set_0x03_register(as3935_handle_t handle, const as3935_0x03_register_t reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     as3935_0x03_register_t reg_0x03 = { .reg = reg.reg };
     reg_0x03.bits.reserved = 0;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_REG_03, reg_0x03.reg) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_REG_03, reg_0x03.reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_get_0x08_register(as3935_handle_t handle, as3935_0x08_register_t *const reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(handle, AS3935_REG_08, &reg->reg) );
+    ESP_ARG_CHECK( dev );
+
+    ESP_ERROR_CHECK( as3935_i2c_read_byte_from(dev, AS3935_REG_08, &reg->reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_set_0x08_register(as3935_handle_t handle, const as3935_0x08_register_t reg) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     as3935_0x08_register_t reg_0x08 = { .reg = reg.reg };
     reg_0x08.bits.reserved = 0;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_REG_08, reg_0x08.reg) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_REG_08, reg_0x08.reg) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_setup(as3935_handle_t handle) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     /* set noise level threshold */
-    ESP_ERROR_CHECK( as3935_set_noise_floor_threshold(handle, handle->dev_config.noise_level_threshold) );
+    ESP_ERROR_CHECK( as3935_set_noise_floor_threshold(handle, dev->config.noise_level_threshold) );
 
     /* set analog frontend */
-    ESP_ERROR_CHECK( as3935_set_analog_frontend(handle, handle->dev_config.analog_frontend) );
+    ESP_ERROR_CHECK( as3935_set_analog_frontend(handle, dev->config.analog_frontend) );
 
     /* set minimum number of lightning strikes */
-    ESP_ERROR_CHECK( as3935_set_minimum_lightnings(handle, handle->dev_config.min_lightning_strikes) );
+    ESP_ERROR_CHECK( as3935_set_minimum_lightnings(handle, dev->config.min_lightning_strikes) );
 
     /* set disturber detection */
-    if(handle->dev_config.disturber_detection_enabled == true) {
+    if(dev->config.disturber_detection_enabled == true) {
         ESP_ERROR_CHECK( as3935_enable_disturber_detection(handle) );
     } else {
         ESP_ERROR_CHECK( as3935_disable_disturber_detection(handle) );
     }
 
     /* calibrate rco */
-    if(handle->dev_config.calibrate_rco == true) {
+    if(dev->config.calibrate_rco == true) {
         ESP_ERROR_CHECK( as3935_calibrate_rco(handle) );
     }
 
@@ -547,66 +576,71 @@ esp_err_t as3935_init(i2c_master_bus_handle_t master_handle, const as3935_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, as3935 device handle initialization failed", as3935_config->i2c_address);
 
     /* validate memory availability for handle */
-    as3935_handle_t out_handle;
-    out_handle = (as3935_handle_t)calloc(1, sizeof(*out_handle));
-    ESP_GOTO_ON_FALSE(out_handle, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as3935 device");
+    as3935_device_t* dev = (as3935_device_t*)calloc(1, sizeof(as3935_device_t));
+    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as3935 device");
 
     /* copy configuration */
-    out_handle->dev_config = *as3935_config;
+    dev->config = *as3935_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = out_handle->dev_config.i2c_address,
-        .scl_speed_hz       = out_handle->dev_config.i2c_clock_speed,
+        .device_address     = dev->config.i2c_address,
+        .scl_speed_hz       = dev->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (out_handle->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &out_handle->i2c_handle), err_handle, TAG, "i2c new bus failed");
+    if (dev->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus failed");
     }
 
     /* set up */
-    ESP_ERROR_CHECK( as3935_setup(out_handle) );
+    ESP_ERROR_CHECK( as3935_setup((as3935_handle_t)dev) );
 
     /* set device handle */
-    *as3935_handle = out_handle;
+    *as3935_handle = (as3935_handle_t)dev;
 
     return ESP_OK;
 
     err_handle:
         /* clean up handle instance */
-        if (out_handle && out_handle->i2c_handle) {
-            i2c_master_bus_rm_device(out_handle->i2c_handle);
+        if (dev && dev->i2c_handle) {
+            i2c_master_bus_rm_device(dev->i2c_handle);
         }
-        free(out_handle);
+        free(dev);
     err:
         return ret;
 }
 
 esp_err_t as3935_register_isr(as3935_handle_t handle, const as3935_isr_t isr) {
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_RETURN_ON_ERROR( gpio_isr_handler_add(handle->dev_config.irq_io_num, ((gpio_isr_t) * (isr)), ((void *) handle)), TAG, "isr handler add failed" );
-    ESP_RETURN_ON_ERROR( gpio_intr_enable(handle->dev_config.irq_io_num), TAG, "interrupt enable failed" );
+    /* validate arguments */
+    ESP_ARG_CHECK( dev );
+
+    ESP_RETURN_ON_ERROR( gpio_isr_handler_add(dev->config.irq_io_num, ((gpio_isr_t) * (isr)), ((void *) handle)), TAG, "isr handler add failed" );
+    ESP_RETURN_ON_ERROR( gpio_intr_enable(dev->config.irq_io_num), TAG, "interrupt enable failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_reset_to_defaults(as3935_handle_t handle) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_CMD_PRESET_DEFAULT, AS3935_REG_RST) );
+    ESP_ARG_CHECK( dev );
+
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_CMD_PRESET_DEFAULT, AS3935_REG_RST) );
 
     return ESP_OK;
 }
 
 esp_err_t as3935_calibrate_rco(as3935_handle_t handle) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
+
+    ESP_ARG_CHECK( dev );
 
     ESP_ERROR_CHECK( as3935_disable_power(handle) );
-    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(handle, AS3935_CMD_CALIB_RCO, AS3935_REG_RST) );
+    ESP_ERROR_CHECK( as3935_i2c_write_byte_to(dev, AS3935_CMD_CALIB_RCO, AS3935_REG_RST) );
 
     ESP_ERROR_CHECK( as3935_set_display_oscillator_on_irq(handle, AS3935_OSCILLATOR_SYSTEM_RC, true));
     vTaskDelay(pdMS_TO_TICKS(AS3935_CALIBRATION_DELAY_MS));
@@ -1028,9 +1062,11 @@ esp_err_t as3935_get_lightning_event(as3935_handle_t handle, as3935_lightning_di
 }
 
 esp_err_t as3935_remove(as3935_handle_t handle) {
-    ESP_ARG_CHECK( handle );
+    as3935_device_t* dev = (as3935_device_t*)handle;
 
-    return i2c_master_bus_rm_device(handle->i2c_handle);
+    ESP_ARG_CHECK( dev );
+
+    return i2c_master_bus_rm_device(dev->i2c_handle);
 }
 
 esp_err_t as3935_delete(as3935_handle_t handle) {

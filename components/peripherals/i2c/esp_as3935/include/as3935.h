@@ -343,7 +343,7 @@ typedef union __attribute__((packed)) as3935_0x08_register_u {
 
 
 /**
- * @brief I2C AS3935 device configuration structure.
+ * @brief AS3935 device configuration structure definition.
  */
 typedef struct as3935_config_s {
     uint16_t                            i2c_address;                /*!< as3935 i2c device address */
@@ -357,23 +357,11 @@ typedef struct as3935_config_s {
     as3935_noise_levels_t               noise_level_threshold;      /*!< as3935 noise level threshold */
 } as3935_config_t;
 
-/**
- * @brief I2C AS3935 device handle structure.
- */
-struct as3935_context_t {
-    as3935_config_t             dev_config;     /*!< as3935 configuration */
-    i2c_master_dev_handle_t     i2c_handle;     /*!< as3935 I2C device handle */
-};
 
 /**
- * @brief AS3935 context structure definition.
+ * @brief AS3935 opaque handle structure definition.
 */
-typedef struct as3935_context_t as3935_context_t;
-
-/**
- * @brief AS3935 handle structure definition.
-*/
-typedef struct as3935_context_t *as3935_handle_t;
+typedef void* as3935_handle_t;
 
 typedef gpio_isr_t as3935_isr_t;
 
