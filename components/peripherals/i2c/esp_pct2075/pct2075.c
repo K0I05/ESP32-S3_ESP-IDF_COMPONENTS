@@ -512,13 +512,12 @@ esp_err_t pct2075_set_sampling_period(pct2075_handle_t handle, const uint16_t pe
 
 esp_err_t pct2075_get_operation_mode(pct2075_handle_t handle, pct2075_os_operation_modes_t *const operation_mode) {
     pct2075_config_register_t cfg_reg;
-    pct2075_device_t* dev = (pct2075_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( handle );
 
     /* read configuration register */
-    ESP_RETURN_ON_ERROR( pct2075_get_config_register(dev, &cfg_reg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( pct2075_get_config_register(handle, &cfg_reg), TAG, "read configuration register failed" );
 
     /* set operation mode */
     if(cfg_reg.bits.operation_mode == PCT2075_OS_OP_MODE_COMPARATOR) {
