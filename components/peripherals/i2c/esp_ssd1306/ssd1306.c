@@ -364,8 +364,6 @@ esp_err_t ssd1306_set_pixel(ssd1306_handle_t handle, uint8_t xpos, uint8_t ypos,
 		wk0 = wk0 | wk1;
 	}
 
-	if (dev->config.flip_enabled) wk0 = ssd1306_rotate_byte(wk0);
-
 	ESP_LOGD(TAG, "wk0=0x%02x wk1=0x%02x", wk0, wk1);
 
 	dev->page[_page].segment[_seg] = wk0;
