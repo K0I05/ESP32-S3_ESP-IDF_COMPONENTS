@@ -364,7 +364,7 @@ esp_err_t ssd1306_set_pixel(ssd1306_handle_t handle, uint8_t xpos, uint8_t ypos,
 		wk0 = wk0 | wk1;
 	}
 
-	//if (dev->config.flip_enabled) wk0 = ssd1306_rotate_byte(wk0);  // skarasov - Coz you rotating screen memory every time you put pixel in that col.
+	//if (dev->config.flip_enabled) wk0 = ssd1306_rotate_byte(wk0);  // Coz you rotating screen memory every time you put pixel in that col.
 
 	ESP_LOGD(TAG, "wk0=0x%02x wk1=0x%02x", wk0, wk1);
 
