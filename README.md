@@ -10,7 +10,7 @@
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/42b4880722c54bd788702ac6ce2618be)](https://app.codacy.com/gh/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/graphs/commit-activity)
 
-Thanks for visiting and hope you find something useful.  This repository is a library of peripheral, scheduling, storage, and utility components that are compatible with the ESP32 espressif IoT development framework (esp-idf).  The code base is maintained as well as one person can manage in their spare time. The development environment is under Visual Studio Code with the PlatformIO (6.1.18) and ESP-IDF (v5.4.0) extensions.  There is always room for improvement to optimize the code base and open to suggestions.
+Thanks for visiting and hope you find something useful.  This repository is a library of peripheral, scheduling, storage, and utility components compatible with the ESP32 espressif IoT development framework (esp-idf).  The code base is maintained as well as one person can manage in their spare time. The development environment is under Visual Studio Code with the PlatformIO (6.1.18) and ESP-IDF (v5.4.0) extensions.  There is always room for improvement to optimize the codebase and open to suggestions.
 
 ## ESP32-S3 Components
 

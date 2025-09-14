@@ -128,12 +128,18 @@ typedef struct sht4x_config_s {
     sht4x_heater_modes_t heater_mode;       /*!< sht4x measurement heater mode setting */
 } sht4x_config_t;
 
-
+typedef struct sht4x_data_s {
+    float temperature;    /*!< temperature in degree Celsius */
+    float humidity;       /*!< relative humidity in percentage */
+    float dewpoint;       /*!< calculated dewpoint temperature in degree Celsius */
+} sht4x_data_t;
 
 /**
  * @brief SHT4X opaque handle structure definition.
  */
 typedef void* sht4x_handle_t;
+
+
 
 
 /**
@@ -161,15 +167,24 @@ esp_err_t sht4x_init(const i2c_master_bus_handle_t master_handle, const sht4x_co
 esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature, float *const humidity);
 
 /**
- * @brief Similar to `i2c_sht4x_read_measurement` but it includes the dewpoint temperature in the results.
+ * @brief Similar to `i2c_sht4x_read_measurement` but it includes the dew-point temperature in the results.
  *
  * @param[in] handle SHT4X device handle.
  * @param[out] temperature Temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
- * @param[out] dewpoint Calculated dewpoint temperature in degree Celsius.
+ * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint);
+
+/**
+ * @brief Reads measurements from SHT4X into a `sht4x_data_t` structure.  This is a blocking function.
+ * 
+ * @param handle SHT4X device handle.
+ * @param data Data structure that contains temperature, humidity and dew-point measurements.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t sht4x_get_data(sht4x_handle_t handle, sht4x_data_t *const data);
 
 /**
  * @brief Reads measurement repeatability mode setting from SHT4X.
