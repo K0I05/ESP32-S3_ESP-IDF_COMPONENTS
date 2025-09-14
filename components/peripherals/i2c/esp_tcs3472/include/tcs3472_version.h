@@ -47,7 +47,7 @@ extern "C" {
  * public constant definitions
  */
 
-#define TCS3472_COMPONENT_NAME              "esp_veml6040"
+#define TCS3472_COMPONENT_NAME              "esp_tcs3472"
 /** Version release date  */
 #define TCS3472_FW_VERSION_DATE             "2025-06-07"
 /** Major version number (X.x.x) */

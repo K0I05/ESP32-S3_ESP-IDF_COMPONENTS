@@ -35,6 +35,7 @@ list(APPEND EXTRA_COMPONENT_DIRS
     "components/peripherals/i2c/esp_sgp4x"
     "components/peripherals/i2c/esp_sht4x"
     "components/peripherals/i2c/esp_ssd1306"
+    "components/peripherals/i2c/esp_tcs3472"
     "components/peripherals/i2c/esp_tlv493d"
     "components/peripherals/i2c/esp_veml6040"
     "components/peripherals/i2c/esp_veml7700"

@@ -1,0 +1,25 @@
+{
+  "name": "esp_tcs3472",
+  "keywords": "esp32, espressif, espidf, red, green, blue, clear, RGBC, i2c, tcs3472, osram",
+  "description": "ESP32 espressif IoT development framework (esp-idf) compatible component for OSRAM TCS3472 colour light-to-digital converter I2C sensor.",
+  "authors": [
+    {
+      "name": "Eric Gionet",
+      "email": "gionet.c.eric@gmail.com",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_tcs3472"
+  },
+  "homepage": "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS",
+  "version": "@GIT_SEM_VERSION@",
+  "license": "MIT",
+  "frameworks": "espidf",
+  "platforms": "espressif32",
+  "headers": "tcs3472.h",
+  "dependencies": {
+    "k0i05/esp_type_utils": ">=1.0.0"
+  }
+}

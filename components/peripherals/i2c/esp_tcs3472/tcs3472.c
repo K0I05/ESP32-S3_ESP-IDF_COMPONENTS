@@ -38,6 +38,7 @@
 #include <math.h>
 #include <esp_log.h>
 #include <esp_check.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -81,6 +82,7 @@
  * macro definitions
 */
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
+#define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 
 /**
  * @brief TCS3472 device descriptor structure definition.
@@ -195,7 +197,6 @@ static inline size_t tcs3472_get_total_wait_time_ms(tcs3472_device_t *const devi
     const float time_step = 2.4f;
     float wlong_multiplier = 1.0f;
     uint8_t atime_step = time_step;
-    uint8_t atime_step;
     uint8_t wtime_step;
     tcs3472_config_register_t config;
 
@@ -210,7 +211,7 @@ static inline size_t tcs3472_get_total_wait_time_ms(tcs3472_device_t *const devi
     ESP_RETURN_ON_ERROR( tcs3472_get_wtime_register((tcs3472_handle_t)device, &wtime_step), TAG, "read wtime register failed" );
 
     /* attempt to read device configuration register */
-    ESP_RETURN_ON_ERROR( tcs3472_get_config_register((tcs3472_handle_t)device, &config.reg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_config_register((tcs3472_handle_t)device, &config), TAG, "read configuration register failed" );
 
     /* validate wait long time multiplier */
     if(config.bits.long_wait_enabled) {
@@ -399,7 +400,7 @@ esp_err_t tcs3472_get_atime_register(tcs3472_handle_t handle, uint8_t *const reg
     ESP_ARG_CHECK( dev && reg );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_read_byte_from(dev, TCS3472_REG_ATIME_RW, &reg), TAG, "read atime register failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_read_byte_from(dev, TCS3472_REG_ATIME_RW, reg), TAG, "read atime register failed" );
 
     return ESP_OK;
 }
@@ -423,7 +424,7 @@ esp_err_t tcs3472_get_wtime_register(tcs3472_handle_t handle, uint8_t *const reg
     ESP_ARG_CHECK( dev && reg );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_read_byte_from(dev, TCS3472_REG_WTIME_RW, &reg), TAG, "read wtime register failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_read_byte_from(dev, TCS3472_REG_WTIME_RW, reg), TAG, "read wtime register failed" );
 
     return ESP_OK;
 }
@@ -733,7 +734,7 @@ esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time) {
     wtime = 256 - (time / (2.4f * wlong_multiplier));
 
     /* attempt to write wtime register */
-    ESP_RETURN_ON_ERROR( tcs3472_set_wtime_register(handle, &wtime), TAG, "write wtime register failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_set_wtime_register(handle, wtime), TAG, "write wtime register failed" );
 
     return ESP_OK;
 }

@@ -1,0 +1,26 @@
+version: "@GIT_SEM_VERSION@"
+license: "MIT"
+description: "ESP32 espressif IoT development framework (esp-idf) compatible component for OSRAM TCS3472 colour light-to-digital converter I2C sensor."
+url: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_tcs3472"
+repository: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS.git"
+registry_url: "https://components.espressif.com"
+documentation: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/blob/main/components/peripherals/i2c/esp_tcs3472/README.md"
+tags:
+- osram
+- tcs3472
+- rgbc
+- red
+- green
+- blue
+- clear
+- i2c
+- espidf
+- esp32
+dependencies:
+  idf:
+    version: ">5.3.0"
+  k0i05/esp_type_utils:
+    version: ">=1.0.0"
+    override_path: "../../" # use component in a local directory, not from registry
+maintainers:
+- Eric Gionet <gionet.c.eric@gmail.com>
