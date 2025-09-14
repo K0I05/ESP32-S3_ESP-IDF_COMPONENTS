@@ -79,7 +79,7 @@ const char* pressure_tendency_code_to_string(const pressure_tendency_codes_t cod
 /**
  * @brief Initializes a pressure tendency handle by sampling interval of the 3-hr or 6-hr samples 
  * to analyze.  The size of the samples is calculated from the sampling interval in seconds.  
- * As an example, if the sampling rate is once every minute, the 
+ * As an example, if the sampling interval is once every minute, the 
  * size of the samples buffer should be 180 e.g., three (3) hours.
  * 
  * @param sampling_interval Pressure tendency sampling interval in seconds. 
@@ -98,8 +98,8 @@ esp_err_t pressure_tendency_init(const uint16_t sampling_interval,
  * @param pressure_tendency_handle Pressure tendency handle.
  * @param sample Air pressure sample, in millibars or hecto-pascal, to push onto the samples stack.
  * @param code Pressure tendency code of three (3) or six (6) hour analysis.  Pressure
- * tendency code `PRESSURE_TENDENCY_UNKNOWN` is reported when there is an 
- * insufficient number of samples to analyze.
+ * tendency code `PRESSURE_TENDENCY_UNKNOWN` is reported when the pressure tendency is unknown and 
+ * `PRESSURE_TENDENCY_TRAINING` is reported when there is an insufficient number of samples to analyze.
  * @param change Pressure tendency variance over the past three (3) or six (6) hours.
  * @return esp_err_t ESP_OK on success.
  */
