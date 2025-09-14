@@ -66,9 +66,9 @@
  * @brief MUX4052A device descriptor structure definition.
  */
 typedef struct mux4052a_device_s {
-    mux4052a_config_t       config;             /*!< mux4052a device configuration */
-    bool                    enabled;            /*!< mux4052a uart input state, input is enabled when true */
-    mux4052a_channels_t     channel_state;      /*!< mux4052a channel number */
+    mux4052a_config_t       config;       /*!< mux4052a device configuration */
+    bool                    enabled;      /*!< mux4052a uart input state, input is enabled when true */
+    mux4052a_channels_t     channel;      /*!< mux4052a channel number */
 } mux4052a_device_t;
 
 /**
@@ -88,7 +88,7 @@ static inline esp_err_t mux4052a_set_serial_port(mux4052a_device_t *const device
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    if(device->channel_state == channel) {
+    if(device->channel == channel) {
         return ESP_OK;
     }
 
@@ -96,22 +96,22 @@ static inline esp_err_t mux4052a_set_serial_port(mux4052a_device_t *const device
         case MUX4052A_CHANNEL_0:
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_a_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "set channel control a gpio low failed" );
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_b_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "set channel control b gpio low failed" );
-            device->channel_state = MUX4052A_CHANNEL_0;
+            device->channel = MUX4052A_CHANNEL_0;
             break;
         case MUX4052A_CHANNEL_1:
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_a_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "set channel control a gpio high failed" );
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_b_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "set channel control b gpio low failed" );
-            device->channel_state = MUX4052A_CHANNEL_1;
+            device->channel = MUX4052A_CHANNEL_1;
             break;
         case MUX4052A_CHANNEL_2:
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_a_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "set channel control a gpio low failed" );
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_b_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "set channel control b gpio high failed" );
-            device->channel_state = MUX4052A_CHANNEL_2;
+            device->channel = MUX4052A_CHANNEL_2;
             break;
         case MUX4052A_CHANNEL_3:
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_a_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "set channel control a gpio high failed" );
             ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_cntrl_b_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "set channel control b gpio high failed" );
-            device->channel_state = MUX4052A_CHANNEL_3;
+            device->channel = MUX4052A_CHANNEL_3;
             break;
         default:
             ESP_RETURN_ON_ERROR( ESP_ERR_INVALID_ARG, TAG, "invalid mux uart port number" );
@@ -223,7 +223,7 @@ esp_err_t mux4052a_set_channel(mux4052a_handle_t handle, const mux4052a_channels
     ESP_RETURN_ON_ERROR( mux4052a_set_serial_port(dev, channel), TAG, "Unable to set channel, set channel failed" );
 
     /* set port state */
-    dev->channel_state = channel;
+    dev->channel = channel;
 
     return ESP_OK;
 }
@@ -235,7 +235,7 @@ esp_err_t mux4052a_get_channel(mux4052a_handle_t handle, mux4052a_channels_t *co
     ESP_ARG_CHECK( dev );
 
     /* set port state */
-    *channel = dev->channel_state;
+    *channel = dev->channel;
 
     return ESP_OK;
 }
