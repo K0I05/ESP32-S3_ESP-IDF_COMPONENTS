@@ -48,11 +48,11 @@ extern "C" {
  * @brief Pressure tendency codes enumerator.
  */
 typedef enum pressure_tendency_codes_tag {
-    PRESSURE_TENDENCY_CODE_UNKNOWN   = 1,  /*!< unknown */
-    PRESSURE_TENDENCY_CODE_RISING    = 2,  /*!< rising  */
-    PRESSURE_TENDENCY_CODE_STEADY    = 3,  /*!< steady  */
-    PRESSURE_TENDENCY_CODE_FALLING   = 4,  /*!< falling  */
-    PRESSURE_TENDENCY_CODE_TRAINING  = 5   /*!< training  */
+    PRESSURE_TENDENCY_CODE_UNKNOWN   = 1,  /*!< pressure tendency is unknown */
+    PRESSURE_TENDENCY_CODE_RISING    = 2,  /*!< pressure tendency is rising  */
+    PRESSURE_TENDENCY_CODE_STEADY    = 3,  /*!< pressure tendency is steady  */
+    PRESSURE_TENDENCY_CODE_FALLING   = 4,  /*!< pressure tendency is falling  */
+    PRESSURE_TENDENCY_CODE_TRAINING  = 5   /*!< pressure tendency is training  */
 } pressure_tendency_codes_t;
 
 /**
