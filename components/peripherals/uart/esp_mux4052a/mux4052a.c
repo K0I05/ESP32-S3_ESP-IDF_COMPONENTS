@@ -169,7 +169,7 @@ static inline esp_err_t mux4052a_uart_init(mux4052a_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     // set serial port
-    uart_config_t uart_config = (uart_config_t) { 
+    const uart_config_t uart_config = (uart_config_t) { 
         .baud_rate  = device->config.uart_baud_rate,
         .data_bits  = device->config.uart_data_bits,
         .parity     = device->config.uart_parity,
