@@ -146,7 +146,7 @@ static inline esp_err_t bmp280_i2c_read_from(bmp280_device_t *const device, cons
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to read from.
- * @param word BMP280 read transaction return halfword.
+ * @param word BMP280 read transaction return word.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
