@@ -568,7 +568,7 @@ esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_conf
     vTaskDelay(pdMS_TO_TICKS(TCS3472_CMD_DELAY_MS));
 
     /* attempt to reset the device and initialize registers */
-    ESP_GOTO_ON_ERROR(tcs3472_setup((tcs3472_handle_t)dev), err_handle, TAG, "setup registers for init failed");
+    ESP_GOTO_ON_ERROR(tcs3472_setup(dev), err_handle, TAG, "setup registers for init failed");
 
     /* set output parameter */
     *tcs3472_handle = (tcs3472_handle_t)dev;
