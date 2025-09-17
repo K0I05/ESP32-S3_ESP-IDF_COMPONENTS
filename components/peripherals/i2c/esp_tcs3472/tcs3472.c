@@ -260,7 +260,7 @@ static inline esp_err_t tcs3472_i2c_write_byte_to(tcs3472_device_t *const device
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_write_word_to(tcs3472_device_t *const device, const uint8_t reg_addr, const uint16_t word) {
-    const bit24_uint8_buffer_t tx = { reg_addr, word, word >> 8 };
+    const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)word, (uint8_t)word >> 8 };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
