@@ -87,8 +87,19 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 
+/*
+ * TCS3472 enumerator and structure declarations
+*/
 
-
+/**
+ * @brief TCS3472 channels enumerator definition.
+ */
+typedef enum tcs3472_channels_e {
+    TCS3472_CHANNEL_RED   = 1,  /*!< red channel  */
+    TCS3472_CHANNEL_GREEN = 2,  /*!< green channel */
+    TCS3472_CHANNEL_BLUE  = 3,  /*!< blue channel  */
+    TCS3472_CHANNEL_CLEAR = 4   /*!< clear channel */
+} tcs3472_channels_t;
 
 /**
  * @brief TCS3472 enable register (0x00) structure definition.  The reset state is 0x00 for this register.
@@ -498,7 +509,7 @@ static inline esp_err_t tcs3472_i2c_get_threshold_hi_register(tcs3472_device_t *
  * @brief TCS3472 I2C HAL write clear channel high threshold register.
  * 
  * @param[in] device TCS3472 device descriptor.
- * @param[in] reg clear channel high threshold register.
+ * @param[in] reg Clear channel high threshold register.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_set_threshold_hi_register(tcs3472_device_t *const device, const uint16_t reg) {
@@ -532,7 +543,7 @@ static inline esp_err_t tcs3472_i2c_get_threshold_lo_register(tcs3472_device_t *
  * @brief TCS3472 I2C HAL write clear channel low threshold register.
  * 
  * @param[in] device TCS3472 device descriptor.
- * @param[in] reg clear channel low threshold register.
+ * @param[in] reg Clear channel low threshold register.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_set_threshold_lo_register(tcs3472_device_t *const device, const uint16_t reg) {
@@ -609,7 +620,7 @@ static inline float tcs3472_convert_steps_to_time(const uint8_t steps, const boo
 }
 
 /**
- * @brief Gets calculated total wait time (initialization, integration time and wait time) in milliseconds from TCS3472.
+ * @brief Gets total wait time (initialization, integration time and wait time) in milliseconds from TCS3472.
  * 
  * @param device TCS3472 device descriptor.
  * @return float Total wait time (initialization, integration time and wait time) in milliseconds.
@@ -651,8 +662,6 @@ static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
     tcs3472_config_register_t       config;
     tcs3472_persistence_register_t  persist;
     tcs3472_control_register_t      control;
-    //uint16_t                        irq_high_threshold;
-    //uint16_t                        irq_low_threshold;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -702,7 +711,7 @@ static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
     /* attempt to write control register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_control_register(device, control), TAG, "write control register failed" );
 
-    /* attempt to write high and low thresholds */
+    /* attempt to write high and low threshold registers */
     if(device->config.set_irq_thresholds) {
         ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_hi_register(device, device->config.irq_high_threshold), TAG, "write high irq threshold failed" );
         ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_lo_register(device, device->config.irq_low_threshold), TAG, "write low irq threshold failed" );
@@ -847,16 +856,16 @@ esp_err_t tcs3472_get_channels_count(tcs3472_handle_t handle, tcs3472_channels_d
     ESP_ARG_CHECK( handle && data );
 
     /* attempt to read red channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &data->red), TAG, "read red channel count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &data->red), TAG, "read red channel count for get channels count failed" );
 
     /* attempt to read green channel count */ 
-    ESP_RETURN_ON_ERROR( tcs3472_get_green_channel_count(handle, &data->green), TAG, "read green channel count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_green_channel_count(handle, &data->green), TAG, "read green channel count for get channels count failed" );
 
     /* attempt to read blue channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_blue_channel_count(handle, &data->blue), TAG, "read blue channel count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_blue_channel_count(handle, &data->blue), TAG, "read blue channel count for get channels count failed" );
 
     /* attempt to read clear channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &data->clear), TAG, "read clear channel count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &data->clear), TAG, "read clear channel count for get channels count failed" );
 
     return ESP_OK;
 }

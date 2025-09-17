@@ -103,16 +103,6 @@ typedef enum tcs3472_gain_controls_e {
 } tcs3472_gain_controls_t;
 
 /**
- * @brief TCS3472 channels enumerator definition.
- */
-typedef enum tcs3472_channels_e {
-    TCS3472_CHANNEL_RED   = 1,  /*!< red channel  */
-    TCS3472_CHANNEL_GREEN = 2,  /*!< green channel */
-    TCS3472_CHANNEL_BLUE  = 3,  /*!< blue channel  */
-    TCS3472_CHANNEL_CLEAR = 4   /*!< clear channel */
-} tcs3472_channels_t;
-
-/**
  * @brief TCS3472 device configuration structure definition.
  */
 typedef struct tcs3472_config_s {
