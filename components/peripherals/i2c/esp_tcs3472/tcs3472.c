@@ -236,8 +236,8 @@ static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
     tcs3472_config_register_t       config;
     tcs3472_persistence_register_t  persist;
     tcs3472_control_register_t      control;
-    uint16_t                        irq_high_threshold;
-    uint16_t                        irq_low_threshold;
+    //uint16_t                        irq_high_threshold;
+    //uint16_t                        irq_low_threshold;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -312,7 +312,7 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     esp_err_t ret            = ESP_OK;
     uint64_t  start_time     = esp_timer_get_time();
     bool      data_is_ready  = false;
-    uint8_t   hi_reg;
+    //uint8_t   hi_reg;
     uint8_t   lo_reg;
     //bit8_uint8_buffer_t rx_hi_byte;
     //bit8_uint8_buffer_t rx_lo_byte;
@@ -327,19 +327,19 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     /* set high and low data registers by RGBC channel type */
     switch(channel) {
         case TCS3472_CHANNEL_RED:
-            hi_reg = TCS3472_REG_RDATAH_R;
+            //hi_reg = TCS3472_REG_RDATAH_R;
             lo_reg = TCS3472_REG_RDATAL_R;
             break;
         case TCS3472_CHANNEL_GREEN:
-            hi_reg = TCS3472_REG_GDATAH_R;
+            //hi_reg = TCS3472_REG_GDATAH_R;
             lo_reg = TCS3472_REG_GDATAL_R;
             break;
         case TCS3472_CHANNEL_BLUE:
-            hi_reg = TCS3472_REG_BDATAH_R;
+            //hi_reg = TCS3472_REG_BDATAH_R;
             lo_reg = TCS3472_REG_BDATAL_R;  
             break;
         case TCS3472_CHANNEL_CLEAR:
-            hi_reg = TCS3472_REG_CDATAH_R;
+            //hi_reg = TCS3472_REG_CDATAH_R;
             lo_reg = TCS3472_REG_CDATAL_R;
             break;
         default:
