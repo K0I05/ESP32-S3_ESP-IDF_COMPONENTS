@@ -44,7 +44,7 @@ Once a driver instance is instantiated the sensor is ready for usage as shown in
 
 void i2c0_tcs3472_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t       last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
     tcs3472_config_t dev_cfg          = I2C_TCS3472_CONFIG_DEFAULT;
@@ -76,4 +76,4 @@ void i2c0_tcs3472_task( void *pvParameters ) {
 }
 ```
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

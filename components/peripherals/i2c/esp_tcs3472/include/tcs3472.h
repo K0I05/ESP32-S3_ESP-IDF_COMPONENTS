@@ -26,7 +26,7 @@
  * @defgroup drivers tcs3472
  * @{
  *
- * ESP-IDF driver for tcs3472 RGB sensor
+ * ESP-IDF driver for OSRAM TCS3472 RGBC sensor
  * 
 
  * 
@@ -220,14 +220,14 @@ esp_err_t tcs3472_get_enable_register(tcs3472_handle_t handle, tcs3472_enable_re
 /**
  * @brief Writes enable register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg Enable register.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg Enable register.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_enable_register(tcs3472_handle_t handle, const tcs3472_enable_register_t reg);
 
 /**
- * @brief Reads RGBC time register from TCS3472.
+ * @brief Reads RGBC integration time register from TCS3472.
  * 
  * @param[in] handle TCS3472 device handle.
  * @param[out] reg RGBC time register controls the internal integration time of the RGBC clear and IR channel ADCs in 2.4-ms increments.
@@ -237,10 +237,10 @@ esp_err_t tcs3472_set_enable_register(tcs3472_handle_t handle, const tcs3472_ena
 esp_err_t tcs3472_get_atime_register(tcs3472_handle_t handle, uint8_t *const reg);
 
 /**
- * @brief Writes RGBC time register to TCS3472.
+ * @brief Writes RGBC integration time register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg RGBC time register controls the internal integration time of the RGBC clear and IR channel ADCs in 2.4-ms increments.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg RGBC time register controls the internal integration time of the RGBC clear and IR channel ADCs in 2.4-ms increments.
  *            Max RGBC Count = (256 − ATIME) × 1024 up to a maximum of 65535.
  * @return esp_err_t ESP_OK on success.
  */
@@ -258,8 +258,8 @@ esp_err_t tcs3472_get_wtime_register(tcs3472_handle_t handle, uint8_t *const reg
 /**
  * @brief Writes wait time register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg Wait time register is set 2.4 ms increments unless the WLONG bit is asserted, in which case the wait times are 12× longer.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg Wait time register is set 2.4 ms increments unless the WLONG bit is asserted, in which case the wait times are 12× longer.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_wtime_register(tcs3472_handle_t handle, const uint8_t reg);
@@ -276,8 +276,8 @@ esp_err_t tcs3472_get_persistence_register(tcs3472_handle_t handle, tcs3472_pers
 /**
  * @brief Writes interrupt persistence filter register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg Persistence register controls the filtering interrupt capabilities of the device.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg Persistence register controls the filtering interrupt capabilities of the device.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_persistence_register(tcs3472_handle_t handle, const tcs3472_persistence_register_t reg);
@@ -294,8 +294,8 @@ esp_err_t tcs3472_get_config_register(tcs3472_handle_t handle, tcs3472_config_re
 /**
  * @brief Writes configuration register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg Configuration register.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg Configuration register.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_config_register(tcs3472_handle_t handle, const tcs3472_config_register_t reg);
@@ -312,8 +312,8 @@ esp_err_t tcs3472_get_control_register(tcs3472_handle_t handle, tcs3472_control_
 /**
  * @brief Writes control register to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param reg Control register.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] reg Control register.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_control_register(tcs3472_handle_t handle, const tcs3472_control_register_t reg);
@@ -339,46 +339,46 @@ esp_err_t tcs3472_get_status_register(tcs3472_handle_t handle, tcs3472_status_re
 esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_config_t *tcs3472_config, tcs3472_handle_t *tcs3472_handle);
 
 /**
- * @brief 
+ * @brief Reads RGBC channels count data from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param data RGBC channels data structure.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] data RGBC channels data structure.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_channels(tcs3472_handle_t handle, tcs3472_channels_data_t *const data);
 
 /**
- * @brief 
+ * @brief Reads red channel count data from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param count Red channel count.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] count Red channel count.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_red_channel_count(tcs3472_handle_t handle, uint16_t *const count);
 
 /**
- * @brief 
+ * @brief Reads green channel count data from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param count Green channel count.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] count Green channel count.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_green_channel_count(tcs3472_handle_t handle, uint16_t *const count);
 
 /**
- * @brief 
+ * @brief Reads blue channel count data from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param count Blue channel count.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] count Blue channel count.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_blue_channel_count(tcs3472_handle_t handle, uint16_t *const count);
 
 /**
- * @brief 
+ * @brief Reads clear channel count data from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param count Clear channel count.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] count Clear channel count.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *const count);
@@ -387,9 +387,9 @@ esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *con
  * @brief Reads RGBC interrupt threshold registers from TCS3472.  The values to be used as the high and low trigger 
  * points for the comparison function for interrupt generation.
  * 
- * @param handle TCS3472 device handle.
- * @param high_threshold RGBC clear channel high threshold.
- * @param low_threshold RGBC clear channel low threshold.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] high_threshold RGBC clear channel high threshold.
+ * @param[out] low_threshold RGBC clear channel low threshold.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_irq_thresholds(tcs3472_handle_t handle, uint16_t *const high_threshold, uint16_t *const low_threshold);
@@ -398,9 +398,9 @@ esp_err_t tcs3472_get_irq_thresholds(tcs3472_handle_t handle, uint16_t *const hi
  * @brief Writes RGBC interrupt threshold registers to TCS3472.  The values to be used as the high and low trigger 
  * points for the comparison function for interrupt generation.
  * 
- * @param handle TCS3472 device handle.
- * @param high_threshold RGBC clear channel high threshold.
- * @param low_threshold RGBC clear channel low threshold.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] high_threshold RGBC clear channel high threshold.
+ * @param[in] low_threshold RGBC clear channel low threshold.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_irq_thresholds(tcs3472_handle_t handle, const uint16_t high_threshold, const uint16_t low_threshold);
@@ -408,8 +408,8 @@ esp_err_t tcs3472_set_irq_thresholds(tcs3472_handle_t handle, const uint16_t hig
 /**
  * @brief Reads RGBC gain control from TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param gain RGBC gain control for the analog block.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] gain RGBC gain control for the analog block.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_gain_control(tcs3472_handle_t handle, tcs3472_gain_controls_t *const gain);
@@ -417,8 +417,8 @@ esp_err_t tcs3472_get_gain_control(tcs3472_handle_t handle, tcs3472_gain_control
 /**
  * @brief Writes RGBC gain control to TCS3472.
  * 
- * @param handle TCS3472 device handle.
- * @param gain RGBC gain control for the analog block.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] gain RGBC gain control for the analog block.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_gain_control(tcs3472_handle_t handle, const tcs3472_gain_controls_t gain);
@@ -426,8 +426,8 @@ esp_err_t tcs3472_set_gain_control(tcs3472_handle_t handle, const tcs3472_gain_c
 /**
  * @brief Reads integration time of the RGBC clear and IR channel ADCs from the TCS3472 in 2.4-ms increments.
  * 
- * @param handle TCS3472 device handle.
- * @param time Integration time in 2.4-ms increments.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] time Integration time in 2.4-ms increments.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_integration_time(tcs3472_handle_t handle, float *const time);
@@ -435,8 +435,8 @@ esp_err_t tcs3472_get_integration_time(tcs3472_handle_t handle, float *const tim
 /**
  * @brief Writes integration time of the RGBC clear and IR channel ADCs to the TCS3472 in 2.4-ms increments.
  * 
- * @param handle TCS3472 device handle.
- * @param time Integration time in 2.4-ms increments.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] time Integration time in 2.4-ms increments.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_integration_time(tcs3472_handle_t handle, const float time);
@@ -444,8 +444,8 @@ esp_err_t tcs3472_set_integration_time(tcs3472_handle_t handle, const float time
 /**
  * @brief Reads wait time from TCS3472 in 2.4-ms increments.
  * 
- * @param handle TCS3472 device handle.
- * @param time Wait time in 2.4-ms increments unless long wait time is enabled.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] time Wait time in 2.4-ms increments unless long wait time is enabled.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_wait_time(tcs3472_handle_t handle, float *const time);
@@ -453,8 +453,8 @@ esp_err_t tcs3472_get_wait_time(tcs3472_handle_t handle, float *const time);
 /**
  * @brief Writes wait time to TCS3472 in 2.4-ms increments.
  * 
- * @param handle TCS3472 device handle.
- * @param time Wait time in 2.4-ms increments unless long wait time is enabled.
+ * @param[in] handle TCS3472 device handle.
+ * @param[in] time Wait time in 2.4-ms increments unless long wait time is enabled.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time);
@@ -462,8 +462,8 @@ esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time);
 /**
  * @brief Reads data flag from TCS3472 device.
  * 
- * @param handle TCS3472 device handle.
- * @param ready RGBC channels have completed an integration cycle when true.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] ready RGBC channels have completed an integration cycle when true.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_data_status(tcs3472_handle_t handle, bool *const ready);
@@ -471,9 +471,9 @@ esp_err_t tcs3472_get_data_status(tcs3472_handle_t handle, bool *const ready);
 /**
  * @brief Reads data and irq status flags from TCS3472 device.
  * 
- * @param handle TCS3472 device handle.
- * @param data_ready RGBC channels have completed an integration cycle when true.
- * @param irq_asserted RGBC clear channel interrupt when asserted.
+ * @param[in] handle TCS3472 device handle.
+ * @param[out] data_ready RGBC channels have completed an integration cycle when true.
+ * @param[out] irq_asserted RGBC clear channel interrupt when asserted.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bool *const irq_asserted);
@@ -481,7 +481,7 @@ esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bo
 /**
  * @brief Enables power from TCS3472 device.
  * 
- * @param handle TCS3472 device handle.
+ * @param[in] handle TCS3472 device handle.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_enable_power(tcs3472_handle_t handle);
@@ -489,7 +489,7 @@ esp_err_t tcs3472_enable_power(tcs3472_handle_t handle);
 /**
  * @brief Disables power from TCS3472 device.
  * 
- * @param handle TCS3472 device handle.
+ * @param[in] handle TCS3472 device handle.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_disable_power(tcs3472_handle_t handle);
@@ -505,7 +505,7 @@ esp_err_t tcs3472_remove(tcs3472_handle_t handle);
 /**
  * @brief Removes an TCS3472 device from master I2C bus and delete the handle.
  * 
- * @param handle TCS3472 device handle.
+ * @param[in] handle TCS3472 device handle.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_delete(tcs3472_handle_t handle);

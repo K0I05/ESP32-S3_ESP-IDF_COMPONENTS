@@ -60,7 +60,7 @@ typedef enum pressure_tendency_codes_tag {
  */
 typedef enum pressure_tendency_periods_e {
     PRESSURE_TENDENCY_3HR_PERIOD = 1,   /*!< 3-hr period */
-    PRESSURE_TENDENCY_6HR_PERIOD = 2,   /*!< 6-hr period */
+    PRESSURE_TENDENCY_6HR_PERIOD = 2    /*!< 6-hr period */
 } pressure_tendency_periods_t;
 
 /**

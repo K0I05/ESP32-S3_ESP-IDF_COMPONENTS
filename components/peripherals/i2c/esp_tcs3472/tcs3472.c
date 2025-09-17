@@ -24,7 +24,7 @@
 /**
  * @file tcs3472.c
  *
- * ESP-IDF driver for TCS3472 RGB sensor
+ * ESP-IDF driver for OSRAM TCS3472 RGBC sensor
  *
  * Ported from esp-open-rtos
  *
@@ -184,7 +184,7 @@ static inline esp_err_t tcs3472_i2c_write_byte_to(tcs3472_device_t *const device
 }
 
 /**
- * @brief 
+ * @brief Gets calculated total wait time (initialization, integration time and wait time) in milliseconds from device descriptor.
  * 
  * @param device TCS3472 device descriptor.
  * @return size_t Total wait time (initialization, integration time and wait time) in milliseconds.
@@ -199,7 +199,6 @@ static inline size_t tcs3472_get_total_wait_time_ms(tcs3472_device_t *const devi
     uint8_t atime_step = time_step;
     uint8_t wtime_step;
     tcs3472_config_register_t config;
-
 
     /* validate arguments */
     if (!device) return time_step;
@@ -247,8 +246,13 @@ static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
     ESP_RETURN_ON_ERROR( tcs3472_get_enable_register((tcs3472_handle_t)device, &enable), TAG, "read enable register failed" );
 
     /* attempt to read configuration register */
+    ESP_RETURN_ON_ERROR( tcs3472_get_config_register((tcs3472_handle_t)device, &config), TAG, "read configuration register failed" );
+
     /* attempt to read persistence register */
+    ESP_RETURN_ON_ERROR( tcs3472_get_persistence_register((tcs3472_handle_t)device, &persist), TAG, "read persistence register failed" );
+
     /* attempt to read control register */
+    ESP_RETURN_ON_ERROR( tcs3472_get_control_register((tcs3472_handle_t)device, &control), TAG, "read control register failed" );
 
     /* configure enable register from device configuration structure */
     enable.bits.adc_enabled       = true;
@@ -280,8 +284,13 @@ static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
     ESP_RETURN_ON_ERROR( tcs3472_set_enable_register((tcs3472_handle_t)device, enable), TAG, "write enable register failed" );
 
     /* attempt to write configuration register */
+    ESP_RETURN_ON_ERROR( tcs3472_set_config_register((tcs3472_handle_t)device, config), TAG, "write configuration register failed" );
+
     /* attempt to write persistence register */
+    ESP_RETURN_ON_ERROR( tcs3472_set_persistence_register((tcs3472_handle_t)device, persist), TAG, "write persistence register failed" );
+
     /* attempt to write control register */
+    ESP_RETURN_ON_ERROR( tcs3472_set_control_register((tcs3472_handle_t)device, control), TAG, "write control register failed" );
 
     /* attempt to write high and low thresholds */
     if(device->config.set_irq_thresholds) {
@@ -340,7 +349,7 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     /* attempt to poll high and low channel data from device until data is available or timeout */
     do {
         /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( tcs3472_get_data_status((tcs3472_handle_t)device, &data_is_ready), err, TAG, "data ready ready for get fixed measurement failed." );
+        ESP_GOTO_ON_ERROR( tcs3472_get_data_status((tcs3472_handle_t)device, &data_is_ready), err, TAG, "data ready ready for get channel count failed." );
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(TCS3472_DATA_READY_DELAY_MS));
