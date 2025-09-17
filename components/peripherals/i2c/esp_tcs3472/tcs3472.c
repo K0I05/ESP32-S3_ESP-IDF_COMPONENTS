@@ -24,9 +24,10 @@
 /**
  * @file tcs3472.c
  *
- * ESP-IDF driver for OSRAM TCS3472 RGBC sensor.  Updated implementation with 
- * inline HAL functions for reading and writing to TCS3472 registers.  This 
- * change exposes API properties specific to the component.
+ * ESP-IDF driver for OSRAM TCS3472 RGBC sensor.  This is an updated implementation 
+ * with inline HAL functions for reading and writing to TCS3472 registers.  This 
+ * change exposes API properties specific to the component without exposing hardware 
+ * abstraction layer functions related to device interfacing.
  *
  * Ported from esp-open-rtos
  *

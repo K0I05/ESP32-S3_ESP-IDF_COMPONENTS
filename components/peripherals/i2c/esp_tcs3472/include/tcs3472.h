@@ -26,9 +26,11 @@
  * @defgroup drivers tcs3472
  * @{
  *
- * ESP-IDF driver for OSRAM TCS3472 RGBC sensor
+ * ESP-IDF driver for OSRAM TCS3472 RGBC sensor.  This is an updated implementation 
+ * with inline HAL functions for reading and writing to TCS3472 registers.  This 
+ * change exposes API properties specific to the component without exposing hardware 
+ * abstraction layer functions related to device interfacing.
  * 
-
  * 
  *
  * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
@@ -49,17 +51,18 @@
 extern "C" {
 #endif
 
-/*
+/*****************************************************************************************************************
  * TCS3472 definitions
-*/
+******************************************************************************************************************/
+
 #define I2C_TCS3472_DEV_CLK_SPD            UINT32_C(100000)    //!< vl53l4cx I2C default clock frequency (100KHz)
 
 #define I2C_TCS3472_DEV_ADDR               UINT8_C(0x52)       //!< vl53l4cx I2C address
 
 
-/*
+/*****************************************************************************************************************
  * TCS3472 macro definitions
-*/
+******************************************************************************************************************/
 
 /**
  * @brief TCS3472 device configuration initialization default.
@@ -78,9 +81,10 @@ extern "C" {
             .long_wait_enabled          = false                                     \
 }
 
-/*
- * TCS3472 enumerator and structure declarations
-*/
+
+/*****************************************************************************************************************
+ * TCS3472 API enumerator and structure declarations
+******************************************************************************************************************/
 
 /**
  * @brief TCS3472 interrupt rates enumerator definition.
@@ -136,6 +140,11 @@ typedef struct tcs3472_channels_data_s {
  * @brief TCS3472 opaque handle structure definition.
  */
 typedef void* tcs3472_handle_t;
+
+
+/*****************************************************************************************************************
+ * TCS3472 API functions and subroutine declarations
+******************************************************************************************************************/
 
 /**
  * @brief Initializes an TCS3472 device onto the I2C master bus.
