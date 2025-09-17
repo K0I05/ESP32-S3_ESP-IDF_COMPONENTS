@@ -266,7 +266,7 @@ static inline esp_err_t tcs3472_i2c_write_word_to(tcs3472_device_t *const device
     ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "tcs3472_i2c_write_byte_to, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "tcs3472_i2c_write_word_to, i2c write failed" );
                         
     return ESP_OK;
 }
