@@ -100,30 +100,6 @@ typedef enum pct2075_os_fault_queues_e {
     PCT2075_OS_FAULT_QUEUE_6 = (0b11)   /*< fault queue data 11 with a fault queue value of 6 */
 } pct2075_os_fault_queues_t;
 
-/**
- * @brief PCT2075 configuration register structure definition.
- */
-typedef union __attribute__((packed)) pct2075_config_register_u {
-    struct {
-        bool                            shutdown_enabled:1; /*!< pct2075 is shutdown/disabled when enabled (true)   (bit:0)  */
-        pct2075_os_operation_modes_t    operation_mode:1;   /*!< pct2075 os operation mode  (bit:1) */
-        pct2075_os_polarities_t         polarity:1;         /*!< pct2075 os polarity    (bit:2) */
-        pct2075_os_fault_queues_t       fault_queue:2;      /*!< pct2075 os fault queue programming   (bit:3-4) */
-        uint8_t                         reserved:3;         /*!< reserved        (bit:5-7) */
-    } bits;
-    uint8_t reg;
-} pct2075_config_register_t;
-
-/**
- * @brief PCT2075 temperature idle sampling period register structure definition.
- */
-typedef union __attribute__((packed)) pct2075_sampling_period_register_u {
-    struct {
-        uint8_t                         tidle:5;        /*!< pct2075 sampling period (tidle * 100ms) (bit:0-4) */
-        uint8_t                         reserved:3;     /*!< reserved   (bit:5-7) */
-    } bits;
-    uint8_t reg;
-} pct2075_sampling_period_register_t;
 
 /**
  * @brief PCT2075 configuration structure definition.
@@ -152,23 +128,6 @@ typedef void* pct2075_handle_t;
  * public function and subroutine declarations
  */
 
-/**
- * @brief Reads configuration register from PCT2075.
- *
- * @param[in] handle PCT2075 device handle.
- * @param[out] reg PCT2075 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t pct2075_get_config_register(pct2075_handle_t handle, pct2075_config_register_t *const reg);
-
-/**
- * @brief Writes configuration register to PCT2075.
- *
- * @param[in] handle PCT2075 device handle.
- * @param[out] reg PCT2075 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t pct2075_set_config_register(pct2075_handle_t handle, const pct2075_config_register_t reg);
 
 /**
  * @brief Initializes an PCT2075 device onto the I2C master bus.

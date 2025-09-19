@@ -176,12 +176,12 @@ static inline uint8_t sht4x_calculate_crc8(const uint8_t data[], const uint8_t l
 }
 
 /**
- * @brief Gets SHT4X measurement duration in milli-seconds from device handle.  See datasheet for details.
+ * @brief Gets SHT4X measurement duration in milliseconds from device handle.  See datasheet for details.
  *
  * @param[in] device SHT4X device descriptor.
  * @return size_t Measurement duration in milliseconds.
  */
-static inline size_t sht4x_get_duration_ms(sht4x_device_t *const device) {
+static inline size_t sht4x_get_duration(sht4x_device_t *const device) {
     /* validate arguments */
     if (!device) return 2;
     switch (device->config.heater_mode) {
@@ -214,7 +214,7 @@ static inline size_t sht4x_get_duration_ms(sht4x_device_t *const device) {
 static inline size_t sht4x_get_tick_duration(sht4x_device_t *const device) {
     /* validate arguments */
     if (!device) return 1;
-    size_t res = pdMS_TO_TICKS(sht4x_get_duration_ms(device));
+    size_t res = pdMS_TO_TICKS(sht4x_get_duration(device));
     return res == 0 ? 1 : res;
 }
 
@@ -253,11 +253,11 @@ static inline uint8_t sht4x_get_command(sht4x_device_t *const device) {
 }
 
 /**
- * @brief Calculates dewpoint temperature from air temperature and relative humidity.
+ * @brief Calculates dew-point temperature from air temperature and relative humidity.
  *
  * @param[in] temperature air temperature in degrees Celsius.
  * @param[in] humidity relative humidity in percent.
- * @param[out] dewpoint calculated dewpoint temperature in degrees Celsius.
+ * @param[out] dewpoint calculated dew-point temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t sht4x_calculate_dewpoint(const float temperature, const float humidity, float *const dewpoint) {

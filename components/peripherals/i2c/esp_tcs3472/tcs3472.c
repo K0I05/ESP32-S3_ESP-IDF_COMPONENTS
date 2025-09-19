@@ -172,6 +172,8 @@ typedef struct tcs3472_device_s {
     i2c_master_dev_handle_t     i2c_handle;         /*!< tcs3472 i2c device handle */
 } tcs3472_device_t;
 
+
+
 /*
 * static constant declarations
 */
@@ -628,9 +630,9 @@ static inline float tcs3472_convert_steps_to_time(const uint8_t steps, const boo
  */
 static inline float tcs3472_get_total_wait_time(tcs3472_device_t *const device) {
     const float init_time = 2.4f;
-    uint8_t atime_step;
-    uint8_t wtime_step;
-    tcs3472_config_register_t config;
+    uint8_t atime_step = { 0 };
+    uint8_t wtime_step = { 0 };
+    tcs3472_config_register_t config = { 0 };
 
     /* validate arguments */
     if (!device) return init_time;
@@ -645,24 +647,24 @@ static inline float tcs3472_get_total_wait_time(tcs3472_device_t *const device) 
     ESP_RETURN_ON_ERROR( tcs3472_i2c_get_config_register(device, &config), TAG, "read configuration register failed" );
 
     /* calculate integration and wait times in milliseconds */
-    float atime = tcs3472_convert_steps_to_time(atime_step, false);
-    float wtime = tcs3472_convert_steps_to_time(wtime_step, config.bits.long_wait_enabled);
+    const float atime = tcs3472_convert_steps_to_time(atime_step, false);
+    const float wtime = tcs3472_convert_steps_to_time(wtime_step, config.bits.long_wait_enabled);
 
     /* calculate integration time in milliseconds */
     return init_time + atime + wtime;
 }
 
 /**
- * @brief Setup and configure TCS3472 registers.
+ * @brief TCS3472 I2C HAL to setup and configuration.
  * 
  * @param device TCS3472 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t tcs3472_setup(tcs3472_device_t *const device) {
-    tcs3472_enable_register_t       enable;
-    tcs3472_config_register_t       config;
-    tcs3472_persistence_register_t  persist;
-    tcs3472_control_register_t      control;
+static inline esp_err_t tcs3472_i2c_setup(tcs3472_device_t *const device) {
+    tcs3472_enable_register_t       enable  = { 0 };
+    tcs3472_config_register_t       config  = { 0 };
+    tcs3472_persistence_register_t  persist = { 0 };
+    tcs3472_control_register_t      control = { 0 };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -743,7 +745,7 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     ESP_ARG_CHECK( device );
 
     /* set overall wait time */
-    float wait_time = tcs3472_get_total_wait_time(device);
+    const float wait_time = tcs3472_get_total_wait_time(device);
 
     /* set high and low data registers by RGBC channel type */
     switch(channel) {
@@ -833,7 +835,7 @@ esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_conf
     vTaskDelay(pdMS_TO_TICKS(TCS3472_CMD_DELAY_MS));
 
     /* attempt to reset the device and initialize registers */
-    ESP_GOTO_ON_ERROR(tcs3472_setup(device), err_handle, TAG, "setup registers for init failed");
+    ESP_GOTO_ON_ERROR(tcs3472_i2c_setup(device), err_handle, TAG, "setup registers for init failed");
 
     /* set output parameter */
     *tcs3472_handle = (tcs3472_handle_t)device;
@@ -946,7 +948,7 @@ esp_err_t tcs3472_set_irq_thresholds(tcs3472_handle_t handle, const uint16_t hig
 }
 
 esp_err_t tcs3472_get_gain_control(tcs3472_handle_t handle, tcs3472_gain_controls_t *const gain) {
-    tcs3472_control_register_t control;
+    tcs3472_control_register_t control = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -962,7 +964,7 @@ esp_err_t tcs3472_get_gain_control(tcs3472_handle_t handle, tcs3472_gain_control
 }
 
 esp_err_t tcs3472_set_gain_control(tcs3472_handle_t handle, const tcs3472_gain_controls_t gain) {
-    tcs3472_control_register_t control;
+    tcs3472_control_register_t control = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -978,7 +980,7 @@ esp_err_t tcs3472_set_gain_control(tcs3472_handle_t handle, const tcs3472_gain_c
 }
 
 esp_err_t tcs3472_get_integration_time(tcs3472_handle_t handle, float *const time) {
-    uint8_t atime;
+    uint8_t atime = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -994,14 +996,13 @@ esp_err_t tcs3472_get_integration_time(tcs3472_handle_t handle, float *const tim
 }
 
 esp_err_t tcs3472_set_integration_time(tcs3472_handle_t handle, const float time) {
-    uint8_t atime;
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
     /* convert time (ms) to steps */
-    atime = tcs3472_convert_time_to_steps(time, false);
+    const uint8_t atime = tcs3472_convert_time_to_steps(time, false);
 
     /* attempt to write atime register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_atime_register(device, atime), TAG, "write atime register failed" );
@@ -1011,8 +1012,8 @@ esp_err_t tcs3472_set_integration_time(tcs3472_handle_t handle, const float time
 
 
 esp_err_t tcs3472_get_wait_time(tcs3472_handle_t handle, float *const time) {
-    tcs3472_config_register_t config;
-    uint8_t wtime;
+    tcs3472_config_register_t config = { 0 };
+    uint8_t wtime = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1031,8 +1032,7 @@ esp_err_t tcs3472_get_wait_time(tcs3472_handle_t handle, float *const time) {
 }
 
 esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time) {
-    tcs3472_config_register_t config;
-    uint8_t wtime;
+    tcs3472_config_register_t config = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1042,7 +1042,7 @@ esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time) {
     ESP_RETURN_ON_ERROR( tcs3472_i2c_get_config_register(device, &config), TAG, "read configuration register failed" );
 
     /* convert time (ms) to steps */
-    wtime = tcs3472_convert_time_to_steps(time, config.bits.long_wait_enabled);
+    const uint8_t wtime = tcs3472_convert_time_to_steps(time, config.bits.long_wait_enabled);
 
     /* attempt to write wtime register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_wtime_register(device, wtime), TAG, "write wtime register failed" );
@@ -1051,7 +1051,7 @@ esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time) {
 }
 
 esp_err_t tcs3472_get_data_status(tcs3472_handle_t handle, bool *const ready) {
-    tcs3472_status_register_t status;
+    tcs3472_status_register_t status = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1067,7 +1067,7 @@ esp_err_t tcs3472_get_data_status(tcs3472_handle_t handle, bool *const ready) {
 }
 
 esp_err_t tcs3472_get_irq_status(tcs3472_handle_t handle, bool *const asserted) {
-    tcs3472_status_register_t status;
+    tcs3472_status_register_t status = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1083,7 +1083,7 @@ esp_err_t tcs3472_get_irq_status(tcs3472_handle_t handle, bool *const asserted) 
 }
 
 esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bool *const irq_asserted) {
-    tcs3472_status_register_t status;
+    tcs3472_status_register_t status = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1100,7 +1100,7 @@ esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bo
 }
 
 esp_err_t tcs3472_enable_long_wait_time(tcs3472_handle_t handle) {
-    tcs3472_config_register_t config;
+    tcs3472_config_register_t config = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1119,7 +1119,7 @@ esp_err_t tcs3472_enable_long_wait_time(tcs3472_handle_t handle) {
 }
 
 esp_err_t tcs3472_disable_long_wait_time(tcs3472_handle_t handle) {
-    tcs3472_config_register_t config;
+    tcs3472_config_register_t config = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1138,7 +1138,7 @@ esp_err_t tcs3472_disable_long_wait_time(tcs3472_handle_t handle) {
 }
 
 esp_err_t tcs3472_enable_adc(tcs3472_handle_t handle) {
-    tcs3472_enable_register_t enable;
+    tcs3472_enable_register_t enable = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1157,7 +1157,7 @@ esp_err_t tcs3472_enable_adc(tcs3472_handle_t handle) {
 }
 
 esp_err_t tcs3472_disable_adc(tcs3472_handle_t handle) {
-    tcs3472_enable_register_t enable;
+    tcs3472_enable_register_t enable = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1176,7 +1176,7 @@ esp_err_t tcs3472_disable_adc(tcs3472_handle_t handle) {
 }
 
 esp_err_t tcs3472_enable_power(tcs3472_handle_t handle) {
-    tcs3472_enable_register_t enable;
+    tcs3472_enable_register_t enable = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
@@ -1195,7 +1195,7 @@ esp_err_t tcs3472_enable_power(tcs3472_handle_t handle) {
 }
 
 esp_err_t tcs3472_disable_power(tcs3472_handle_t handle) {
-    tcs3472_enable_register_t enable;
+    tcs3472_enable_register_t enable = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */

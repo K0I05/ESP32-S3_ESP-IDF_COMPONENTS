@@ -205,14 +205,49 @@ typedef void* ssd1306_handle_t;
  */
 
 
+/**
+ * @brief Gets the configured display panel size.
+ * 
+ * @param handle SSD1306 device handle.
+ * @param panel_size Size of the configure display panel.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t ssd1306_get_panel_size(ssd1306_handle_t handle, ssd1306_panel_sizes_t *const panel_size);
 
+/**
+ * @brief Gets the height of the configured display panel.
+ * 
+ * @param handle SSD1306 device handle.
+ * @param panel_height Height of the configured display panel.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t ssd1306_get_panel_height(ssd1306_handle_t handle, uint8_t *const panel_height);
 
+/**
+ * @brief Gets the width of the configured display panel.
+ * 
+ * @param handle SSD1306 device handle.
+ * @param panel_width Width of the configured display panel.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t ssd1306_get_panel_width(ssd1306_handle_t handle, uint8_t *const panel_width);
 
+/**
+ * @brief Gets the flip state of the display panel.
+ * 
+ * @param handle SSD1306 device handle.
+ * @param flip_enabled Flip state is enabled when true.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t ssd1306_get_flip_state(ssd1306_handle_t handle, bool *const flip_enabled);
 
+/**
+ * @brief Gets the number of pages supported by the display panel.
+ * 
+ * @param handle SSD1306 device handle.
+ * @param number_of_pages Number of pages supported by the display panel.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t ssd1306_get_number_of_pages(ssd1306_handle_t handle, uint8_t *const number_of_pages);
 
 /**

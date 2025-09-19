@@ -131,7 +131,7 @@ typedef struct sht4x_config_s {
 typedef struct sht4x_data_s {
     float temperature;    /*!< temperature in degree Celsius */
     float humidity;       /*!< relative humidity in percentage */
-    float dewpoint;       /*!< calculated dewpoint temperature in degree Celsius */
+    float dewpoint;       /*!< calculated dew-point temperature in degree Celsius */
 } sht4x_data_t;
 
 /**

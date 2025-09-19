@@ -140,45 +140,6 @@ typedef enum bmp280_temperature_oversampling_e {
 } bmp280_temperature_oversampling_t;
 
 /**
- * @brief BMP280 status register (0xf3) structure definition.  The reset state is 0x00 for this register.
- */
-typedef union __attribute__((packed)) bmp280_status_register_u {
-    struct {
-        bool    image_update:1; /*!< bmp280 automatically set to 1 when NVM data are being copied to image registers and back to 0 when done (bit:0)  */
-        uint8_t reserved1:2;    /*!< reserved (bit:1-2) */
-        bool    measuring:1;    /*!< bmp280 automatically set to 1 whenever a conversion is running and back to 0 when results transferred to data registers  (bit:3) */
-        uint8_t reserved2:4;    /*!< reserved (bit:4-7) */
-    } bits;
-    uint8_t reg;
-} bmp280_status_register_t;
-
-/**
- * @brief BMP280 control measurement register (0xf4) structure definition.  The reset state is 0x00 for this register.
- */
-typedef union __attribute__((packed)) bmp280_control_measurement_register_u {
-    struct {
-        bmp280_power_modes_t                power_mode:2;               /*!< bmp280 power mode of the device            (bit:0-1)  */
-        bmp280_pressure_oversampling_t      pressure_oversampling:3;    /*!< bmp280 oversampling of pressure data       (bit:2-4) */
-        bmp280_temperature_oversampling_t   temperature_oversampling:3; /*!< bmp280 oversampling of temperature data    (bit:5-7) */
-    } bits;
-    uint8_t reg;
-} bmp280_control_measurement_register_t;
-
-/**
- * @brief BMP280 configuration register (0xf5) structure definition.  The reset state is 0x00 for this register.
- */
-typedef union __attribute__((packed)) bmp280_configuration_register_u {
-    struct {
-        bool                    spi_enabled:1;  /*!< bmp280 3-wire SPI interface enabled when true  (bit:0)  */
-        uint8_t                 reserved:1;     /*!< bmp280 reserved                                (bit:1) */
-        bmp280_iir_filters_t    iir_filter:3;   /*!< bmp280 time constant of the IIR filter         (bit:2-4) */
-        bmp280_standby_times_t  standby_time:3; /*!< bmp280 inactive duration in normal mode        (bit:5-7) */
-    } bits;
-    uint8_t reg;
-} bmp280_configuration_register_t;
-
-
-/**
  * @brief BMP280 configuration structure definition.
  */
 typedef struct bmp280_config_s {
@@ -200,60 +161,6 @@ typedef void* bmp280_handle_t;
 /**
  * public function and subroutine declarations
  */
-
-/**
- * @brief Reads chip identification register from BMP280.
- * 
- * @param[in] handle BMP280 device handle.
- * @param[out] reg BMP280 chip identification register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_chip_id_register(bmp280_handle_t handle, uint8_t *const reg);
-
-/**
- * @brief Reads status register from BMP280.
- * 
- * @param handle[in] BMP280 device handle.
- * @param[out] reg BMP280 status register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_status_register(bmp280_handle_t handle, bmp280_status_register_t *const reg);
-
-/**
- * @brief Reads control measurement register from BMP280.
- * 
- * @param[in] handle BMP280 device handle.
- * @param[out] reg BMP280 control measurement register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_control_measurement_register(bmp280_handle_t handle, bmp280_control_measurement_register_t *const reg);
-
-/**
- * @brief Writes control measurement register to BMP280. 
- * 
- * @param[in] handle BMP280 device handle.
- * @param[in] reg BMP280 control measurement register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_set_control_measurement_register(bmp280_handle_t handle, const bmp280_control_measurement_register_t reg);
-
-/**
- * @brief Reads configuration register from BMP280.
- * 
- * @param[in] handle BMP280 device handle.
- * @param[out] reg BMP280 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_configuration_register(bmp280_handle_t handle, bmp280_configuration_register_t *const reg);
-
-/**
- * @brief Writes configuration register to BMP280. 
- * 
- * @param[in] handle BMP280 device handle.
- * @param[in] reg BMP280 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_set_configuration_register(bmp280_handle_t handle, const bmp280_configuration_register_t reg);
 
 /**
  * @brief Initializes an BMP280 device onto the master bus.

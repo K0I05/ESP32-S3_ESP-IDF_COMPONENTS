@@ -76,7 +76,7 @@
 #define AS7341_SP_TH_L_LSB          UINT8_C(0x84)  //!< as7341
 #define AS7341_SP_TH_L_MSB          UINT8_C(0x85)  //!< as7341
 #define AS7341_SP_TH_H_LSB          UINT8_C(0x86)  //!< as7341
-#define IAS7341_SP_TH_H_MSB          UINT8_C(0x87)  //!< as7341
+#define IAS7341_SP_TH_H_MSB         UINT8_C(0x87)  //!< as7341
 #define AS7341_AUXID                UINT8_C(0x90)  //!< as7341
 #define AS7341_REVID                UINT8_C(0x91)  //!< as7341
 #define AS7341_ID                   UINT8_C(0x92)  //!< as7341
@@ -132,7 +132,7 @@
 #define AS7341_RESET_DELAY_MS       UINT16_C(25)
 #define AS7341_SETUP_DELAY_MS       UINT16_C(15)
 #define AS7341_CMD_DELAY_MS         UINT16_C(5)
-#define AS7341_TX_RX_DELAY_MS        UINT16_C(10)
+#define AS7341_TX_RX_DELAY_MS       UINT16_C(10)
 
 #define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
 
@@ -388,14 +388,16 @@ static inline esp_err_t as7341_setup_smux_hi_channels(as7341_device_t *const dev
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t as7341_set_smux_lo_channels(as7341_handle_t handle) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX low channels failed" );
 
     ESP_RETURN_ON_ERROR( as7341_set_smux_command(handle, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX low channels failed" );
 
-    ESP_RETURN_ON_ERROR( as7341_setup_smux_lo_channels(handle), TAG, "setup SMUX low channels for set SMUX low channels failed" );
+    ESP_RETURN_ON_ERROR( as7341_setup_smux_lo_channels(dev), TAG, "setup SMUX low channels for set SMUX low channels failed" );
 
     ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX low channels failed" );
 
@@ -409,14 +411,16 @@ static inline esp_err_t as7341_set_smux_lo_channels(as7341_handle_t handle) {
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t as7341_set_smux_hi_channels(as7341_handle_t handle) {
+    as7341_device_t* dev = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( dev );
 
     ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX high channels failed" );
 
     ESP_RETURN_ON_ERROR( as7341_set_smux_command(handle, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX high channels failed" );
 
-    ESP_RETURN_ON_ERROR( as7341_setup_smux_hi_channels(handle), TAG, "setup SMUX high channels for set SMUX high channels failed" );
+    ESP_RETURN_ON_ERROR( as7341_setup_smux_hi_channels(dev), TAG, "setup SMUX high channels for set SMUX high channels failed" );
 
     ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX high channels failed" );
 

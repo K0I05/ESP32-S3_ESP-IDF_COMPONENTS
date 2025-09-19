@@ -595,7 +595,7 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_MLX90614);
     //i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
-    //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
+    i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);
     //i2c0_component_example_start(I2C_COMPONENT_SHT4X);
     //i2c0_component_example_start(I2C_COMPONENT_SSD1306);
@@ -606,7 +606,7 @@ void app_main( void ) {
 
     //owb0_component_example_start(OWB_COMPONENT_DS18B20);
 
-    sch_component_example_start(SCH_COMPONENT_TIME_INTO_INTERVAL);
+    //sch_component_example_start(SCH_COMPONENT_TIME_INTO_INTERVAL);
 
     //utils_component_example_start(UTILS_COMPONENT_UUID);
 }

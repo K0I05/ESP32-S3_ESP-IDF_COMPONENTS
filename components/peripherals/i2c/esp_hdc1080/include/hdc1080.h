@@ -109,47 +109,6 @@ typedef enum hdc1080_humidity_resolutions_e {
 } hdc1080_humidity_resolutions_t;
 
 /**
- * @brief HDC1080 device configuration register structure definition.
- */
-typedef union __attribute__((packed)) hdc1080_configuration_register_u {
-    struct REG_CFG_BITS_TAG {
-        uint8_t                           reserved1:8;               /*!< reserved and set to 0              (bit:0-7) */
-        hdc1080_humidity_resolutions_t    humidity_resolution:2;     /*!< humidity measurement resolution    (bit:8-9) */
-        hdc1080_temperature_resolutions_t temperature_resolution:1;  /*!< temperature measurement resolution (bit:10) */
-        hdc1080_battery_states_t          battery_state:1;           /*!< battery status                     (bit:11) */
-        hdc1080_acquisition_modes_t       acquisition_mode:1;        /*!< acquisition mode                   (bit:12) */
-        bool                              heater_enabled:1;          /*!< heater enabled when true           (bit:13) */
-        uint8_t                           reserved2:1;               /*!< reserved and set to 0              (bit:14) */
-        bool                              reset_enabled:1;           /*!< software reset when true           (bit:15) */
-    } bits;          /*!< represents the 16-bit configuration register parts in bits. */
-    uint16_t reg;   /*!< represents the 16-bit configuration register as `uint16_t` */
-} hdc1080_configuration_register_t;
-
-/**
- * @brief HDC1080 temperature or humidity measurement register structure definition.
- */
-typedef union __attribute__((packed)) hdc1080_measurement_register_u {
-    struct REG_MEAS_BITS_TAG {
-        uint8_t        reserved:2;  /*!< reserved and set to 0        (bit:0-1) */
-        uint16_t       value:14;    /*!< measurement value            (bit:2-14) */
-    } bits;         /*!< represents the 16-bit measurement register parts in bits. */
-    uint16_t reg;   /*!< represents the 16-bit measurement register as `uint16_t` */
-} hdc1080_measurement_register_t;
-
-/**
- * @brief HDC1080 serial number register structure definition.
- */
-typedef union __attribute__((packed)) hdc1080_serial_number_register_u {
-    struct REG_SN_BITS_TAG {
-        uint8_t        reserved:7;      /*!< reserved and set to 0        (bit:0-6)   */
-        uint16_t       serial_id_0:9;   /*!< serial id 0                  (bit:7-15)  */
-        uint16_t       serial_id_1:16;  /*!< serial id 1                  (bit:16-31) */
-        uint16_t       serial_id_2:16;  /*!< serial id 2                  (bit:32-47) */
-    } bits;          /*!< represents the 64-bit measurement register parts in bits. */
-    uint64_t reg;   /*!< represents the 64-bit measurement register as `uint64_t` */
-} hdc1080_serial_number_register_t;
-
-/**
  * @brief HDC1080 configuration structure definition.
  */
 typedef struct hdc1080_config_s {
@@ -161,60 +120,9 @@ typedef struct hdc1080_config_s {
 
 
 /**
- * @brief HDC1080 context structure definition.
- */
-typedef struct hdc1080_context_t hdc1080_context_t;
-
-/**
  * @brief HDC1080 opaque handle structure definition.
  */
 typedef void* hdc1080_handle_t;
-
-
-/**
- * @brief Reads unique serial number register from HDC1080.
- * 
- * @param[in] handle HDC1080 device handle.
- * @param[out] reg HDC1080 serial number register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hdc1080_get_serial_number_register(hdc1080_handle_t handle, uint64_t *const reg);
-
-/**
- * @brief Reads manufacturer identifier register from HDC1080.
- * 
- * @param[in] handle HDC1080 device handle.
- * @param[out] reg HDC1080 manufacturer identifier register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hdc1080_get_manufacturer_id_register(hdc1080_handle_t handle, uint16_t *const reg);
-
-/**
- * @brief Reads device identifier register from HDC1080.
- * 
- * @param[in] handle HDC1080 device handle.
- * @param[out] reg HDC1080 device identifier register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hdc1080_get_device_id_register(hdc1080_handle_t handle, uint16_t *const reg);
-
-/**
- * @brief Reads configuration register from HDC1080.
- * 
- * @param[in] handle HDC1080 device handle.
- * @param[out] reg HDC1080 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hdc1080_get_configuration_register(hdc1080_handle_t handle, hdc1080_configuration_register_t *const reg);
-
-/**
- * @brief Writes configuration register to HDC1080.
- * 
- * @param[in] handle HDC1080 device handle.
- * @param[in] reg HDC1080 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hdc1080_set_configuration_register(hdc1080_handle_t handle, const hdc1080_configuration_register_t reg);
 
 /**
  * @brief Initializes an HDC1080 device onto the I2C master bus.

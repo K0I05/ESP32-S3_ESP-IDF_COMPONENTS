@@ -83,7 +83,7 @@ static const char *TAG = "bh1750";
 
 
 /**
- * @brief BH1750 I2C read transaction.
+ * @brief BH1750 I2C HAL read transaction.
  * 
  * @param device BH1750 device descriptor.
  * @param buffer Buffer to store results from read transaction.
@@ -101,7 +101,7 @@ static inline esp_err_t bh1750_i2c_read(bh1750_device_t *const device, uint8_t *
 }
 
 /**
- * @brief BH1750 I2C write transaction.
+ * @brief BH1750 I2C HAL write transaction.
  * 
  * @param device BH1750 device descriptor.
  * @param buffer Buffer to write for write transaction.
@@ -119,7 +119,7 @@ static inline esp_err_t bh1750_i2c_write(bh1750_device_t *const device, const ui
 }
 
 /**
- * @brief BH1750 I2C write command to register address transaction.
+ * @brief BH1750 I2C HAL write command to register address transaction.
  * 
  * @param device BH1750 device descriptor.
  * @param reg_addr BH1750 command register address to write to.
@@ -138,12 +138,12 @@ static inline esp_err_t bh1750_i2c_write_command(bh1750_device_t *const device, 
 }
 
 /**
- * @brief Gets BH1750 duration in milli-seconds from device handle.  See datasheet for details.
+ * @brief Gets BH1750 measurement duration in milli-seconds from device handle.  See datasheet for details.
  *
  * @param[in] device BH1750 device descriptor.
  * @return duration in milliseconds.
  */
-static inline size_t bh1750_get_duration_ms(bh1750_device_t *const device) {
+static inline size_t bh1750_get_duration(bh1750_device_t *const device) {
     /* validate arguments */
     if (!device) return 180;
     /* todo - duration when measurement time is modified */
@@ -166,7 +166,7 @@ static inline size_t bh1750_get_duration_ms(bh1750_device_t *const device) {
 }
 
 /**
- * @brief Gets bh1750 tick duration from device handle.
+ * @brief Gets bh1750 measurement tick duration from device handle.
  *
  * @param[in] device BH1750 device descriptor.
  * @return duration in ticks.
@@ -174,8 +174,41 @@ static inline size_t bh1750_get_duration_ms(bh1750_device_t *const device) {
 static inline size_t bh1750_get_tick_duration(bh1750_device_t *const device) {
     /* validate arguments */
     if (!device) return 0;
-    size_t res = pdMS_TO_TICKS(bh1750_get_duration_ms(device));
+    size_t res = pdMS_TO_TICKS(bh1750_get_duration(device));
     return res == 0 ? 1 : res;
+}
+
+/**
+ * @brief Setup and configure BH1750.
+ * 
+ * @param device BH1750 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bh1750_setup(bh1750_device_t *const device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate power status */
+    if(device->config.power_enabled == true) {
+        /* attempt to power up device */
+        ESP_RETURN_ON_ERROR(bh1750_enable_power((bh1750_handle_t)device), TAG, "unable to power-up device, bh1750 device setup failed");
+    }
+
+    /* validate measurement time */
+    if(device->config.set_timespan == true) {
+        if(device->config.power_enabled == false) {
+            /* attempt to power up device */
+            ESP_RETURN_ON_ERROR(bh1750_enable_power((bh1750_handle_t)device), TAG, "unable to power-up device, bh1750 device setup failed");
+        }
+
+        /* attempt to write measurement time */
+        ESP_RETURN_ON_ERROR(bh1750_set_measurement_time((bh1750_handle_t)device, device->config.timespan), TAG, "unable to write measurement time to device, bh1750 device setup failed");
+    }
+
+    /* attempt to write measurement mode */
+    ESP_RETURN_ON_ERROR(bh1750_set_measurement_mode((bh1750_handle_t)device, device->config.mode), TAG, "unable to write measurement mode to device, bh1750 device setup failed");
+
+    return ESP_OK;
 }
 
 esp_err_t bh1750_init(i2c_master_bus_handle_t master_handle, const bh1750_config_t *bh1750_config, bh1750_handle_t *bh1750_handle) {
@@ -213,26 +246,6 @@ esp_err_t bh1750_init(i2c_master_bus_handle_t master_handle, const bh1750_config
 
     /* attempt to reset the device */
     ESP_GOTO_ON_ERROR(bh1750_reset((bh1750_handle_t)dev), err_handle, TAG, "unable to soft-reset device, bh1750 device handle initialization failed");
-
-    /* validate power status */
-    if(dev->config.power_enabled == true) {
-        /* attempt to power up device */
-        ESP_GOTO_ON_ERROR(bh1750_enable_power((bh1750_handle_t)dev), err_handle, TAG, "unable to power-up device, bh1750 device handle initialization failed");
-    }
-
-    /* validate measurement time */
-    if(dev->config.set_timespan == true) {
-        if(dev->config.power_enabled == false) {
-            /* attempt to power up device */
-            ESP_GOTO_ON_ERROR(bh1750_enable_power((bh1750_handle_t)dev), err_handle, TAG, "unable to power-up device, bh1750 device handle initialization failed");
-        }
-
-        /* attempt to write measurement time */
-        ESP_GOTO_ON_ERROR(bh1750_set_measurement_time((bh1750_handle_t)dev, dev->config.timespan), err_handle, TAG, "unable to write measurement time to device, bh1750 device handle initialization failed");
-    }
-
-    /* attempt to write measurement mode */
-    ESP_GOTO_ON_ERROR(bh1750_set_measurement_mode((bh1750_handle_t)dev, dev->config.mode), err_handle, TAG, "unable to write measurement mode to device, bh1750 device handle initialization failed");
 
     /* set device handle */
     *bh1750_handle = (bh1750_handle_t)dev;
@@ -389,6 +402,9 @@ esp_err_t bh1750_reset(bh1750_handle_t handle) {
 
     /* delay before next command - power cycle */
     vTaskDelay(pdMS_TO_TICKS(BH1750_RESET_DELAY_MS));
+
+    /* attempt to setup device */
+    ESP_RETURN_ON_ERROR(bh1750_setup(dev), TAG, "unable to setup device, bh1750 device reset failed");
 
     return ESP_OK;
 }

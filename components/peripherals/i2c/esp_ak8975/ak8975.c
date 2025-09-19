@@ -134,7 +134,7 @@ static inline esp_err_t ak8975_get_sensitivity_adjusted_axes(ak8975_device_t *co
 }
 
 /**
- * @brief AK8975 I2C read from register address transaction.  This is a write and then read process.
+ * @brief AK8975 I2C HAL read from register address transaction.  This is a write and then read process.
  * 
  * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to read from.
@@ -154,7 +154,7 @@ static inline esp_err_t ak8975_i2c_read_from(ak8975_device_t *const device, cons
 }
 
 /**
- * @brief AK8975 I2C read byte from register address transaction.
+ * @brief AK8975 I2C HAL read byte from register address transaction.
  * 
  * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to read from.
@@ -177,7 +177,7 @@ static inline esp_err_t ak8975_i2c_read_byte_from(ak8975_device_t *const device,
 }
 
 /**
- * @brief AK8975 I2C write byte to register address transaction.
+ * @brief AK8975 I2C HAL write byte to register address transaction.
  * 
  * @param device AK8975 device descriptor.
  * @param reg_addr AK8975 register address to write to.
