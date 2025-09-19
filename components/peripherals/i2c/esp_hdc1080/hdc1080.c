@@ -309,11 +309,11 @@ static inline float hdc1080_convert_humidity_signal(const uint16_t humidity) {
 }
 
 /**
- * @brief Calculates dewpoint temperature from air temperature and relative humidity.
+ * @brief Calculates dew-point temperature from air temperature and relative humidity.
  *
  * @param[in] temperature Air temperature in degrees Celsius.
  * @param[in] humidity Relative humidity in percentage.
- * @param[out] dewpoint Calculated dewpoint temperature in degrees Celsius.
+ * @param[out] dewpoint Calculated dew-point temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t hdc1080_calculate_dewpoint(const float temperature, const float humidity, float *const dewpoint) {

@@ -124,19 +124,6 @@ typedef enum ahtxx_sensor_types_e {
 } ahtxx_sensor_types_t;
 
 /**
- * @brief AHTXX status register structure definition.
- */
-typedef union __attribute__((packed)) ahtxx_status_register_u {
-    struct {
-        uint8_t reserved1:3; /*!< reserved                       (bit:0-2)  */
-        bool calibrated:1;   /*!< ahtxx is calibrated when true  (bit:3) */
-        uint8_t reserved2:3; /*!< reserved                       (bit:4-6) */
-        bool busy:1;         /*!< ahtxx is busy when true        (bit:7) */
-    } bits;
-    uint8_t reg;
-} ahtxx_status_register_t;
-
-/**
  * @brief AHTXX configuration structure definition.
  */
 typedef struct ahtxx_config_s {
@@ -145,24 +132,15 @@ typedef struct ahtxx_config_s {
     ahtxx_sensor_types_t sensor_type;   /*!< aht sensor type, see `ahtxx_sensor_types_t` enumerator for support sensor types */
 } ahtxx_config_t;
 
-
 /**
  * @brief AHTXX opaque handle structure definition.
  */
 typedef void* ahtxx_handle_t;
 
+
 /**
  * public function and subroutine declarations
  */
-
-/**
- * @brief Reads status register from AHTXX.
- *
- * @param[in] handle AHTXX device handle.
- * @param[out] reg AHTXX status register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ahtxx_get_status_register(ahtxx_handle_t handle, ahtxx_status_register_t *const reg);
 
 /**
  * @brief Initializes an AHTXX device onto the I2C master bus.

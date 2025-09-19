@@ -472,6 +472,26 @@ static inline esp_err_t bmp280_i2c_set_configuration_register(bmp280_device_t *c
 }
 
 /**
+ * @brief BMP280 I2C HAL write reset register.
+ * 
+ * @param device BMP280 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bmp280_i2c_set_reset_register(bmp280_device_t *device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( bmp280_i2c_write_byte_to(device, BMP280_REG_RESET, BMP280_RESET_VALUE), TAG, "write reset register failed" );
+
+    /* wait until finished copying NVP data */
+    // forced delay before next transaction - see datasheet for details
+    vTaskDelay(pdMS_TO_TICKS(BMP280_RESET_DELAY_MS)); // check is busy in timeout loop...
+
+    return ESP_OK;
+}
+
+/**
  * @brief BMP280 I2C HAL to setup and configuration.
  * 
  * @param device BMP280 device descriptor.
@@ -561,8 +581,11 @@ esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config
         ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", device->sensor_type);
     }
 
-    /* attempt to reset the device and initialize registers */
-    ESP_GOTO_ON_ERROR(bmp280_reset((bmp280_handle_t)device), err_handle, TAG, "soft-reset and initialize registers for init failed");
+    /* attempt to reset device */
+    ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for init failed" );
+
+    /* attempt to setup device */
+    ESP_RETURN_ON_ERROR( bmp280_i2c_setup(device), TAG, "unable to setup device, init failed" );
 
     /* set output parameter */
     *bmp280_handle = (bmp280_handle_t)device;
@@ -593,8 +616,13 @@ esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperatu
 
     /* attempt to poll until data is available or timeout */
     do {
-        /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( bmp280_get_data_status(handle, &data_is_ready), err, TAG, "data ready ready for get fixed measurement failed." );
+        bmp280_status_register_t status_reg = { 0 };
+
+        /* attempt to read device status register */
+        ESP_GOTO_ON_ERROR( bmp280_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for get fixed measurement failed" );
+
+        /* set data is ready flag */
+        data_is_ready = !status_reg.bits.measuring;
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(BMP280_DATA_READY_DELAY_MS));
@@ -845,12 +873,8 @@ esp_err_t bmp280_reset(bmp280_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt i2c transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_write_byte_to(device, BMP280_REG_RESET, BMP280_RESET_VALUE), TAG, "write reset register for reset failed" );
-
-    /* wait until finished copying NVP data */
-    // forced delay before next transaction - see datasheet for details
-    vTaskDelay(pdMS_TO_TICKS(BMP280_RESET_DELAY_MS)); // check is busy in timeout loop...
+    /* attempt to reset device */
+    ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for reset failed" );
 
     /* attempt to setup device */
     ESP_RETURN_ON_ERROR( bmp280_i2c_setup(device), TAG, "unable to setup device, reset failed" );

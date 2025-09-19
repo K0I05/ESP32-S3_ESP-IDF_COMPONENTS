@@ -771,8 +771,13 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
 
     /* attempt to poll high and low channel data from device until data is available or timeout */
     do {
-        /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( tcs3472_get_data_status((tcs3472_handle_t)device, &data_is_ready), err, TAG, "data ready ready for get channel count failed." );
+        tcs3472_status_register_t status = { 0 };
+
+        /* attempt to read status register */
+        ESP_GOTO_ON_ERROR( tcs3472_i2c_get_status_register(device, &status), err, TAG, "read status register failed" );
+
+        /* set data is ready flag */
+        data_is_ready = status.bits.data_valid;
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(TCS3472_DATA_READY_DELAY_MS));

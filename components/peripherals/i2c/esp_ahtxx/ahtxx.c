@@ -95,6 +95,19 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
 /**
+ * @brief AHTXX status register structure definition.
+ */
+typedef union __attribute__((packed)) ahtxx_status_register_u {
+    struct {
+        uint8_t reserved1:3; /*!< reserved                       (bit:0-2)  */
+        bool calibrated:1;   /*!< ahtxx is calibrated when true  (bit:3) */
+        uint8_t reserved2:3; /*!< reserved                       (bit:4-6) */
+        bool busy:1;         /*!< ahtxx is busy when true        (bit:7) */
+    } bits;
+    uint8_t reg;
+} ahtxx_status_register_t;
+
+/**
  * @brief AHTXX device descriptor structure definition.
  */
 typedef struct ahtxx_device_s {
@@ -234,13 +247,13 @@ static inline esp_err_t ahtxx_i2c_write(ahtxx_device_t *const device, const uint
 }
 
 /**
- * @brief Resets AHTXX initialization register by register address.
+ * @brief AHTXX I2C HAL reset and initialization of register by register address.
  * 
  * @param device AHTXX device descriptor.
  * @param reg_addr AHTXX reset register address.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ahtxx_reset_init_register(ahtxx_device_t *device, const uint8_t reg_addr) {
+static inline esp_err_t ahtxx_i2c_reset_init_register(ahtxx_device_t *device, const uint8_t reg_addr) {
     bit24_uint8_buffer_t tx = { 0 };
     bit24_uint8_buffer_t rx = { 0 };
 
@@ -282,12 +295,53 @@ static inline esp_err_t ahtxx_reset_init_register(ahtxx_device_t *device, const 
 }
 
 /**
- * @brief AHTXX initialization and calibration setup.  This is a one-time call at start-up if the device isn't initialized and calibrated.
+ * @brief AHTXX I2C HAL read status register.
+ *
+ * @param[in] device AHTXX device descriptor.
+ * @param[out] reg AHTXX status register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t ahtxx_i2c_get_status_register(ahtxx_device_t *device, ahtxx_status_register_t *const reg) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device && reg );
+
+    /* attempt i2c write/read transaction */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_read_from(device, AHTXX_CMD_STATUS, &reg->reg, BIT8_UINT8_BUFFER_SIZE), TAG, "read status register failed" );
+
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief AHTXX I2C HAL write reset register.
+ * 
+ * @param device AHTXX device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t ahtxx_i2c_set_reset_register(ahtxx_device_t *device) {
+    const bit8_uint8_buffer_t tx = { AHTXX_CMD_RESET };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "write reset register failed" );
+
+    /* delay task before i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AHTXX_RESET_DELAY_MS));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief AHTXX I2C HAL initialization and calibration setup.  This is a one-time call at start-up if the device isn't initialized and calibrated.
  *
  * @param device AHTXX device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ahtxx_setup(ahtxx_device_t *device) {
+static inline esp_err_t ahtxx_i2c_setup(ahtxx_device_t *device) {
     const bit24_uint8_buffer_t aht10_tx = { AHTXX_CMD_AHT10_INIT, AHTXX_CTRL_CALI, AHTXX_CTRL_NOP };
     const bit24_uint8_buffer_t aht20_tx = { AHTXX_CMD_AHT20_INIT, AHTXX_CTRL_CALI, AHTXX_CTRL_NOP };
 
@@ -308,9 +362,9 @@ static inline esp_err_t ahtxx_setup(ahtxx_device_t *device) {
         case AHTXX_AHT25:
         case AHTXX_AHT30:
             /* attempt i2c reset transaction for aht21, aht25, and aht30 sensor types initialization */
-            ESP_RETURN_ON_ERROR( ahtxx_reset_init_register(device, AHTXX_REG_1B), TAG, "reset initialization registers 0x1b failed" );
-            ESP_RETURN_ON_ERROR( ahtxx_reset_init_register(device, AHTXX_REG_1C), TAG, "reset initialization registers 0x1c failed" );
-            ESP_RETURN_ON_ERROR( ahtxx_reset_init_register(device, AHTXX_REG_1E), TAG, "reset initialization registers 0x1e failed" );
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_reset_init_register(device, AHTXX_REG_1B), TAG, "reset initialization registers 0x1b failed" );
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_reset_init_register(device, AHTXX_REG_1C), TAG, "reset initialization registers 0x1c failed" );
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_reset_init_register(device, AHTXX_REG_1E), TAG, "reset initialization registers 0x1e failed" );
             break;
         default:
             return ESP_ERR_INVALID_ARG;
@@ -322,17 +376,43 @@ static inline esp_err_t ahtxx_setup(ahtxx_device_t *device) {
     return ESP_OK;
 }
 
-esp_err_t ahtxx_get_status_register(ahtxx_handle_t handle, ahtxx_status_register_t *const reg) {
-    ahtxx_device_t* dev = (ahtxx_device_t*)handle;
+/**
+ * @brief AHTXX I2C HAL calibration validation.
+ * 
+ * @param device AHTXX device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t ahtxx_i2c_calibrate(ahtxx_device_t *device) {
+    ahtxx_status_register_t status_reg = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && reg );
+    ESP_ARG_CHECK( device );
 
-    /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_read_from(dev, AHTXX_CMD_STATUS, &reg->reg, BIT8_UINT8_BUFFER_SIZE), TAG, "read status register failed" );
+    /* attempt to read status register */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for calibrate failed" );
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
+    /* handle sensor setup by sensor type */
+    if(device->config.sensor_type == AHTXX_AHT10 || device->config.sensor_type == AHTXX_AHT20) {
+        /* validate calibration status */
+        if(status_reg.bits.calibrated == false) {
+            /* attempt to write init command */
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for calibrate failed" );
+        }
+    } else {
+        /* validate register status */
+        if(status_reg.reg != AHTXX_STATUS_WORD) {
+            /* attempt to reset initialization registers */
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for calibrate failed" );
+        }
+    }
+
+    /* attempt to read status register */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for calibrate failed" );
+
+    /* validate calibration status */
+    if(status_reg.bits.calibrated == false) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_STATE, TAG, "setup and initialize sensor for calibrate failed" );
+    }
 
     return ESP_OK;
 }
@@ -349,32 +429,35 @@ esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_co
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, ahtxx device handle initialization failed", ahtxx_config->i2c_address);
 
     /* validate memory availability for handle */
-    ahtxx_device_t* dev = (ahtxx_device_t*)calloc(1, sizeof(ahtxx_device_t));
-    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ahtxx device, init failed");
+    ahtxx_device_t* device = (ahtxx_device_t*)calloc(1, sizeof(ahtxx_device_t));
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c ahtxx device, init failed");
 
     /* copy configuration */
-    dev->config = *ahtxx_config;
+    device->config = *ahtxx_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = dev->config.i2c_address,
-        .scl_speed_hz       = dev->config.i2c_clock_speed,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (dev->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (device->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
 
-    /* attempt soft-reset */
-    ESP_GOTO_ON_ERROR(ahtxx_reset((ahtxx_handle_t)dev), err_handle, TAG, "soft-reset for init failed");
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_set_reset_register(device), TAG, "write reset register for init failed" );
+
+    /* attempt to check sensor calibration */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_calibrate(device), TAG, "calibration for init failed" );
 
     /* set device handle */
-    *ahtxx_handle = (ahtxx_handle_t)dev;
+    *ahtxx_handle = (ahtxx_handle_t)device;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AHTXX_APPSTART_DELAY_MS));
@@ -383,35 +466,40 @@ esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_co
 
     err_handle:
         /* clean up handle instance */
-        if (dev && dev->i2c_handle) {
-            i2c_master_bus_rm_device(dev->i2c_handle);
+        if (device && device->i2c_handle) {
+            i2c_master_bus_rm_device(device->i2c_handle);
         }
-        free(dev);
+        free(device);
     err:
         return ret;
 }
 
 esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature, float *const humidity) {
     const bit24_uint8_buffer_t tx = { AHTXX_CMD_TRIGGER_MEAS, AHTXX_CTRL_MEAS, AHTXX_CTRL_NOP };
-    esp_err_t     ret        = ESP_OK;
-    uint64_t      start_time = esp_timer_get_time();
-    bool          is_busy    = true;
-    bit56_uint8_buffer_t rx  = { 0 };
-    ahtxx_device_t* dev      = (ahtxx_device_t*)handle;
+    esp_err_t     ret           = ESP_OK;
+    uint64_t      start_time    = esp_timer_get_time();
+    bool          data_is_ready = false;
+    bit56_uint8_buffer_t rx     = { 0 };
+    ahtxx_device_t* device      = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && (temperature || humidity) );
+    ESP_ARG_CHECK( device && (temperature || humidity) );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(dev, tx, BIT24_UINT8_BUFFER_SIZE ), TAG, "write measurement trigger command for get measurement failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT24_UINT8_BUFFER_SIZE ), TAG, "write measurement trigger command for get measurement failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AHTXX_MEAS_PROC_DELAY_MS));
 
     /* attempt to poll status until data is available or timeout occurs  */
     do {
-        /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( ahtxx_get_busy_status(handle, &is_busy), err, TAG, "is busy read for get measurement failed." );
+        ahtxx_status_register_t status_reg = { 0 };
+
+        /* attempt to read status register to check if data is ready */
+        ESP_GOTO_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for busy status failed" );
+
+        /* set data is ready flag */
+        data_is_ready = !status_reg.bits.busy;
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(AHTXX_DATA_READY_DELAY_MS));
@@ -419,19 +507,19 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
         /* validate timeout condition */
         if (ESP_TIMEOUT_CHECK(start_time, (AHTXX_DATA_POLL_TIMEOUT_MS * 1000)))
             return ESP_ERR_TIMEOUT;
-    } while (is_busy == true);
+    } while (data_is_ready == false);
 
     /* handle aht sensor read by type */
-    if(dev->config.sensor_type == AHTXX_AHT10) {
+    if(device->config.sensor_type == AHTXX_AHT10) {
         /* aht10 returns 6 bytes */
 
         /* attempt i2c read transaction for aht10 sensor type */
-        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(dev, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
+        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(device, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
     } else {
         /* aht20, aht21, aht25, and aht30 return 7 bytes */
 
         /* attempt i2c read transaction for aht20, aht21, aht25, and aht30 sensor types */
-        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(dev, rx, BIT56_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
+        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(device, rx, BIT56_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
 
         /* validate crc ? */
     }
@@ -471,13 +559,14 @@ esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature
 }
 
 esp_err_t ahtxx_get_busy_status(ahtxx_handle_t handle, bool *const busy) {
-    ahtxx_status_register_t status_reg;
+    ahtxx_status_register_t status_reg = { 0 };
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && busy );
+    ESP_ARG_CHECK( device && busy );
 
     /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_get_status_register(handle, &status_reg), TAG, "read status register for busy status failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for busy status failed" );
 
     /* set output parameter */
     *busy = status_reg.bits.busy;
@@ -488,13 +577,14 @@ esp_err_t ahtxx_get_busy_status(ahtxx_handle_t handle, bool *const busy) {
 }
 
 esp_err_t ahtxx_get_calibration_status(ahtxx_handle_t handle, bool *const calibrated) {
-    ahtxx_status_register_t status_reg;
+    ahtxx_status_register_t status_reg = { 0 };
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && calibrated );
+    ESP_ARG_CHECK( device && calibrated );
 
     /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_get_status_register(handle, &status_reg), TAG, "read status register for calibration status failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for calibration status failed" );
 
     /* set output parameter */
     *calibrated = status_reg.bits.calibrated;
@@ -503,13 +593,14 @@ esp_err_t ahtxx_get_calibration_status(ahtxx_handle_t handle, bool *const calibr
 }
 
 esp_err_t ahtxx_get_status(ahtxx_handle_t handle, bool *const busy, bool *const calibrated) {
-    ahtxx_status_register_t status_reg;
+    ahtxx_status_register_t status_reg = { 0 };
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && (busy || calibrated) );
+    ESP_ARG_CHECK( device && (busy || calibrated) );
 
     /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_get_status_register(handle, &status_reg), TAG, "read status register for status failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for status failed" );
 
     /* set output parameters */
     *busy       = status_reg.bits.busy;
@@ -519,39 +610,57 @@ esp_err_t ahtxx_get_status(ahtxx_handle_t handle, bool *const busy, bool *const 
 }
 
 esp_err_t ahtxx_reset(ahtxx_handle_t handle) {
-    const bit8_uint8_buffer_t tx = { AHTXX_CMD_RESET };
-    ahtxx_status_register_t status_reg;
-    ahtxx_device_t* dev = (ahtxx_device_t*)handle;
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
+
+    /* attempt to reset device */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_set_reset_register(device), TAG, "write reset register for reset failed" );
+
+    /* attempt to check sensor calibration */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_calibrate(device), TAG, "calibration for reset failed" );
+
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
+    
+    return ESP_OK;
+}
+
+esp_err_t ahtxx_reset__(ahtxx_handle_t handle) {
+    const bit8_uint8_buffer_t tx = { AHTXX_CMD_RESET };
+    ahtxx_status_register_t status_reg = { 0 };
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(dev, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "write reset command for reset failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "write reset command for reset failed" );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AHTXX_RESET_DELAY_MS));
 
     /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_get_status_register(handle, &status_reg), TAG, "read status register for reset failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for reset failed" );
 
     /* handle sensor setup by sensor type */
-    if(dev->config.sensor_type == AHTXX_AHT10 || dev->config.sensor_type == AHTXX_AHT20) {
+    if(device->config.sensor_type == AHTXX_AHT10 || device->config.sensor_type == AHTXX_AHT20) {
         /* validate calibration status */
         if(status_reg.bits.calibrated == false) {
             /* attempt to write init command */
-            ESP_RETURN_ON_ERROR( ahtxx_setup(dev), TAG, "setup sensor for reset failed" );
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for reset failed" );
         }
     } else {
         /* validate register status */
         if(status_reg.reg != AHTXX_STATUS_WORD) {
             /* attempt to reset initialization registers */
-            ESP_RETURN_ON_ERROR( ahtxx_setup(dev), TAG, "setup sensor for reset failed" );
+            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for reset failed" );
         }
     }
 
     /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_get_status_register(handle, &status_reg), TAG, "read status register for reset failed" );
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for reset failed" );
 
     /* validate calibration status */
     if(status_reg.bits.calibrated == false) {
@@ -565,13 +674,13 @@ esp_err_t ahtxx_reset(ahtxx_handle_t handle) {
 }
 
 esp_err_t ahtxx_remove(ahtxx_handle_t handle) {
-    ahtxx_device_t* dev = (ahtxx_device_t*)handle;
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    return i2c_master_bus_rm_device(device->i2c_handle);
 }
 
 esp_err_t ahtxx_delete(ahtxx_handle_t handle) {
