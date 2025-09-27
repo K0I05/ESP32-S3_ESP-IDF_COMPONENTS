@@ -70,8 +70,8 @@ void i2c0_bme680_task( void *pvParameters ) {
     TickType_t          last_wake_time  = xTaskGetTickCount ();
     
     // initialize i2c device configuration
-    bme680_config_t dev_cfg         = I2C_BME680_FORCED_CONFIG_DEFAULT;
-    //bme680_config_t dev_cfg         = I2C_BME680_SEQUENTIAL_CONFIG_DEFAULT;
+    bme680_config_t dev_cfg         = BME680_FORCED_CONFIG_DEFAULT;
+    //bme680_config_t dev_cfg         = BME680_SEQUENTIAL_CONFIG_DEFAULT;
     bme680_handle_t dev_hdl;
     
     // init device

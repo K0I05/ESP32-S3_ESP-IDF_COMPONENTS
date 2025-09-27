@@ -59,7 +59,7 @@ extern "C" {
  * macros definitions
 */
 
-#define I2C_BH1750_CONFIG_DEFAULT {                             \
+#define BH1750_CONFIG_DEFAULT {                             \
         .i2c_address        = I2C_BH1750_DEV_ADDR_LO,           \
         .i2c_clock_speed    = I2C_BH1750_DEV_CLK_SPD,           \
         .mode               = BH1750_MODE_CM_HI_RESOLUTION,     \

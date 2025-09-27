@@ -27,7 +27,7 @@ list(APPEND EXTRA_COMPONENT_DIRS
     "components/peripherals/i2c/esp_ina226"
     "components/peripherals/i2c/esp_ina228"
     "components/peripherals/i2c/esp_ltr390uv"
-    #"components/peripherals/i2c/esp_max30105"
+    "components/peripherals/i2c/esp_max30105"
     "components/peripherals/i2c/esp_mlx90614"
     "components/peripherals/i2c/esp_mmc56x3"
     "components/peripherals/i2c/esp_mpu6050"

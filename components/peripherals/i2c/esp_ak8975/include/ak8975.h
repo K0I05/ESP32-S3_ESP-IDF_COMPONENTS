@@ -63,7 +63,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `i2c_ak8975_config_t` to default configuration settings.
  */
-#define I2C_AK8975_CONFIG_DEFAULT {                           \
+#define AK8975_CONFIG_DEFAULT {                           \
     .i2c_clock_speed    = I2C_AK8975_DEV_CLK_SPD,            \
     .i2c_address        = I2C_AK8975_DEV_ADDR_CAD1_0_CAD0_0, }
 

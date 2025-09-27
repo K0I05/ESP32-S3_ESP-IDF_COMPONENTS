@@ -63,7 +63,7 @@ extern "C"
  * DS18B20 macro definitions
  */
 
-#define OWB_DS18B20_CONFIG_DEFAULT {                \
+#define DS18B20_CONFIG_DEFAULT {                \
     .resolution      = DS18B20_RESOLUTION_10BIT,    \
     .trigger_enabled = false }
 

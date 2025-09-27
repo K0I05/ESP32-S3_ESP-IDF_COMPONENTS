@@ -61,7 +61,7 @@ extern "C" {
 /**
  * @brief VEML7700 device configuration initialization default.
  */
-#define I2C_VEML7700_CONFIG_DEFAULT {                                               \
+#define VEML7700_CONFIG_DEFAULT {                                               \
             .i2c_address                = I2C_VEML7700_DEV_ADDR,                    \
             .i2c_clock_speed            = I2C_VEML7700_DEV_CLK_SPD,                 \
             .gain                       = VEML7700_GAIN_DIV_4,                      \

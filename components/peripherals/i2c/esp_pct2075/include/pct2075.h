@@ -64,9 +64,10 @@ extern "C" {
 /**
  * @brief Macro that initializes `pct2075_config_t` to default configuration settings.
  */
-#define I2C_PCT2075_CONFIG_DEFAULT {                  \
+#define PCT2075_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_PCT2075_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_PCT2075_DEV_CLK_SPD }
+    .i2c_clock_speed = I2C_PCT2075_DEV_CLK_SPD      \
+}
 
 
 

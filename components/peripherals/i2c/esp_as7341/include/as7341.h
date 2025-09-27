@@ -60,7 +60,7 @@ extern "C" {
 /*
  * AS7341 macro definitions
 */
-#define I2C_AS7341_CONFIG_DEFAULT {                      \
+#define AS7341_CONFIG_DEFAULT {                      \
     .i2c_address        = I2C_AS7341_DEV_ADDR,           \
     .i2c_clock_speed    = I2C_AS7341_DEV_CLK_SPD,        \
     .spectral_gain      = AS7341_SPECTRAL_GAIN_32X,      \

@@ -61,7 +61,7 @@ void i2c0_ina228_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    ina228_config_t dev_cfg          = I2C_INA228_CONFIG_DEFAULT;
+    ina228_config_t dev_cfg          = INA228_CONFIG_DEFAULT;
     ina228_handle_t dev_hdl;
     //
     // init device

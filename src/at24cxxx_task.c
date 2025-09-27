@@ -51,10 +51,10 @@ void i2c0_at24cxxx_setup( at24cxxx_handle_t handle) {
 
 void i2c0_at24cxxx_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t        last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    at24cxxx_config_t dev_cfg          = I2C_AT24C256_CONFIG_DEFAULT;
+    at24cxxx_config_t dev_cfg          = AT24C256_CONFIG_DEFAULT;
     at24cxxx_handle_t dev_hdl;
     //
     // init device

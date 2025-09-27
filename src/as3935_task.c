@@ -65,7 +65,7 @@ void i2c0_as3935_task( void *pvParameters ) {
     //
     // initialize i2c device configuration
     as3935_monitor_handle_t monitor_hdl;
-    as3935_config_t dev_cfg          = I2C_AS3935_CONFIG_DEFAULT;
+    as3935_config_t dev_cfg          = AS3935_CONFIG_DEFAULT;
     //as3935_handle_t dev_hdl;
     //
     // init device

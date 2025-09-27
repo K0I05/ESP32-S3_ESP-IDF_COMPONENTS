@@ -28,6 +28,6 @@ direct_dependencies:
 - idf
 - k0i05/esp_time_into_interval
 - k0i05/esp_type_utils
-manifest_hash: 93b459031750fa8ef0f218cb2a731812b86eed2b58fd7e3c5c8a0ccd2154c2de
+manifest_hash: 1b96e1e57ecf589654e0dbab15bc2c5aee9908b9b6c911f55912f559681483d3
 target: esp32s3
 version: 2.0.0

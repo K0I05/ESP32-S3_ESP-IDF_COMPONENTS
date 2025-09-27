@@ -40,11 +40,11 @@ void i2c0_ahtxx_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    //ahtxx_config_t dev_cfg          = I2C_AHT10_CONFIG_DEFAULT;
-    ahtxx_config_t dev_cfg          = I2C_AHT20_CONFIG_DEFAULT;
-    //ahtxx_config_t dev_cfg          = I2C_AHT21_CONFIG_DEFAULT;
-    //ahtxx_config_t dev_cfg          = I2C_AHT25_CONFIG_DEFAULT;
-    //ahtxx_config_t dev_cfg          = I2C_AHT30_CONFIG_DEFAULT;
+    //ahtxx_config_t dev_cfg          = AHT10_CONFIG_DEFAULT;
+    ahtxx_config_t dev_cfg          = AHT20_CONFIG_DEFAULT;
+    //ahtxx_config_t dev_cfg          = AHT21_CONFIG_DEFAULT;
+    //ahtxx_config_t dev_cfg          = AHT25_CONFIG_DEFAULT;
+    //ahtxx_config_t dev_cfg          = AHT30_CONFIG_DEFAULT;
     ahtxx_handle_t dev_hdl;
     //
     // init device

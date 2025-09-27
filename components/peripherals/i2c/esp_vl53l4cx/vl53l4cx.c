@@ -25,6 +25,8 @@
  * @file vl53l4cx.c
  *
  * ESP-IDF driver for VL53L4CX time of flight sensor
+ * 
+ * https://github.com/GrimbiXcode/VL53L0X-Register-Map
  *
  * Ported from esp-open-rtos
  *

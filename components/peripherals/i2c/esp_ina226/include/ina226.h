@@ -91,7 +91,7 @@ INA266 Wiring for Voltage & Current
 /*
  * INA226 macro definitions
 */
-#define I2C_INA226_CONFIG_DEFAULT {                                     \
+#define INA226_CONFIG_DEFAULT {                                     \
     .i2c_address                = I2C_INA226_ADDR_GND_GND,              \
     .i2c_clock_speed            = I2C_INA226_DEV_CLK_SPD,               \
     .averaging_mode             = INA226_AVG_MODE_1,                    \

@@ -69,7 +69,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `adc_s12sd_config_t` to default configuration settings.
  */
-#define ADC_S12SD_CONFIG_DEFAULT {                  \
+#define S12SD_CONFIG_DEFAULT {                  \
     .adc_unit    = ADC_S12SD_UNIT_DEFAULT,          \
     .adc_channel = ADC_S12SD_CHANNEL_DEFAULT,  } 
 

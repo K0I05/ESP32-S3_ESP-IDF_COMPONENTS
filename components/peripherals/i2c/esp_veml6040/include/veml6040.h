@@ -60,7 +60,7 @@ extern "C" {
 /**
  * @brief VEML6040 device configuration initialization default macro.
  */
-#define I2C_VEML6040_CONFIG_DEFAULT {                                       \
+#define VEML6040_CONFIG_DEFAULT {                                       \
             .i2c_address                = I2C_VEML6040_DEV_ADDR,            \
             .i2c_clock_speed            = I2C_VEML6040_DEV_CLK_SPD,         \
             .integration_time           = VEML6040_INTEGRATION_TIME_160MS,  \

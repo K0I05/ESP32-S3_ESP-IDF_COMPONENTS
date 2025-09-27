@@ -40,7 +40,7 @@ void i2c0_pct2075_task( void *pvParameters ) {
     TickType_t       last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    pct2075_config_t dev_cfg          = I2C_PCT2075_CONFIG_DEFAULT;
+    pct2075_config_t dev_cfg          = PCT2075_CONFIG_DEFAULT;
     pct2075_handle_t dev_hdl          = NULL;
     esp_err_t        result           = ESP_OK;
     //

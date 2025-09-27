@@ -37,10 +37,10 @@
 
 void i2c0_bmp280_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t          last_wake_time  = xTaskGetTickCount ();
+    TickType_t      last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    bmp280_config_t dev_cfg         = I2C_BMP280_CONFIG_DEFAULT;
+    bmp280_config_t dev_cfg         = BMP280_CONFIG_DEFAULT;
     bmp280_handle_t dev_hdl;
     //
     // init device

@@ -406,9 +406,9 @@ void i2c0_ssd1306_task( void *pvParameters ) {
     TickType_t          last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-	//ssd1306_config_t dev_cfg         = I2C_SSD1306_128x32_CONFIG_DEFAULT;
-    //ssd1306_config_t dev_cfg         = I2C_SSD1306_128x64_CONFIG_DEFAULT;
-	ssd1306_config_t dev_cfg         = I2C_SSD1306_128x128_CONFIG_DEFAULT;
+	//ssd1306_config_t dev_cfg         = SD1306_128x32_CONFIG_DEFAULT;
+    //ssd1306_config_t dev_cfg         = SSD1306_128x64_CONFIG_DEFAULT;
+	ssd1306_config_t dev_cfg         = SSD1306_128x128_CONFIG_DEFAULT;
     ssd1306_handle_t dev_hdl;
     //
     // init device

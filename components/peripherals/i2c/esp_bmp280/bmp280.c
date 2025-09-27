@@ -433,7 +433,7 @@ static inline esp_err_t bmp280_i2c_set_control_measurement_register(bmp280_devic
  * @param[out] reg BMP280 configuration register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_configuration_register(bmp280_device_t *const device, bmp280_configuration_register_t *const reg) {
+static inline esp_err_t bmp280_i2c_get_config_register(bmp280_device_t *const device, bmp280_configuration_register_t *const reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device && reg );
 
@@ -453,7 +453,7 @@ static inline esp_err_t bmp280_i2c_get_configuration_register(bmp280_device_t *c
  * @param[in] reg BMP280 configuration register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_set_configuration_register(bmp280_device_t *const device, const bmp280_configuration_register_t reg) {
+static inline esp_err_t bmp280_i2c_set_config_register(bmp280_device_t *const device, const bmp280_configuration_register_t reg) {
     bmp280_configuration_register_t config = { .reg = reg.reg};
 
     /* validate arguments */
@@ -472,7 +472,7 @@ static inline esp_err_t bmp280_i2c_set_configuration_register(bmp280_device_t *c
 }
 
 /**
- * @brief BMP280 I2C HAL write reset register.
+ * @brief BMP280 I2C HAL write reset register to reset device with restart delay.
  * 
  * @param device BMP280 device descriptor.
  * @return esp_err_t ESP_OK on success.
@@ -489,6 +489,53 @@ static inline esp_err_t bmp280_i2c_set_reset_register(bmp280_device_t *device) {
     vTaskDelay(pdMS_TO_TICKS(BMP280_RESET_DELAY_MS)); // check is busy in timeout loop...
 
     return ESP_OK;
+}
+
+static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int32_t *const temperature, int32_t *const pressure) {
+    esp_err_t        ret            = ESP_OK;
+    uint64_t         start_time     = esp_timer_get_time();
+    bool             data_is_ready  = false;
+    bit48_uint8_buffer_t rx;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && temperature && pressure );
+
+    /* attempt to poll until data is available or timeout */
+    do {
+        bmp280_status_register_t status_reg = { 0 };
+
+        /* attempt to read device status register */
+        ESP_GOTO_ON_ERROR( bmp280_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for get fixed measurement failed" );
+
+        /* set data is ready flag */
+        data_is_ready = !status_reg.bits.measuring;
+
+        /* delay task before next i2c transaction */
+        vTaskDelay(pdMS_TO_TICKS(BMP280_DATA_READY_DELAY_MS));
+
+        /* validate timeout condition */
+        if (ESP_TIMEOUT_CHECK(start_time, BMP280_DATA_POLL_TIMEOUT_MS * 1000))
+            return ESP_ERR_TIMEOUT;
+    } while (data_is_ready == false);
+
+    // need to read in one sequence to ensure they match.
+    ESP_GOTO_ON_ERROR( bmp280_i2c_read_from(device, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
+
+    /* concat adc pressure & temperature bytes */
+    const int32_t adc_press = rx[0] << 12 | rx[1] << 4 | rx[2] >> 4;
+    const int32_t adc_temp  = rx[3] << 12 | rx[4] << 4 | rx[5] >> 4;
+
+    /* set output parameters */
+    *temperature = adc_temp;
+    *pressure    = adc_press;
+
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(BMP280_CMD_DELAY_MS));
+
+    return ESP_OK;
+
+    err:
+        return ret;
 }
 
 /**
@@ -508,7 +555,7 @@ static inline esp_err_t bmp280_i2c_setup(bmp280_device_t *const device) {
     ESP_RETURN_ON_ERROR( bmp280_i2c_get_cal_factor_registers(device), TAG, "read calibration factors for get registers failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for setup failed");
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for setup failed");
 
     /* attempt to read control measurement register */
     ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for setup failed");
@@ -530,7 +577,7 @@ static inline esp_err_t bmp280_i2c_setup(bmp280_device_t *const device) {
     }
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for setup failed");
+    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for setup failed");
 
     /* attempt to write control measurement register */
     ESP_RETURN_ON_ERROR( bmp280_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for setup failed");
@@ -605,39 +652,14 @@ esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config
 }
 
 esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperature, float *const pressure) {
-    esp_err_t        ret            = ESP_OK;
-    uint64_t         start_time     = esp_timer_get_time();
-    bool             data_is_ready  = false;
-    bmp280_device_t* device         = (bmp280_device_t*)handle;
-    bit48_uint8_buffer_t rx;
+    int32_t adc_press, adc_temp;
+     bmp280_device_t* device = (bmp280_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature && pressure );
 
-    /* attempt to poll until data is available or timeout */
-    do {
-        bmp280_status_register_t status_reg = { 0 };
-
-        /* attempt to read device status register */
-        ESP_GOTO_ON_ERROR( bmp280_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for get fixed measurement failed" );
-
-        /* set data is ready flag */
-        data_is_ready = !status_reg.bits.measuring;
-
-        /* delay task before next i2c transaction */
-        vTaskDelay(pdMS_TO_TICKS(BMP280_DATA_READY_DELAY_MS));
-
-        /* validate timeout condition */
-        if (ESP_TIMEOUT_CHECK(start_time, BMP280_DATA_POLL_TIMEOUT_MS * 1000))
-            return ESP_ERR_TIMEOUT;
-    } while (data_is_ready == false);
-
     // need to read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( bmp280_i2c_read_from(device, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
-
-    /* concat adc pressure & temperature bytes */
-    const int32_t adc_press = rx[0] << 12 | rx[1] << 4 | rx[2] >> 4;
-    const int32_t adc_temp  = rx[3] << 12 | rx[4] << 4 | rx[5] >> 4;
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_adc_signals(device, &adc_temp, &adc_press), TAG, "read temperature and pressure adc signals failed" );
 
     /* compensate adc temperature & pressure and set output parameters */
     *temperature = bmp280_compensate_temperature(device, adc_temp);
@@ -645,33 +667,6 @@ esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperatu
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP280_CMD_DELAY_MS));
-
-    return ESP_OK;
-
-    err:
-        return ret;
-}
-
-esp_err_t bmp280_get_temperature(bmp280_handle_t handle, float *const temperature) {
-    float pressure = { 0 };
-
-    /* validate arguments */
-    ESP_ARG_CHECK( handle && temperature );
-
-    /* attempt to read measurements (temperature & pressure) */
-    ESP_RETURN_ON_ERROR( bmp280_get_measurements(handle, temperature, &pressure), TAG, "unable to read measurements, get temperature failed" );
-
-    return ESP_OK;
-}
-
-esp_err_t bmp280_get_pressure(bmp280_handle_t handle, float *const pressure) {
-    float temperature = { 0 };
-
-    /* validate arguments */
-    ESP_ARG_CHECK( handle && pressure );
-
-    /* attempt to read measurements (temperature & pressure) */
-    ESP_RETURN_ON_ERROR( bmp280_get_measurements(handle, &temperature, pressure), TAG, "unable to read measurements, get pressure failed" );
 
     return ESP_OK;
 }
@@ -805,7 +800,7 @@ esp_err_t bmp280_get_standby_time(bmp280_handle_t handle, bmp280_standby_times_t
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for get stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for get stand-by time failed" );
 
     /* set standby time */
     *standby_time = config_reg.bits.standby_time;
@@ -821,13 +816,13 @@ esp_err_t bmp280_set_standby_time(bmp280_handle_t handle, const bmp280_standby_t
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for set stand-by time failed" );
 
     /* initialize configuration register */
     config_reg.bits.standby_time = standby_time;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for set stand-by time failed" );
 
     return ESP_OK;
 }
@@ -840,7 +835,7 @@ esp_err_t bmp280_get_iir_filter(bmp280_handle_t handle, bmp280_iir_filters_t *co
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
 
     /* set standby time */
     *iir_filter = config_reg.bits.iir_filter;
@@ -856,13 +851,13 @@ esp_err_t bmp280_set_iir_filter(bmp280_handle_t handle, const bmp280_iir_filters
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for set IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for set IIR filter failed" );
 
     /* initialize configuration register */
     config_reg.bits.iir_filter = iir_filter;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for set IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for set IIR filter failed" );
 
     return ESP_OK;
 }

@@ -54,7 +54,7 @@ void i2c0_veml7700_task( void *pvParameters ) {
     TickType_t          last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    veml7700_config_t dev_cfg       = I2C_VEML7700_CONFIG_DEFAULT;
+    veml7700_config_t dev_cfg       = VEML7700_CONFIG_DEFAULT;
     veml7700_handle_t dev_hdl;
     //
     // init device

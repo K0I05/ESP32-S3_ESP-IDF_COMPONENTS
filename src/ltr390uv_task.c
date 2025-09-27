@@ -34,30 +34,12 @@
 
 #include <ltr390uv_task.h>
 
-static inline void print_registers( ltr390uv_handle_t handle ) {
-    ltr390uv_control_register_t c_reg;
-    ltr390uv_interrupt_config_register_t ic_reg;
-    ltr390uv_measure_register_t m_reg;
-    ltr390uv_gain_register_t    g_reg;
-    //
-    /* attempt i2c read transaction */
-    ltr390uv_get_measure_register(handle, &m_reg);
-    ltr390uv_get_gain_register(handle, &g_reg);
-    ltr390uv_get_interrupt_config_register(handle, &ic_reg);
-    ltr390uv_get_control_register(handle, &c_reg);
-    //
-    ESP_LOGI(APP_TAG, "Control Register (0x%02x): %s", c_reg.reg, uint8_to_binary(c_reg.reg));
-    ESP_LOGI(APP_TAG, "Measure Register (0x%02x): %s", m_reg.reg, uint8_to_binary(m_reg.reg));
-    ESP_LOGI(APP_TAG, "Gain Register    (0x%02x): %s", g_reg.reg, uint8_to_binary(g_reg.reg));
-    ESP_LOGI(APP_TAG, "IRQ Cfg Register (0x%02x): %s", ic_reg.reg, uint8_to_binary(ic_reg.reg));
-}
-
 void i2c0_ltr390uv_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    ltr390uv_config_t dev_cfg          = I2C_LTR390UV_CONFIG_DEFAULT;
+    ltr390uv_config_t dev_cfg          = LTR390UV_CONFIG_DEFAULT;
     ltr390uv_handle_t dev_hdl;
     //
     // init device
@@ -66,8 +48,6 @@ void i2c0_ltr390uv_task( void *pvParameters ) {
         ESP_LOGE(APP_TAG, "ltr390uv handle init failed");
         assert(dev_hdl);
     }
-    //
-    print_registers( dev_hdl );
     //
     // task loop entry point
     for ( ;; ) {
@@ -84,7 +64,7 @@ void i2c0_ltr390uv_task( void *pvParameters ) {
         }
 
         uint32_t sensor_counts;
-        result = ltr390uv_get_als(dev_hdl, &sensor_counts);
+        result = ltr390uv_get_als_counts(dev_hdl, &sensor_counts);
         if(result != ESP_OK) {
             ESP_LOGE(APP_TAG, "ltr390uv device read failed (%s)", esp_err_to_name(result));
         } else {
@@ -92,14 +72,14 @@ void i2c0_ltr390uv_task( void *pvParameters ) {
         }
 
         float uvi;
-        result = ltr390uv_get_ultraviolet_index(dev_hdl, &uvi);
+        result = ltr390uv_get_uv_index(dev_hdl, &uvi);
         if(result != ESP_OK) {
             ESP_LOGE(APP_TAG, "ltr390uv device read failed (%s)", esp_err_to_name(result));
         } else {
             ESP_LOGI(APP_TAG, "ultraviolet index: %f", uvi);
         }
 
-        result = ltr390uv_get_uvs(dev_hdl, &sensor_counts);
+        result = ltr390uv_get_uvs_counts(dev_hdl, &sensor_counts);
         if(result != ESP_OK) {
             ESP_LOGE(APP_TAG, "ltr390uv device read failed (%s)", esp_err_to_name(result));
         } else {

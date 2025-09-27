@@ -72,7 +72,7 @@ extern "C" {
 /**
  * @brief VL53L4CX device configuration initialization default.
  */
-#define I2C_VL53L4CX_CONFIG_DEFAULT {                                               \
+#define VL53L4CX_CONFIG_DEFAULT {                                               \
             .i2c_address                = I2C_VL53L4CX_DEV_ADDR,                    \
             .i2c_clock_speed            = I2C_VL53L4CX_DEV_CLK_SPD, }
 
@@ -86,8 +86,8 @@ extern "C" {
  * @brief VL53L4CX device configuration structure definition.
  */
 typedef struct vl53l4cx_config_s {
-    uint16_t                            i2c_address;            /*!< veml7700 i2c device address */
-    uint32_t                            i2c_clock_speed;        /*!< veml7700 i2c device scl clock speed  */
+    uint16_t                            i2c_address;            /*!< vl53l4cx i2c device address */
+    uint32_t                            i2c_clock_speed;        /*!< vl53l4cx i2c device scl clock speed  */
 } vl53l4cx_config_t;
 
 

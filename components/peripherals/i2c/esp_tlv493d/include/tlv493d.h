@@ -57,7 +57,7 @@ extern "C"
 /*
  * TLV493D macro definitions
  */
-#define I2C_TLV493D_CONFIG_DEFAULT {                                    \
+#define TLV493D_CONFIG_DEFAULT {                                    \
     .i2c_address                = I2C_TLV493D_DEV_ADDR_LO,              \
     .i2c_clock_speed            = I2C_TLV493D_DEV_CLK_SPD,             \
     .parity_test_enabled        = true,                                 \

@@ -65,7 +65,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht30 sensor type.
  */
-#define I2C_AHT30_CONFIG_DEFAULT {                  \
+#define AHT30_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
     .sensor_type     = AHTXX_AHT30 }
@@ -73,7 +73,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht25 sensor type.
  */
-#define I2C_AHT25_CONFIG_DEFAULT {                  \
+#define AHT25_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
     .sensor_type     = AHTXX_AHT25 }
@@ -81,7 +81,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht21 sensor type.
  */
-#define I2C_AHT21_CONFIG_DEFAULT {                  \
+#define AHT21_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
     .sensor_type     = AHTXX_AHT21 }
@@ -89,7 +89,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht20 sensor type.
  */
-#define I2C_AHT20_CONFIG_DEFAULT {                  \
+#define AHT20_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
     .sensor_type     = AHTXX_AHT20 }
@@ -97,7 +97,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht10 sensor type.
  */
-#define I2C_AHT10_CONFIG_DEFAULT {                  \
+#define AHT10_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
     .sensor_type     = AHTXX_AHT10 }
@@ -168,7 +168,7 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
  * @param[in] handle AHTXX device handle.
  * @param[out] temperature Temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
- * @param[out] dewpoint Calculated dewpoint temperature in degree Celsius.
+ * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint);

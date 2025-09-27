@@ -101,10 +101,10 @@ static inline void get_flicker_detection_status(as7341_handle_t handle) {
 
 void i2c0_as7341_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t          last_wake_time   = xTaskGetTickCount ();
+    TickType_t      last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    as7341_config_t dev_cfg          = I2C_AS7341_CONFIG_DEFAULT;
+    as7341_config_t dev_cfg          = AS7341_CONFIG_DEFAULT;
     as7341_handle_t dev_hdl;
     bool                flicker_completed = false;
     uint8_t             flicker_cycles = 0;

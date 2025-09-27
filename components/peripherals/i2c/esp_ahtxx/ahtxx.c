@@ -315,7 +315,7 @@ static inline esp_err_t ahtxx_i2c_get_status_register(ahtxx_device_t *device, ah
 }
 
 /**
- * @brief AHTXX I2C HAL write reset register.
+ * @brief AHTXX I2C HAL write reset register to reset device with restart delay.
  * 
  * @param device AHTXX device descriptor.
  * @return esp_err_t ESP_OK on success.

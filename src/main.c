@@ -92,6 +92,7 @@
 #include <ina226_task.h>
 #include <ina228_task.h>
 #include <ltr390uv_task.h>
+#include <max30105_task.h>
 #include <mlx90614_task.h>
 #include <mmc56x3_task.h>
 #include <mpu6050_task.h>
@@ -136,6 +137,7 @@ typedef enum i2c_components_tag {
     I2C_COMPONENT_INA226,
     I2C_COMPONENT_INA228,
     I2C_COMPONENT_LTR390UV,
+    I2C_COMPONENT_MAX30105,
     I2C_COMPONENT_MLX90614,
     I2C_COMPONENT_MMC56X3,
     I2C_COMPONENT_MPU6050,
@@ -488,6 +490,10 @@ static inline void i2c0_component_example_start(const i2c_components_t component
             /* starts ltr390uv task */
             i2c0_task_create(i2c0_ltr390uv_task, I2C0_LTR390UV_TASK_NAME);
             break;
+        case I2C_COMPONENT_MAX30105:
+            /* starts max30105 task */
+            i2c0_task_create(i2c0_max30105_task, I2C0_MAX30105_TASK_NAME);
+            break;
         case I2C_COMPONENT_MLX90614:
             /* starts mlx90614 task */
             i2c0_task_create(i2c0_mlx90614_task, I2C0_MLX90614_TASK_NAME);
@@ -592,10 +598,11 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_INA226);
     //i2c0_component_example_start(I2C_COMPONENT_INA228);
     //i2c0_component_example_start(I2C_COMPONENT_LTR390UV);
+    i2c0_component_example_start(I2C_COMPONENT_MAX30105);
     //i2c0_component_example_start(I2C_COMPONENT_MLX90614);
     //i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
-    i2c0_component_example_start(I2C_COMPONENT_PCT2075);
+    //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);
     //i2c0_component_example_start(I2C_COMPONENT_SHT4X);
     //i2c0_component_example_start(I2C_COMPONENT_SSD1306);

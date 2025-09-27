@@ -41,7 +41,7 @@ void owb0_ds18b20_task( void *pvParameters ) {
     TickType_t                   last_wake_time = xTaskGetTickCount ();
     //
     // initialize owb device configuration
-    ds18b20_config_t             dev_cfg = OWB_DS18B20_CONFIG_DEFAULT;
+    ds18b20_config_t             dev_cfg = DS18B20_CONFIG_DEFAULT;
     ds18b20_handle_t             dev_hdl;
     onewire_device_iter_handle_t dev_iter_hdl;
     onewire_device_t             dev;

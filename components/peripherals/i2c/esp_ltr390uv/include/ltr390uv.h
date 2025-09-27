@@ -67,7 +67,7 @@ extern "C"
 /**
  * @brief Macro that initializes `ltr390uv_config_t` to default configuration settings.
  */
-#define I2C_LTR390UV_CONFIG_DEFAULT {                       \
+#define LTR390UV_CONFIG_DEFAULT {                       \
     .i2c_address               = I2C_LTR390UV_DEV_ADDR,     \
     .i2c_clock_speed           = I2C_LTR390UV_DEV_CLK_SPD,  \
     .window_factor             = 1,                         \
@@ -88,8 +88,8 @@ extern "C"
  * @brief LTR390UV operation modes enumerator.
  */
 typedef enum ltr390uv_operation_modes_e {
-    LTR390UV_OM_ALS = 0,
-    LTR390UV_OM_UVS = 1
+    LTR390UV_OM_ALS = 0,    /*!< ltr390uv ambient light sensor operation mode */
+    LTR390UV_OM_UVS = 1     /*!< ltr390uv ultraviolet sensor operation mode */
 } ltr390uv_operation_modes_t;
 
 /**
@@ -108,33 +108,32 @@ typedef enum ltr390uv_sensor_resolutions_e {
  * @brief LTR390UV measurement rates enumerator.
  */
 typedef enum ltr390uv_measurement_rates_e {
-    LTR390UV_MR_25MS    = (0b000),   /*!< ltr390uv  */
-    LTR390UV_MR_50MS    = (0b001),   /*!< ltr390uv  */
-    LTR390UV_MR_100MS   = (0b010),   /*!< ltr390uv  (default) */
-    LTR390UV_MR_200MS   = (0b011),   /*!< ltr390uv  */
-    LTR390UV_MR_500MS   = (0b100),   /*!< ltr390uv  */
-    LTR390UV_MR_1000MS  = (0b101),   /*!< ltr390uv  */
-    LTR390UV_MR_2000MS  = (0b110),   /*!< ltr390uv  */
-    LTR390UV_MR_2000_MS = (0b111),   /*!< ltr390uv  */
+    LTR390UV_MR_25MS    = (0b000),   /*!< ltr390uv measurement rate of 25-milliseconds */
+    LTR390UV_MR_50MS    = (0b001),   /*!< ltr390uv measurement rate of 50-milliseconds */
+    LTR390UV_MR_100MS   = (0b010),   /*!< ltr390uv measurement rate of 100-milliseconds (default) */
+    LTR390UV_MR_200MS   = (0b011),   /*!< ltr390uv measurement rate of 200-milliseconds */
+    LTR390UV_MR_500MS   = (0b100),   /*!< ltr390uv measurement rate of 500-milliseconds */
+    LTR390UV_MR_1000MS  = (0b101),   /*!< ltr390uv measurement rate of 1000-milliseconds */
+    LTR390UV_MR_2000MS  = (0b110),   /*!< ltr390uv measurement rate of 2000-milliseconds */
 } ltr390uv_measurement_rates_t;
 
 /**
  * @brief LTR390UV measurement gains enumerator.
  */
 typedef enum ltr390uv_measurement_gains_e {
-    LTR390UV_MG_X1  = (0b000),    /*!< ltr390uv  */
-    LTR390UV_MG_X3  = (0b001),    /*!< ltr390uv  (default) */
-    LTR390UV_MG_X6  = (0b010),    /*!< ltr390uv   */
-    LTR390UV_MG_X9  = (0b011),    /*!< ltr390uv  */
-    LTR390UV_MG_X18 = (0b100),    /*!< ltr390uv  */
+    LTR390UV_MG_X1  = (0b000),    /*!< ltr390uv measurement gain with a factor of 1 */
+    LTR390UV_MG_X3  = (0b001),    /*!< ltr390uv measurement gain with a factor of 3 (default) */
+    LTR390UV_MG_X6  = (0b010),    /*!< ltr390uv measurement gain with a factor of 6  */
+    LTR390UV_MG_X9  = (0b011),    /*!< ltr390uv measurement gain with a factor of 9 */
+    LTR390UV_MG_X18 = (0b100),    /*!< ltr390uv measurement gain with a factor of 18 */
 } ltr390uv_measurement_gains_t;
 
 /**
  * @brief LTR390UV light source interrupts enumerator.
  */
 typedef enum ltr390uv_ls_interrupts_e {
-    LTR390UV_LSI_ALS = (0b01),
-    LTR390UV_LSI_UVS = (0b11)
+    LTR390UV_LSI_ALS = (0b01),  /*!< ltr390uv ambient light sensor interrupt */
+    LTR390UV_LSI_UVS = (0b11)   /*!< ltr390uv ultraviolet sensor interrupt */
 } ltr390uv_ls_interrupts_t;
 
 /**
@@ -157,9 +156,9 @@ typedef union __attribute__((packed)) ltr390uv_control_register_u {
  */
 typedef union __attribute__((packed)) ltr390uv_measure_register_u{
     struct {
-        ltr390uv_measurement_rates_t    measurement_rate:3;     /*!<            (bit:0-2)  */
+        ltr390uv_measurement_rates_t    measurement_rate:3;     /*!< ltr390uv measurement rate  (bit:0-2)  */
         uint8_t                         reserved1:1;            /*!< reserved   (bit:3) */
-        ltr390uv_sensor_resolutions_t   sensor_resolution:3;    /*!< ltr390uv   (bit:4-6) */
+        ltr390uv_sensor_resolutions_t   sensor_resolution:3;    /*!< ltr390uv sensor resolution  (bit:4-6) */
         uint8_t                         reserved2:1;            /*!< reserved   (bit:7) */
     } bits;
     uint8_t reg;
@@ -170,7 +169,7 @@ typedef union __attribute__((packed)) ltr390uv_measure_register_u{
  */
 typedef union __attribute__((packed)) ltr390uv_gain_register_u {
     struct {
-        ltr390uv_measurement_gains_t    measurement_gain:3;     /*!< ltr390uv   (bit:0-2) */
+        ltr390uv_measurement_gains_t    measurement_gain:3;     /*!< ltr390uv measurement gain  (bit:0-2) */
         uint8_t                         reserved:5;             /*!< reserved   (bit:4-6) */
     } bits;
     uint8_t reg;
@@ -230,86 +229,6 @@ typedef void* ltr390uv_handle_t;
 
 
 /**
- * @brief Reads control register from LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param[out] reg LTR390UV control register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_get_control_register(ltr390uv_handle_t handle, ltr390uv_control_register_t *const reg);
-
-/**
- * @brief Writes control register to LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param reg LTR390UV control register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_set_control_register(ltr390uv_handle_t handle, const ltr390uv_control_register_t reg);
-
-/**
- * @brief Reads ALS UVS measure register from LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param[out] reg LTR390UV ALS UVS measure register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_get_measure_register(ltr390uv_handle_t handle, ltr390uv_measure_register_t *const reg);
-
-/**
- * @brief Writes ALS UVS measure register to LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param reg LTR390UV ALS UVS measure register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_set_measure_register(ltr390uv_handle_t handle, const ltr390uv_measure_register_t reg);
-
-/**
- * @brief Reads ALS UVS gain register from LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param[out] reg LTR390UV ALS UVS gain register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_get_gain_register(ltr390uv_handle_t handle, ltr390uv_gain_register_t *const reg);
-
-/**
- * @brief Writes ALS UVS gain register to LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param reg LTR390UV ALS UVS gain register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_set_gain_register(ltr390uv_handle_t handle, const ltr390uv_gain_register_t reg);
-
-/**
- * @brief Reads interrupt configuration register from LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param[out] reg LTR390UV interrupt configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_get_interrupt_config_register(ltr390uv_handle_t handle, ltr390uv_interrupt_config_register_t *const reg);
-
-/**
- * @brief Writes interrupt configuration register to LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @param reg LTR390UV interrupt configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_set_interrupt_config_register(ltr390uv_handle_t handle, const ltr390uv_interrupt_config_register_t reg);
-
-/**
- * @brief Reads status register from LTR390UV.
- *
- * @param handle LTR390UV device handle.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ltr390uv_get_status_register(ltr390uv_handle_t handle, ltr390uv_status_register_t *const reg);
-
-/**
  * @brief Initializes an LTR390UV device onto the I2C master bus.
  *
  * @param[in] master_handle I2C master bus handle.
@@ -332,28 +251,28 @@ esp_err_t ltr390uv_get_ambient_light(ltr390uv_handle_t handle, float *const ambi
  * @brief Reads ALS sensor counts from LTR390UV.
  * 
  * @param handle LTR390UV device handle.
- * @param sensor_counts Light.
+ * @param counts Light.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ltr390uv_get_als(ltr390uv_handle_t handle, uint32_t *const sensor_counts);
+esp_err_t ltr390uv_get_als_counts(ltr390uv_handle_t handle, uint32_t *const counts);
 
 /**
  * @brief Reads ultraviolet index (UVI) from LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param ultraviolet_index Ultraviolet index (UVI).
+ * @param index Ultraviolet index (UVI).
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ltr390uv_get_ultraviolet_index(ltr390uv_handle_t handle, float *const ultraviolet_index);
+esp_err_t ltr390uv_get_uv_index(ltr390uv_handle_t handle, float *const index);
 
 /**
  * @brief Reads UVS sensor counts from LTR390UV.
  * 
  * @param handle LTR390UV device handle.
- * @param sensor_counts Ultraviolet light in mW/cm^2.
+ * @param counts Ultraviolet light in mW/cm^2.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ltr390uv_get_uvs(ltr390uv_handle_t handle, uint32_t *const sensor_counts);
+esp_err_t ltr390uv_get_uvs_counts(ltr390uv_handle_t handle, uint32_t *const counts);
 
 
 /**
@@ -418,7 +337,7 @@ esp_err_t ltr390uv_set_thresholds(ltr390uv_handle_t handle, const uint32_t lower
  * @brief Reads operation mode from LTR390UV.
  * 
  * @param handle LTR390UV device handle.
- * @param mode LTR390UV operation mode setting.
+ * @param mode LTR390UV operation mode setting (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_get_mode(ltr390uv_handle_t handle, ltr390uv_operation_modes_t *const mode);
@@ -427,7 +346,7 @@ esp_err_t ltr390uv_get_mode(ltr390uv_handle_t handle, ltr390uv_operation_modes_t
  * @brief Writes operation mode to LTR390UV.
  * 
  * @param handle LTR390UV device handle.
- * @param mode LTR390UV operation mode setting.
+ * @param mode LTR390UV operation mode setting (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_set_mode(ltr390uv_handle_t handle, const ltr390uv_operation_modes_t mode);
@@ -436,7 +355,7 @@ esp_err_t ltr390uv_set_mode(ltr390uv_handle_t handle, const ltr390uv_operation_m
  * @brief Reads sensor resolution from LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param resolution LTR390UV sensor resolution setting.
+ * @param resolution LTR390UV sensor resolution setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_get_resolution(ltr390uv_handle_t handle, ltr390uv_sensor_resolutions_t *const resolution);
@@ -445,7 +364,7 @@ esp_err_t ltr390uv_get_resolution(ltr390uv_handle_t handle, ltr390uv_sensor_reso
  * @brief Writes sensor resolution to LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param resolution LTR390UV sensor resolution setting.
+ * @param resolution LTR390UV sensor resolution setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_set_resolution(ltr390uv_handle_t handle, const ltr390uv_sensor_resolutions_t resolution);
@@ -454,7 +373,7 @@ esp_err_t ltr390uv_set_resolution(ltr390uv_handle_t handle, const ltr390uv_senso
  * @brief Reads measurement gain from LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param gain LTR390UV measurement gain setting.
+ * @param gain LTR390UV measurement gain setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_get_gain(ltr390uv_handle_t handle, ltr390uv_measurement_gains_t *const gain);
@@ -463,7 +382,7 @@ esp_err_t ltr390uv_get_gain(ltr390uv_handle_t handle, ltr390uv_measurement_gains
  * @brief Writes measurement gain to LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param gain LTR390UV measurement gain setting.
+ * @param gain LTR390UV measurement gain setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_set_gain(ltr390uv_handle_t handle, const ltr390uv_measurement_gains_t gain);
@@ -472,7 +391,7 @@ esp_err_t ltr390uv_set_gain(ltr390uv_handle_t handle, const ltr390uv_measurement
  * @brief Reads measurement rate from LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param rate LTR390UV measurement rate setting.
+ * @param rate LTR390UV measurement rate setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_get_rate(ltr390uv_handle_t handle, ltr390uv_measurement_rates_t *const rate);
@@ -481,7 +400,7 @@ esp_err_t ltr390uv_get_rate(ltr390uv_handle_t handle, ltr390uv_measurement_rates
  * @brief Writes measurement rate to LTR390UV.
  *
  * @param handle LTR390UV device handle.
- * @param rate LTR390UV measurement rate setting.
+ * @param rate LTR390UV measurement rate setting based on the operation mode (e.g. ALS or UVS).
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t ltr390uv_set_rate(ltr390uv_handle_t handle, const ltr390uv_measurement_rates_t rate);

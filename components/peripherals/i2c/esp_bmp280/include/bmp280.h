@@ -67,7 +67,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `bmp280_config_t` to default configuration settings.
  */
-#define I2C_BMP280_CONFIG_DEFAULT {                                          \
+#define BMP280_CONFIG_DEFAULT {                                          \
         .i2c_address                = I2C_BMP280_DEV_ADDR_HI,                \
         .i2c_clock_speed            = I2C_BMP280_DEV_CLK_SPD,                \
         .power_mode                 = BMP280_POWER_MODE_NORMAL,              \
@@ -181,24 +181,6 @@ esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperature, float *const pressure);
-
-/**
- * @brief Reads temperature measurement from BMP280.
- *
- * @param[in] handle BMP280 device handle.
- * @param[out] temperature Temperature in degree Celsius.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_temperature(bmp280_handle_t handle, float *const temperature);
-
-/**
- * @brief Reads pressure measurement from BMP280.
- *
- * @param[in] handle BMP280 device handle.
- * @param[out] pressure Pressure in pascal.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bmp280_get_pressure(bmp280_handle_t handle, float *const pressure);
 
 /**
  * @brief Reads data status from BMP280.

@@ -40,7 +40,7 @@ void i2c0_ak8975_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    ak8975_config_t dev_cfg         = I2C_AK8975_CONFIG_DEFAULT;
+    ak8975_config_t dev_cfg         = AK8975_CONFIG_DEFAULT;
     ak8975_handle_t dev_hdl;
     //
     // init device

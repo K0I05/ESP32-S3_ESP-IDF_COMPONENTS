@@ -55,9 +55,9 @@ extern "C" {
  * TCS3472 definitions
 ******************************************************************************************************************/
 
-#define I2C_TCS3472_DEV_CLK_SPD            UINT32_C(100000)    //!< vl53l4cx I2C default clock frequency (100KHz)
+#define I2C_TCS3472_DEV_CLK_SPD            UINT32_C(100000)    //!< tcs3472 I2C default clock frequency (100KHz)
 
-#define I2C_TCS3472_DEV_ADDR               UINT8_C(0x52)       //!< vl53l4cx I2C address
+#define I2C_TCS3472_DEV_ADDR               UINT8_C(0x29)       //!< tcs3472 I2C address
 
 
 /*****************************************************************************************************************
@@ -67,7 +67,7 @@ extern "C" {
 /**
  * @brief TCS3472 device configuration initialization default.
  */
-#define I2C_TCS3472_CONFIG_DEFAULT {                                                \
+#define TCS3472_CONFIG_DEFAULT {                                                \
             .i2c_address                = I2C_TCS3472_DEV_ADDR,                     \
             .i2c_clock_speed            = I2C_TCS3472_DEV_CLK_SPD,                  \
             .power_enabled              = true,                                     \
@@ -137,6 +137,15 @@ typedef struct tcs3472_channels_data_s {
 } tcs3472_channels_data_t;
 
 /**
+ * @brief TCS3472 RGB data structure definition.
+ */
+typedef struct tcs3472_colours_data_s {
+    uint8_t                    red;                /*!< red light channel count normalized from 0-255 */
+    uint8_t                    green;              /*!< green light channel count normalized from 0-255 */
+    uint8_t                    blue;               /*!< blue light channel count normalized from 0-255 */
+} tcs3472_colours_data_t;
+
+/**
  * @brief TCS3472 opaque handle structure definition.
  */
 typedef void* tcs3472_handle_t;
@@ -200,6 +209,48 @@ esp_err_t tcs3472_get_blue_channel_count(tcs3472_handle_t handle, uint16_t *cons
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *const count);
+
+/**
+ * @brief Normalizes RGB (0..255) colours measured from TCS3472.
+ * 
+ * @param channels RGBC channels data structure.
+ * @param data RGB colours data structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const data);
+
+/**
+ * @brief Reads normalize RGB (0..255) colours measured from TCS3472.
+ * 
+ * @param handle TCS3472 device handle.
+ * @param data RGB colours data structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const data);
+
+/**
+ * @brief Converts RGBC channels count data to colour temperature in degrees Kelvin.
+ * .
+ * @param data RGBC channels data structure.
+ * @return uint16_t Colour temperature in degrees Kelvin.
+ */
+uint16_t tcs3472_calculate_colour_temperature(const tcs3472_channels_data_t data);
+
+/**
+ * @brief Converts RGBC channels count data to illuminance.
+ * 
+ * @param data RGBC channels data structure.
+ * @return float Illuminance in lux.
+ */
+float tcs3472_calculate_illuminance(const tcs3472_channels_data_t data);
+
+/**
+ * @brief Converts RGBC channels count data to infrared (IR) light.
+ * 
+ * @param data RGBC channels data structure.
+ * @return uint16_t Infrared light.
+ */
+uint16_t tcs3472_calculate_ir(const tcs3472_channels_data_t data);
 
 /**
  * @brief Reads RGBC interrupt threshold registers from TCS3472.  The values to be used as the high and low trigger 

@@ -102,7 +102,7 @@ ESP_EVENT_DECLARE_BASE(ESP_AS3935_EVENT);
 /**
  * @brief AS3935 macro definitions
 */
-#define I2C_AS3935_CONFIG_DEFAULT {                                             \
+#define AS3935_CONFIG_DEFAULT {                                             \
         .i2c_clock_speed                = I2C_AS3935_DEV_CLK_SPD,               \
         .i2c_address                    = I2C_AS3935_DEV_ADDR_3,                \
         .irq_io_enabled                 = true,                                 \

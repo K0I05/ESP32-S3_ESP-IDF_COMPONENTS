@@ -41,7 +41,7 @@ void i2c0_veml6040_task( void *pvParameters ) {
     TickType_t          last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    veml6040_config_t dev_cfg       = I2C_VEML6040_CONFIG_DEFAULT;
+    veml6040_config_t dev_cfg       = VEML6040_CONFIG_DEFAULT;
     veml6040_handle_t dev_hdl;
     //
     // init device

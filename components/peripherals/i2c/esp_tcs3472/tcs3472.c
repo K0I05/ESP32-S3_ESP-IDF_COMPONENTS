@@ -28,6 +28,14 @@
  * with inline HAL functions for reading and writing to TCS3472 registers.  This 
  * change exposes API properties specific to the component without exposing hardware 
  * abstraction layer functions related to device interfacing.
+ * 
+ * https://github.com/adafruit/Adafruit_TCS34725/blob/master/Adafruit_TCS34725.cpp
+ * 
+ * https://github.com/hideakitai/TCS34725
+ * 
+ * https://look.ams-osram.com/m/57eb503c1d12d800/original/TCS34xx-AN000517.pdf
+ * 
+ * https://look.ams-osram.com/m/512cf89f2f0a2d98/original/ColorSensors-AN000166.pdf
  *
  * Ported from esp-open-rtos
  *
@@ -49,7 +57,7 @@
 /*
  * TCS3472 I2C register definitions
 */
-
+#define TCS3472_CMD_BIT             UINT8_C(0x80)   /**< tcs3472 command bit **/
 #define TCS3472_REG_ENABLE_RW       UINT8_C(0x00)   /*!< tcs3472 enable register */
 #define TCS3472_REG_ATIME_RW        UINT8_C(0x01)   /*!< tcs3472 RGBC integration time register */
 #define TCS3472_REG_WTIME_RW        UINT8_C(0x03)   /*!< tcs3472 wait time register */
@@ -189,7 +197,8 @@ static const char *TAG = "tcs3472";
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_read_from(tcs3472_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
+    //const bit8_uint8_buffer_t tx = { reg_addr };
+    const bit8_uint8_buffer_t tx = { (uint8_t)(TCS3472_CMD_BIT | reg_addr) };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -208,7 +217,8 @@ static inline esp_err_t tcs3472_i2c_read_from(tcs3472_device_t *const device, co
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_read_byte_from(tcs3472_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
+    //const bit8_uint8_buffer_t tx = { reg_addr };
+    const bit8_uint8_buffer_t tx = { (uint8_t)(TCS3472_CMD_BIT | reg_addr) };
     bit8_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
@@ -231,7 +241,8 @@ static inline esp_err_t tcs3472_i2c_read_byte_from(tcs3472_device_t *const devic
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_read_word_from(tcs3472_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
+    //const bit8_uint8_buffer_t tx = { reg_addr };
+    const bit8_uint8_buffer_t tx = { (uint8_t)(TCS3472_CMD_BIT | reg_addr) };
     bit16_uint8_buffer_t rx = { 0 };
 
     /* validate arguments */
@@ -240,7 +251,8 @@ static inline esp_err_t tcs3472_i2c_read_word_from(tcs3472_device_t *const devic
     ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "tcs3472_i2c_read_word_from failed" );
 
     /* set output parameter */
-    *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
+    //*word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
+    *word = ((uint16_t)rx[1] << 8) | ((uint16_t)rx[0] & 0xFF);
 
     return ESP_OK;
 }
@@ -254,7 +266,8 @@ static inline esp_err_t tcs3472_i2c_read_word_from(tcs3472_device_t *const devic
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_write_byte_to(tcs3472_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
-    const bit16_uint8_buffer_t tx = { reg_addr, byte };
+    //const bit16_uint8_buffer_t tx = { reg_addr, byte };
+    const bit16_uint8_buffer_t tx = { (uint8_t)(TCS3472_CMD_BIT | reg_addr), byte };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -274,7 +287,8 @@ static inline esp_err_t tcs3472_i2c_write_byte_to(tcs3472_device_t *const device
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_i2c_write_word_to(tcs3472_device_t *const device, const uint8_t reg_addr, const uint16_t word) {
-    const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)word, (uint8_t)word >> 8 };
+    //const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)word, (uint8_t)word >> 8 };
+    const bit24_uint8_buffer_t tx = { (uint8_t)(TCS3472_CMD_BIT | reg_addr), (uint8_t)word, (uint8_t)word >> 8 };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -579,7 +593,7 @@ static inline esp_err_t tcs3472_i2c_get_status_register(tcs3472_device_t *const 
 /**
  * @brief Converts time in milliseconds to steps at 2.4-ms increments.
  * 
- * @param time Time to convert in milliseconds.
+ * @param time Time to convert in milliseconds (2.4-ms to 614-ms).
  * @param long_wait_enabled Long wait time multiplier (x12) is applied when enabled.
  * @return uint8_t Number of steps converted from time in milliseconds.
  */
@@ -924,6 +938,88 @@ esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *con
     ESP_RETURN_ON_ERROR( tcs3472_get_channel_count(device, TCS3472_CHANNEL_CLEAR, count), TAG, "read clear channel count failed" );
 
     return ESP_OK;
+}
+
+esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const data) {
+    /* validate arguments */
+    ESP_ARG_CHECK( data );
+
+    /* avoid dividing by 0 */
+    if(channels.clear == 0) {
+        data->red = data->green = data->blue = 0;
+        return ESP_OK;
+    }
+
+    const float sum = channels.clear;
+
+    data->red   = (uint8_t)((float)channels.red / sum * 255.0f);
+    data->green = (uint8_t)((float)channels.green / sum * 255.0f);
+    data->blue  = (uint8_t)((float)channels.blue / sum * 255.0f);
+
+    return ESP_OK;
+}
+
+esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const data) {
+    tcs3472_channels_data_t channels = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( handle && data );
+
+    /* attempt to read red channel count */
+    ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &channels.red), TAG, "read red channel count for get colours failed" );
+
+    /* attempt to read green channel count */ 
+    ESP_RETURN_ON_ERROR( tcs3472_get_green_channel_count(handle, &channels.green), TAG, "read green channel count for get colours failed" );
+
+    /* attempt to read blue channel count */
+    ESP_RETURN_ON_ERROR( tcs3472_get_blue_channel_count(handle, &channels.blue), TAG, "read blue channel count for get colours failed" );
+
+    /* attempt to read clear channel count */
+    ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &channels.clear), TAG, "read clear channel count for get colours failed" );
+
+    /* attempt to normalize channels count data to RGB colours */
+    ESP_RETURN_ON_ERROR( tcs3472_normalize_colours(channels, data), TAG, "normalize colours for get colours failed" );
+
+    return ESP_OK;
+}
+
+uint16_t tcs3472_calculate_colour_temperature(const tcs3472_channels_data_t data) {
+    if(data.red == 0 && data.green == 0 && data.blue == 0) {
+        return 0;
+    }
+
+    /* 1. Map RGB values to their XYZ counterparts.    */
+    /* Based on 6500K fluorescent, 3000K fluorescent   */
+    /* and 60W incandescent values for a wide range.   */
+    /* Note: Y = Illuminance or lux                    */
+    const float X = (-0.14282f * data.red) + (1.54924f * data.green) + (-0.95641f * data.blue);
+    const float Y = (-0.32466f * data.red) + (1.57837f * data.green) + (-0.73191f * data.blue);
+    const float Z = (-0.68202f * data.red) + (0.77073f * data.green) + (0.56332f * data.blue);
+
+    /* 2. Calculate the chromaticity co-ordinates      */
+    const float xc = (X) / (X + Y + Z);
+    const float yc = (Y) / (X + Y + Z);
+
+    /* 3. Use McCamy's formula to determine the CCT    */
+    const float n = (xc - 0.3320f) / (0.1858f - yc);
+
+    const float cct = (449.0f * powf(n, 3)) + (3525.0f * powf(n, 2)) + (6823.3f * n) + 5520.33f;
+
+    return (uint16_t)cct;
+}
+
+float tcs3472_calculate_illuminance(const tcs3472_channels_data_t data) {
+    if(data.red == 0 && data.green == 0 && data.blue == 0) {
+        return 0.0f;
+    }
+    return (-0.32466f * data.red) + (1.57837f * data.green) + (-0.73191f * data.blue);
+}
+
+uint16_t tcs3472_calculate_ir(const tcs3472_channels_data_t data) {
+    if(data.red == 0 && data.green == 0 && data.blue == 0 && data.clear == 0) {
+        return 0;
+    }
+    return (data.red + data.green + data.blue + data.clear) / 2;
 }
 
 esp_err_t tcs3472_get_irq_thresholds(tcs3472_handle_t handle, uint16_t *const high_threshold, uint16_t *const low_threshold) {

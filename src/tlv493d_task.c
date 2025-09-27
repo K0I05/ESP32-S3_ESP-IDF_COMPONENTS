@@ -41,7 +41,7 @@ void i2c0_tlv493d_task( void *pvParameters ) {
     TickType_t           last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    tlv493d_config_t dev_cfg          = I2C_TLV493D_CONFIG_DEFAULT;
+    tlv493d_config_t dev_cfg          = TLV493D_CONFIG_DEFAULT;
     tlv493d_handle_t dev_hdl;
     //
     // init device

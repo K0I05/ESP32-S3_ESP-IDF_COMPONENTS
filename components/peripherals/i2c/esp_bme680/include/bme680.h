@@ -66,7 +66,7 @@ extern "C" {
 /*
  * BME680 macros
 */
-#define I2C_BME680_CONFIG_DEFAULT {                                             \
+#define BME680_CONFIG_DEFAULT {                                             \
         .i2c_address                = I2C_BME680_DEV_ADDR_HI,                   \
         .i2c_clock_speed            = I2C_BME680_DEV_CLK_SPD,                   \
         .power_mode                 = BME680_POWER_MODE_FORCED,                 \
@@ -80,7 +80,7 @@ extern "C" {
         .heater_profile_size        = 1                                         \
     }
 
-    #define I2C_BME680_FORCED_CONFIG_DEFAULT {                                              \
+#define BME680_FORCED_CONFIG_DEFAULT {                                              \
         .i2c_address                = I2C_BME680_DEV_ADDR_HI,                               \
         .i2c_clock_speed            = I2C_BME680_DEV_CLK_SPD,                               \
         .power_mode                 = BME680_POWER_MODE_FORCED,                             \
@@ -95,7 +95,7 @@ extern "C" {
         .heater_profile_size        = 10                                                    \
     }
 
-#define I2C_BME680_SEQUENTIAL_CONFIG_DEFAULT {                                              \
+#define BME680_SEQUENTIAL_CONFIG_DEFAULT {                                              \
         .i2c_address                = I2C_BME680_DEV_ADDR_HI,                               \
         .i2c_clock_speed            = I2C_BME680_DEV_CLK_SPD,                               \
         .power_mode                 = BME680_POWER_MODE_SEQUENTIAL,                         \

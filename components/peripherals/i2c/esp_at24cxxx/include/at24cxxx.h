@@ -64,7 +64,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `at24cxxx_config_t` to default configuration settings for the 32-Kbits EEPROM family type.
  */
-#define I2C_AT24C32_CONFIG_DEFAULT {                  \
+#define AT24C32_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AT24CXXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AT24CXXX_DEV_CLK_SPD,       \
     .eeprom_type     = AT24CXXX_AT24C32 }
@@ -72,7 +72,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `at24cxxx_config_t` to default configuration settings for the 64-Kbits EEPROM family type.
  */
-#define I2C_AT24C64_CONFIG_DEFAULT {                  \
+#define AT24C64_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AT24CXXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AT24CXXX_DEV_CLK_SPD,       \
     .eeprom_type     = AT24CXXX_AT24C64 }
@@ -80,7 +80,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `at24cxxx_config_t` to default configuration settings for the 128-Kbits EEPROM family type.
  */
-#define I2C_AT24C128_CONFIG_DEFAULT {                  \
+#define AT24C128_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AT24CXXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AT24CXXX_DEV_CLK_SPD,       \
     .eeprom_type     = AT24CXXX_AT24C128 }
@@ -88,7 +88,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `at24cxxx_config_t` to default configuration settings for the 256-Kbits EEPROM family type.
  */
-#define I2C_AT24C256_CONFIG_DEFAULT {                  \
+#define AT24C256_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AT24CXXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AT24CXXX_DEV_CLK_SPD,       \
     .eeprom_type     = AT24CXXX_AT24C256 }
@@ -96,7 +96,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `at24cxxx_config_t` to default configuration settings for the 512-Kbits EEPROM family type.
  */
-#define I2C_AT24C512_CONFIG_DEFAULT {                  \
+#define AT24C512_CONFIG_DEFAULT {                  \
     .i2c_address     = I2C_AT24CXXX_DEV_ADDR,          \
     .i2c_clock_speed = I2C_AT24CXXX_DEV_CLK_SPD,       \
     .eeprom_type     = AT24CXXX_AT24C512 }

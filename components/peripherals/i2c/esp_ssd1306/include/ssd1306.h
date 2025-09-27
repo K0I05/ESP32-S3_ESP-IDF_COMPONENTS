@@ -79,7 +79,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ssd1306_config_t` to default configuration settings for a 128x32 display.
  */
-#define I2C_SSD1306_128x32_CONFIG_DEFAULT 	{				\
+#define SSD1306_128x32_CONFIG_DEFAULT 	{				\
     .i2c_address  				= I2C_SSD1306_DEV_ADDR,		\
 	.i2c_clock_speed    		= I2C_SSD1306_DEV_CLK_SPD,  \
     .panel_size                 = SSD1306_PANEL_128x32,	    \
@@ -89,7 +89,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ssd1306_config_t` to default configuration settings for a 128x64 display.
  */
-#define I2C_SSD1306_128x64_CONFIG_DEFAULT 	{				\
+#define SSD1306_128x64_CONFIG_DEFAULT 	{				\
     .i2c_address  				= I2C_SSD1306_DEV_ADDR,		\
 	.i2c_clock_speed    		= I2C_SSD1306_DEV_CLK_SPD,  \
     .panel_size                 = SSD1306_PANEL_128x64,	    \
@@ -99,7 +99,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `ssd1306_config_t` to default configuration settings for a 128x128 display.
  */
-#define I2C_SSD1306_128x128_CONFIG_DEFAULT 	{				\
+#define SSD1306_128x128_CONFIG_DEFAULT 	{				\
     .i2c_address  				= I2C_SSD1306_DEV_ADDR,		\
 	.i2c_clock_speed    		= I2C_SSD1306_DEV_CLK_SPD,  \
     .panel_size                 = SSD1306_PANEL_128x128,	\

@@ -4,3 +4,7 @@
 .vscode/launch.json
 .vscode/ipch
 build
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

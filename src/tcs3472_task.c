@@ -40,7 +40,7 @@ void i2c0_tcs3472_task( void *pvParameters ) {
     TickType_t       last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    tcs3472_config_t dev_cfg          = I2C_TCS3472_CONFIG_DEFAULT;
+    tcs3472_config_t dev_cfg          = TCS3472_CONFIG_DEFAULT;
     tcs3472_handle_t dev_hdl;
     //
     // init device
@@ -52,11 +52,30 @@ void i2c0_tcs3472_task( void *pvParameters ) {
     //
     // task loop entry point
     for ( ;; ) {
-        ESP_LOGI(APP_TAG, "######################## TCS3472 - START #########################");
+        ESP_LOGI(APP_TAG, "############################ TCS3472 - START #############################");
         //
         // handle sensor
+        esp_err_t result = ESP_OK;
+        tcs3472_channels_data_t channels;
+        tcs3472_colours_data_t colours;
+
+        result = tcs3472_get_channels_count(dev_hdl, &channels);
+
+        if (result != ESP_OK) {
+            ESP_LOGE(APP_TAG, "tcs3472 get channels count failed (%s)", esp_err_to_name(result));
+            //assert(result == ESP_OK);
+        } else {
+            tcs3472_normalize_colours(channels, &colours);
+
+            uint16_t colour_temp = tcs3472_calculate_colour_temperature(channels);
+            uint16_t ir = tcs3472_calculate_ir(channels);
+            float illuminance = tcs3472_calculate_illuminance(channels);
+
+            ESP_LOGI(APP_TAG, "Colour Temp %u K | IR %u | Light %.2f Lux: R[%u|%d] | G[%u|%d] | B[%u|%d] | C[%u]", colour_temp, ir, illuminance,
+                channels.red, (int)colours.red, channels.green, (int)colours.green, channels.blue, (int)colours.blue, channels.clear);
+        }
         //
-        ESP_LOGI(APP_TAG, "######################## TCS3472 - END ###########################");
+        ESP_LOGI(APP_TAG, "############################ TCS3472 - END ###############################");
         //
         //
         // pause the task per defined wait period
