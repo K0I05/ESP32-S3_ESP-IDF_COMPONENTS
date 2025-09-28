@@ -27,6 +27,15 @@
  * ESP-IDF driver for MAX30105 sensor
  *
  * Ported from esp-open-rtos
+ * 
+ * https://github.com/libdriver/max30105/blob/main/src/driver_max30105.c
+ * 
+ * https://github.com/eepj/stm32-max30102/blob/master/max30102_for_stm32_hal.c
+ * 
+ * https://github.com/GCY/Pulse-Oximeter-with-MAX3010X/blob/master/MAX3010x/src/stm32f4%20project%20max3010x/max3010x.c
+ * 
+ * esp-idf
+ * https://github.com/nikhil-robinson/max30105/tree/main
  *
  * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
  *
@@ -94,17 +103,22 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+/*
+* static constant declarations
+*/
+static const char *TAG = "max30105";
+
 /**
  * @brief MAX30105 interrupt status 1 register (0x00, read-only | POR State 0x00) structure.
  */
 typedef union __attribute__((packed)) max30105_interrupt_status1_register_u {
     struct {
-        bool    irq_power_ready:1;   /*!< max30105 On power-up or after a brownout condition, when the supply voltage VDD transitions from below the undervoltage-lockout (UVLO) voltage to above the UVLO voltage, a power-ready interrupt is triggered to signal that the module is powered-up and ready to collect data.                       (bit:0)  */
+        bool    power_ready_irq:1;   /*!< max30105 On power-up or after a brownout condition, when the supply voltage VDD transitions from below the undervoltage-lockout (UVLO) voltage to above the UVLO voltage, a power-ready interrupt is triggered to signal that the module is powered-up and ready to collect data.                       (bit:0)  */
         uint8_t reserved:3;          /*!< reserved                       (bit:1-3) */
-        bool    irq_proximity:1;     /*!< max30105 the proximity interrupt is triggered when the proximity threshold is reached, and particle-sensing mode has begun. This lets the host processor know to begin running the particle-sensing algorithm and collect data. The interrupt is cleared by reading the Interrupt Status 1 register (0x00).    (bit:4) */
-        bool    irq_alc_overflow:1;  /*!< max30105 this interrupt triggers when the ambient light cancellation function of the particle-sensing photodiode has reached its maximum limit, The interrupt is cleared by reading the Interrupt Status 1 register (0x00).     (bit:5) */
-        bool    irq_data_ready:1;    /*!< max30105 in particle-sensing mode, this interrupt triggers when there is a new sample in the data FIFO. The interrupt is cleared by reading the Interrupt Status 1 register (0x00), or by reading the FIFO_DATA register. (bit:6) */
-        bool    irq_fifo_almost_full:1; /*!< max30105 in particle-sensing mode, this interrupt triggers when the FIFO write pointer has a certain number of free spaces remaining. The interrupt is cleared by reading the Interrupt Status 1 register (0x00).  (bit:7) */
+        bool    proximity_irq:1;     /*!< max30105 the proximity interrupt is triggered when the proximity threshold is reached, and particle-sensing mode has begun. This lets the host processor know to begin running the particle-sensing algorithm and collect data. The interrupt is cleared by reading the Interrupt Status 1 register (0x00).    (bit:4) */
+        bool    alc_overflow_irq:1;  /*!< max30105 this interrupt triggers when the ambient light cancellation function of the particle-sensing photodiode has reached its maximum limit, The interrupt is cleared by reading the Interrupt Status 1 register (0x00).     (bit:5) */
+        bool    data_ready_irq:1;    /*!< max30105 in particle-sensing mode, this interrupt triggers when there is a new sample in the data FIFO. The interrupt is cleared by reading the Interrupt Status 1 register (0x00), or by reading the FIFO_DATA register. (bit:6) */
+        bool    fifo_almost_full_irq:1; /*!< max30105 in particle-sensing mode, this interrupt triggers when the FIFO write pointer has a certain number of free spaces remaining. The interrupt is cleared by reading the Interrupt Status 1 register (0x00).  (bit:7) */
     } bits;
     uint8_t reg;
 } max30105_interrupt_status1_register_t;
@@ -115,7 +129,7 @@ typedef union __attribute__((packed)) max30105_interrupt_status1_register_u {
 typedef union __attribute__((packed)) max30105_interrupt_status2_register_u {
     struct {
         uint8_t reserved1:1;          /*!< reserved                       (bit:0) */
-        bool    irq_die_temperature_ready:1; /*!<  max30105 when an internal die temperature conversion is finished, this interrupt is triggered so the processor can read the temperature data registers. The interrupt is cleared by reading either the Interrupt Status 2 register (0x01) or the TFRAC register (0x20).          (bit:1)  */
+        bool    die_temperature_ready_irq:1; /*!<  max30105 when an internal die temperature conversion is finished, this interrupt is triggered so the processor can read the temperature data registers. The interrupt is cleared by reading either the Interrupt Status 2 register (0x01) or the TFRAC register (0x20).          (bit:1)  */
         uint8_t reserved2:6;          /*!< reserved                       (bit:2-7) */
     } bits;
     uint8_t reg;
@@ -141,7 +155,7 @@ typedef union __attribute__((packed)) max30105_interrupt_enable1_register_u {
 typedef union __attribute__((packed)) max30105_interrupt_enable2_register_u {
     struct {
         uint8_t reserved1:4;          /*!< reserved    (bit:0) */
-        bool    irq_die_temperature_ready_enabled:1;  /*!< max30105 internal temperature ready interrupt is asserted when enabled  (bit:1) */
+        bool    die_temperature_ready_irq_enabled:1;  /*!< max30105 internal temperature ready interrupt is asserted when enabled  (bit:1) */
         uint8_t reserved2:4;          /*!< reserved    (bit:2-7) */
     } bits;
     uint8_t reg;
@@ -226,7 +240,7 @@ typedef union __attribute__((packed)) max30105_fifo_config_register_u {
     struct {
         uint8_t fifo_almost_full_threshold:4;  /*!< max30105 number of samples in fifo before triggering fifo almost full interrupt (bit:0-3) */
         bool fifo_rollover_enabled:1;            /*!< max30105 fifo rollover enabled   (bit:4) */
-        max30105_sample_averages_t sample_averaging:3; /*!< max30105 sampling averaging (bit:5-7) */
+        max30105_sample_averages_t fifo_sample_averaging:3; /*!< max30105 fifo sampling averaging (bit:5-7) */
     } bits;
     uint8_t reg;
 } max30105_fifo_config_register_t;
@@ -275,12 +289,6 @@ typedef struct max30105_device_s {
     max30105_config_t                      config;      /*!< max30105 device configuration */
     i2c_master_dev_handle_t                i2c_handle;  /*!< max30105 I2C device handle */
 } max30105_device_t;
-
-/*
-* static constant declarations
-*/
-static const char *TAG = "max30105";
-
 
 
 /**
@@ -580,7 +588,7 @@ static inline esp_err_t max30105_i2c_set_fifo_overflow_counter_register(max30105
     ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(device, MAX30105_REG_FIFO_OVF_CNT_RW, fifo_ovf.reg), TAG, "write FIFO overflow counter register failed" );
 
     /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -600,7 +608,7 @@ static inline esp_err_t max30105_i2c_get_fifo_read_pointer_register(max30105_dev
     ESP_RETURN_ON_ERROR( max30105_i2c_read_byte_from(device, MAX30105_REG_FIFO_RD_PTR_RW, &reg->reg), TAG, "read FIFO read pointer register failed" );
 
     /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -626,7 +634,7 @@ static inline esp_err_t max30105_i2c_set_fifo_read_pointer_register(max30105_dev
     ESP_RETURN_ON_ERROR( max30105_i2c_write_byte_to(device, MAX30105_REG_FIFO_RD_PTR_RW, fifo_read.reg), TAG, "write FIFO read pointer register failed" );
 
     /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(MAX30105_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -639,7 +647,7 @@ static inline esp_err_t max30105_i2c_set_fifo_read_pointer_register(max30105_dev
  * @param size Size of FIFO data register buffer.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t max30105_i2c_get_fifo_data_register(max30105_device_t *const device, uint8_t *const reg_buffer, const uint8_t size) {
+static inline esp_err_t max30105_i2c_get_fifo_data_register(max30105_device_t *const device, uint8_t *const reg_buffer, uint8_t size) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -1150,24 +1158,21 @@ static inline esp_err_t max30105_i2c_set_temperature_config_register(max30105_de
 }
 
 /**
- * @brief 
+ * @brief MAX30105 I2C HAL read FIFO data registers.
  * 
- * @param device 
- * @param red_count 
- * @param ir_count 
- * @param green_count 
- * @param count_size 
- * @return esp_err_t 
+ * @param device MAX30105 device descriptor.
+ * @param data 
+ * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t max30105_i2c_get_fifo_data(max30105_device_t *const device, uint32_t *const red_count, uint32_t *const ir_count, uint32_t *const green_count, uint8_t *const count_size) {
-    max30105_mode_config_register_t mode_config = { 0 };
+static inline esp_err_t max30105_i2c_get_fifo_data_registers(max30105_device_t *const device, max30105_adc_channels_count_data_t *const data) {
+    max30105_mode_config_register_t             mode_config     = { 0 };
     max30105_particle_sensing_config_register_t particle_config = { 0 };
-    max30105_fifo_read_pointer_register_t fifo_read_ptr = { 0 };
-    max30105_fifo_write_pointer_register_t fifo_write_ptr = { 0 };
-    uint8_t *fifo_buffer = NULL;
-    uint8_t fifo_pointer_size = { 0 };
-    uint8_t fifo_buffer_size = { 0 };
-    uint8_t fifo_frame_size = { 0 };
+    max30105_fifo_read_pointer_register_t       fifo_read_ptr   = { 0 };
+    max30105_fifo_write_pointer_register_t      fifo_write_ptr  = { 0 };
+    uint8_t        *fifo_buffer = NULL;
+    uint8_t    fifo_sample_size = { 0 };
+    uint8_t    fifo_buffer_size = { 0 };
+    uint8_t     fifo_frame_size = { 0 };
     uint8_t data_resolution_bit = { 0 };
 
     /* validate arguments */
@@ -1181,9 +1186,9 @@ static inline esp_err_t max30105_i2c_get_fifo_data(max30105_device_t *const devi
 
     /* determine pointer size of fifo data */
     if(fifo_write_ptr.bits.fifo_write_pointer > fifo_read_ptr.bits.fifo_read_pointer) {
-        fifo_pointer_size = fifo_write_ptr.bits.fifo_write_pointer - fifo_read_ptr.bits.fifo_read_pointer;
+        fifo_sample_size = fifo_write_ptr.bits.fifo_write_pointer - fifo_read_ptr.bits.fifo_read_pointer;
     } else {
-        fifo_pointer_size = 32 + fifo_write_ptr.bits.fifo_write_pointer - fifo_read_ptr.bits.fifo_read_pointer;
+        fifo_sample_size = 32 + fifo_write_ptr.bits.fifo_write_pointer - fifo_read_ptr.bits.fifo_read_pointer;
     }
 
     /* attempt mode configuration register read transaction */
@@ -1204,13 +1209,17 @@ static inline esp_err_t max30105_i2c_get_fifo_data(max30105_device_t *const devi
             ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown control mode in mode configuration register");
     }
 
-    /* set fifo buffer size and attempt to allocate fifo buffer */
-    fifo_buffer_size = fifo_frame_size * fifo_pointer_size;
-    fifo_buffer      = malloc(fifo_buffer_size);
+    /* set fifo buffer size and attempt to allocate memory for fifo buffer */
+    fifo_buffer_size = fifo_frame_size * fifo_sample_size;
+    fifo_buffer      = malloc(fifo_buffer_size * sizeof(uint8_t));
     ESP_RETURN_ON_FALSE(fifo_buffer != NULL, ESP_ERR_NO_MEM, TAG, "malloc for FIFO buffer failed");
 
-    /* attempt fifo data register read transaction */
+    /* attempt buffer sizes register read transaction */
     ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_data_register(device, fifo_buffer, fifo_buffer_size), TAG, "read fifo data register failed" );
+
+    /* attempt to reset memory for red, ir, green count channel buffers and set sample size */
+    memset(data, 0, sizeof(max30105_adc_channels_count_data_t));
+    data->sample_size = fifo_sample_size;
 
     /* attempt particle-sensing configuration register read transaction */
     ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &particle_config), TAG, "read particle-sensing configuration register failed" );
@@ -1233,46 +1242,55 @@ static inline esp_err_t max30105_i2c_get_fifo_data(max30105_device_t *const devi
             ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown ADC resolution in particle-sensing configuration register");
     }
 
-    /* iterate through fifo buffer */
-    for(uint8_t i = 0; i < fifo_pointer_size; i++) {
-        /* extract data by number of LEDs configured */
+    /* iterate through fifo buffer and concatenate counts by channel */
+    for(uint8_t i = 0; i < fifo_sample_size; i++) {
+        /* extract data by number of LED channels configured */
         switch(mode_config.bits.control_mode) {
             case MAX30105_CM_RED_LED:
-                red_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
-                red_count[i] = red_count[i] >> data_resolution_bit;
+                data->red_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
+                data->red_count[i] = data->red_count[i] >> data_resolution_bit;
                 break;
             case MAX30105_CM_RED_IR_LED:
-                red_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
-                red_count[i] = red_count[i] >> data_resolution_bit;
-                ir_count[i]  = ((uint32_t)fifo_buffer[i * fifo_frame_size + 3] << 16) |                                            
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 4] << 8) |                                               
-                               ((uint32_t)fifo_buffer[i * fifo_frame_size + 5] << 0);                                                
-                ir_count[i]  = ir_count[i] >> data_resolution_bit;
+                data->red_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
+                data->red_count[i] = data->red_count[i] >> data_resolution_bit;
+                data->ir_count[i]  = ((uint32_t)fifo_buffer[i * fifo_frame_size + 3] << 16) |                                            
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 4] << 8) |                                               
+                                     ((uint32_t)fifo_buffer[i * fifo_frame_size + 5] << 0);                                                
+                data->ir_count[i]  = data->ir_count[i] >> data_resolution_bit;
                 break;
             case MAX30105_CM_GREEN_RED_IR_LED:
-                red_count[i]   = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
-                red_count[i]   = red_count[i] >> data_resolution_bit;
-                ir_count[i]    = ((uint32_t)fifo_buffer[i * fifo_frame_size + 3] << 16) |                                            
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 4] << 8) |                                               
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 5] << 0);                                                
-                ir_count[i]    = ir_count[i] >> data_resolution_bit;
-                green_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 6] << 16) |                                            
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 7] << 8) |                                               
-                                 ((uint32_t)fifo_buffer[i * fifo_frame_size + 8] << 0);                                                
-                green_count[i] = green_count[i] >> data_resolution_bit;
+                data->red_count[i]   = ((uint32_t)fifo_buffer[i * fifo_frame_size + 0] << 16) |                                            
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 1] << 8) |                                               
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 2] << 0);                                                
+                data->red_count[i]   = data->red_count[i] >> data_resolution_bit;
+                data->ir_count[i]    = ((uint32_t)fifo_buffer[i * fifo_frame_size + 3] << 16) |                                            
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 4] << 8) |                                               
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 5] << 0);                                                
+                data->ir_count[i]    = data->ir_count[i] >> data_resolution_bit;
+                data->green_count[i] = ((uint32_t)fifo_buffer[i * fifo_frame_size + 6] << 16) |                                            
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 7] << 8) |                                               
+                                       ((uint32_t)fifo_buffer[i * fifo_frame_size + 8] << 0);                                                
+                data->green_count[i] = data->green_count[i] >> data_resolution_bit;
                 break;
         }
     }
 
+    /* free fifo buffer memory */
+    free(fifo_buffer);
+
     return ESP_OK;
 }
 
+/**
+ * @brief MAX30105 I2C HAL write reset.
+ * 
+ * @param device MAX30105 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
 static inline esp_err_t max30105_i2c_set_reset(max30105_device_t *const device) {
     max30105_mode_config_register_t mode_config = { 0 };
 
@@ -1293,14 +1311,21 @@ static inline esp_err_t max30105_i2c_set_reset(max30105_device_t *const device) 
     return ESP_OK;
 }
 
-static inline esp_err_t max30105_i2c_setup(max30105_device_t *const device) {
-    max30105_interrupt_enable1_register_t irq_enable1 = { 0 };
-    max30105_interrupt_enable2_register_t irq_enable2 = { 0 };
-    max30105_fifo_read_pointer_register_t fifo_read_ptr = { 0 };
-    max30105_fifo_write_pointer_register_t fifo_write_ptr = { 0 };
-    max30105_fifo_config_register_t fifo_config = { 0 };
-    max30105_mode_config_register_t mode_config = { 0 };
-    max30105_particle_sensing_config_register_t particle_config = { 0 };
+/**
+ * @brief MAX30105 I2C HAL setup of registers.
+ * 
+ * @param device MAX30105 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t max30105_i2c_setup_registers(max30105_device_t *const device) {
+    max30105_interrupt_enable1_register_t       irq_enable1       = { 0 };
+    max30105_interrupt_enable2_register_t       irq_enable2       = { 0 };
+    max30105_fifo_read_pointer_register_t       fifo_read_ptr     = { 0 };
+    max30105_fifo_write_pointer_register_t      fifo_write_ptr    = { 0 };
+    max30105_fifo_overflow_counter_register_t   fifo_ovf_counter  = { 0 };
+    max30105_fifo_config_register_t             fifo_config       = { 0 };
+    max30105_mode_config_register_t             mode_config       = { 0 };
+    max30105_particle_sensing_config_register_t particle_config   = { 0 };
     max30105_multi_led_mode_control1_register_t multi_led_config1 = { 0 };
     max30105_multi_led_mode_control2_register_t multi_led_config2 = { 0 };
 
@@ -1335,20 +1360,21 @@ static inline esp_err_t max30105_i2c_setup(max30105_device_t *const device) {
     irq_enable1.bits.fifo_almost_full_irq_enabled       = true;
     irq_enable1.bits.proximity_irq_enabled              = true;
 
-    irq_enable2.bits.irq_die_temperature_ready_enabled  = true;
+    irq_enable2.bits.die_temperature_ready_irq_enabled  = true;
 
-    fifo_read_ptr.bits.fifo_read_pointer                = 0;
     fifo_write_ptr.bits.fifo_write_pointer              = 0;
+    fifo_ovf_counter.bits.fifo_overflow_counter         = 0;
+    fifo_read_ptr.bits.fifo_read_pointer                = 0;
 
     fifo_config.bits.fifo_almost_full_threshold         = device->config.fifo_almost_full_threshold;
     fifo_config.bits.fifo_rollover_enabled              = device->config.fifo_rollover_enabled;
-    fifo_config.bits.sample_averaging                   = device->config.fifo_sample_average;
+    fifo_config.bits.fifo_sample_averaging              = device->config.fifo_sample_average;
     
     mode_config.bits.control_mode                       = device->config.control_mode;
 
     particle_config.bits.sample_rate                    = device->config.particle_sample_rate;
     particle_config.bits.adc_resolution                 = device->config.particle_adc_resolution;
-    particle_config.bits.led_pulse_width                = device->config.led_pulse_width;
+    particle_config.bits.led_pulse_width                = device->config.particle_led_pulse_width;
     
     multi_led_config1.bits.slot_1                       = device->config.multi_led_mode_slot1;
     multi_led_config1.bits.slot_2                       = device->config.multi_led_mode_slot2;
@@ -1363,12 +1389,6 @@ static inline esp_err_t max30105_i2c_setup(max30105_device_t *const device) {
 
     /* attempt interrupt enable 2 register write transaction */
     ESP_RETURN_ON_ERROR( max30105_i2c_set_interrupt_enable2_register(device, irq_enable2), TAG, "write interrupt enable 2 register failed" );
-
-    /* attempt fifo read pointer register write transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_read_pointer_register(device, fifo_read_ptr), TAG, "write FIFO read pointer register failed" );
-
-    /* attempt fifo write pointer register write transaction */
-    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_write_pointer_register(device, fifo_write_ptr), TAG, "write FIFO write pointer register failed" );
 
     /* attempt fifo configuration register write transaction */
     ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_config_register(device, fifo_config), TAG, "write FIFO configuration register failed" );
@@ -1396,6 +1416,15 @@ static inline esp_err_t max30105_i2c_setup(max30105_device_t *const device) {
 
     /* attempt multi led mode control 2 register write transaction */
     ESP_RETURN_ON_ERROR( max30105_i2c_set_multi_led_mode_control2_register(device, multi_led_config2), TAG, "write multi led mode control 2 register failed" );
+
+    /* attempt fifo write pointer register write transaction */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_write_pointer_register(device, fifo_write_ptr), TAG, "write FIFO write pointer register failed" );
+
+    /* attempt fifo overflow counter register write transaction */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_overflow_counter_register(device, fifo_ovf_counter), TAG, "write FIFO overflow counter register failed" );
+
+    /* attempt fifo read pointer register write transaction */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_read_pointer_register(device, fifo_read_ptr), TAG, "write FIFO read pointer register failed" );
 
     return ESP_OK;
 }
@@ -1437,7 +1466,7 @@ esp_err_t max30105_init(i2c_master_bus_handle_t master_handle, const max30105_co
     ESP_RETURN_ON_ERROR( max30105_i2c_set_reset(device), TAG, "write reset for init failed" );
 
     /* attempt setup */
-    ESP_RETURN_ON_ERROR( max30105_i2c_setup(device), TAG, "setup for init failed" );
+    ESP_RETURN_ON_ERROR( max30105_i2c_setup_registers(device), TAG, "setup for init failed" );
 
     /* set device handle */
     *max30105_handle = (max30105_handle_t)device;
@@ -1455,4 +1484,528 @@ esp_err_t max30105_init(i2c_master_bus_handle_t master_handle, const max30105_co
         free(device);
     err:
         return ret;
+}
+
+esp_err_t max30105_get_optical_counts(max30105_handle_t handle, max30105_adc_channels_count_data_t *const data) {
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo data */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_data_registers(device, data), TAG, "read fifo data registers for read optical channel counts failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_data_status(max30105_handle_t handle, bool *const ready) {
+    max30105_interrupt_status1_register_t irq1;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read interrupt status 1 register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_interrupt_status1_register(device, &irq1), TAG, "read interrupt status 1 register for read data status failed" );
+
+    /* set interrupt status flag */
+    *ready = irq1.bits.data_ready_irq;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_temperature_status(max30105_handle_t handle, bool *const ready) {
+    max30105_interrupt_status2_register_t irq2;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read interrupt status 2 register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_interrupt_status2_register(device, &irq2), TAG, "read interrupt status 2 register for read temperature status failed" );
+
+    /* set interrupt status flag */
+    *ready = irq2.bits.die_temperature_ready_irq;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_interrupt_status(max30105_handle_t handle, max30105_irq_status_flags_t *const flags) {
+    max30105_interrupt_status1_register_t irq1;
+    max30105_interrupt_status2_register_t irq2;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read interrupt status 1 register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_interrupt_status1_register(device, &irq1), TAG, "read interrupt status 1 register for read interrupt status failed" );
+
+    /* attempt read interrupt status 2 register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_interrupt_status2_register(device, &irq2), TAG, "read interrupt status 2 register for read interrupt status failed" );
+
+    /* set interrupt status flags */
+    flags->power_ready       = irq1.bits.power_ready_irq;
+    flags->alc_overflow      = irq1.bits.alc_overflow_irq;
+    flags->data_ready        = irq1.bits.data_ready_irq;
+    flags->fifo_almost_full  = irq1.bits.fifo_almost_full_irq;
+    flags->proximity         = irq1.bits.proximity_irq;
+    flags->temperature_ready = irq2.bits.die_temperature_ready_irq;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_control_mode(max30105_handle_t handle, max30105_control_modes_t *const mode) {
+    max30105_mode_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_mode_config_register(device, &reg), TAG, "read mode configuration register for read control mode failed" );
+
+    /* set ouput parameter */
+    *mode = reg.bits.control_mode;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_control_mode(max30105_handle_t handle, const max30105_control_modes_t mode) {
+    max30105_mode_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_mode_config_register(device, &reg), TAG, "read mode configuration register for read control mode failed" );
+
+    /* set control mode */
+    reg.bits.control_mode = mode;
+
+    /* attempt write control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_mode_config_register(device, reg), TAG, "write mode configuration register for read control mode failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_led_pulse_amplitude(max30105_handle_t handle, const max30105_pulse_amplitude_led_types_t type, max30105_led_pulse_amplitudes_t *const amplitude) {
+    max30105_led_pulse_amplitudes_t amp_out;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate pulse amplitude LED type */
+    switch(type) {
+        case MAX30105_PALT_RED_LED1:
+            /* attempt read red led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_red_led_pulse_amplitude_register(device, &amp_out), TAG, "read red LED pulse amplitude register for read pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_IR_LED2:
+            /* attempt read infrared led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_ir_led_pulse_amplitude_register(device, &amp_out), TAG, "read infrared LED pulse amplitude register for read pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_GREEN_LED3:
+            /* attempt read green led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_green_led_pulse_amplitude_register(device, &amp_out), TAG, "read green LED pulse amplitude register for read pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_PROX_LED:
+            /* attempt read proximity led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_proximity_led_pulse_amplitude_register(device, &amp_out), TAG, "read proximity LED pulse amplitude register for read pulse amplitude by LED type failed" );
+            break;
+        default:
+            ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown pulse amplitude LED type for read LED pulse amplitude");
+    }
+
+    /* set output parameter */
+    *amplitude = amp_out;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_led_pulse_amplitude(max30105_handle_t handle, const max30105_pulse_amplitude_led_types_t type, const max30105_led_pulse_amplitudes_t amplitude) {
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate pulse amplitude LED type */
+    switch(type) {
+        case MAX30105_PALT_RED_LED1:
+            /* attempt read red led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_red_led_pulse_amplitude_register(device, amplitude), TAG, "write red LED pulse amplitude register for write pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_IR_LED2:
+            /* attempt read infrared led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_ir_led_pulse_amplitude_register(device, amplitude), TAG, "write infrared LED pulse amplitude register for write pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_GREEN_LED3:
+            /* attempt read green led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_green_led_pulse_amplitude_register(device, amplitude), TAG, "write green LED pulse amplitude register for write pulse amplitude by LED type failed" );
+            break;
+        case MAX30105_PALT_PROX_LED:
+            /* attempt read proximity led pulse amplitude register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_proximity_led_pulse_amplitude_register(device, amplitude), TAG, "write proximity LED pulse amplitude register for write pulse amplitude by LED type failed" );
+            break;
+        default:
+            ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown pulse amplitude LED type for write LED pulse amplitude");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_multi_led_mode(max30105_handle_t handle, const max30105_multi_led_mode_slots_t slot, max30105_multi_led_control_modes_t *const mode) {
+    max30105_multi_led_mode_control1_register_t reg1;
+    max30105_multi_led_mode_control2_register_t reg2;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate multi-LED mode slot */
+    switch(slot) {
+        case MAX30105_MLM_SLOT_1:
+            /* attempt read multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control1_register(device, &reg1), TAG, "read multi-LED mode control 1 register for read multi-LED mode failed" );
+            
+            /* set output parameter */
+            *mode = reg1.bits.slot_1;
+            break;
+        case MAX30105_MLM_SLOT_2:
+            /* attempt read multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control1_register(device, &reg1), TAG, "read multi-LED mode control 1 register for read multi-LED mode failed" );
+            
+            /* set output parameter */
+            *mode = reg1.bits.slot_2;
+            break;
+        case MAX30105_MLM_SLOT_3:
+            /* attempt read multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control2_register(device, &reg2), TAG, "read multi-LED mode control 2 register for read multi-LED mode failed" );
+            
+            /* set output parameter */
+            *mode = reg2.bits.slot_3;
+            break;
+        case MAX30105_MLM_SLOT_4:
+            /* attempt read multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control2_register(device, &reg2), TAG, "read multi-LED mode control 2 register for read multi-LED mode failed" );
+            
+            /* set output parameter */
+            *mode = reg2.bits.slot_4;
+            break;
+        default:
+            ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown multi-LED mode slot for read multi-LED mode");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_multi_led_mode(max30105_handle_t handle, const max30105_multi_led_mode_slots_t slot, const max30105_multi_led_control_modes_t mode) {
+    max30105_multi_led_mode_control1_register_t reg1;
+    max30105_multi_led_mode_control2_register_t reg2;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate multi-LED mode slot */
+    switch(slot) {
+        case MAX30105_MLM_SLOT_1:
+            /* attempt read multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control1_register(device, &reg1), TAG, "read multi-LED mode control 1 register for write multi-LED mode failed" );
+            
+            /* set multi-LED mode control register */
+            reg1.bits.slot_1 = mode;
+
+            /* attempt write multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_multi_led_mode_control1_register(device, reg1), TAG, "write multi-LED mode control 1 register for write multi-LED mode failed" );
+            break;
+        case MAX30105_MLM_SLOT_2:
+            /* attempt read multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control1_register(device, &reg1), TAG, "read multi-LED mode control 1 register for write multi-LED mode failed" );
+            
+            /* set multi-LED mode control register */
+            reg1.bits.slot_2 = mode;
+
+            /* attempt write multi-LED mode control 1 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_multi_led_mode_control1_register(device, reg1), TAG, "write multi-LED mode control 1 register for write multi-LED mode failed" );
+            break;
+        case MAX30105_MLM_SLOT_3:
+            /* attempt read multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control2_register(device, &reg2), TAG, "read multi-LED mode control 2 register for write multi-LED mode failed" );
+            
+            /* set multi-LED mode control register */
+            reg2.bits.slot_3 = mode;
+
+            /* attempt write multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_multi_led_mode_control2_register(device, reg2), TAG, "write multi-LED mode control 2 register for write multi-LED mode failed" );
+            break;
+        case MAX30105_MLM_SLOT_4:
+            /* attempt read multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_get_multi_led_mode_control2_register(device, &reg2), TAG, "read multi-LED mode control 2 register for write multi-LED mode failed" );
+            
+            /* set multi-LED mode control register */
+            reg2.bits.slot_4 = mode;
+
+            /* attempt write multi-LED mode control 2 register */
+            ESP_RETURN_ON_ERROR( max30105_i2c_set_multi_led_mode_control2_register(device, reg2), TAG, "write multi-LED mode control 2 register for write multi-LED mode failed" );
+            break;
+        default:
+            ESP_RETURN_ON_FALSE(false, ESP_ERR_INVALID_RESPONSE, TAG, "unknown multi-LED mode slot for read multi-LED mode");
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_particle_led_pulse_width(max30105_handle_t handle, max30105_led_pulse_width_controls_t *const pulse_width) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for read particle LED pulse width failed" );
+
+    /* set ouput parameter */
+    *pulse_width = reg.bits.led_pulse_width;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_particle_led_pulse_width(max30105_handle_t handle, const max30105_led_pulse_width_controls_t pulse_width) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read particle sensing configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for write particle LED pulse width failed" );
+
+    /* set parameter */
+    reg.bits.led_pulse_width = pulse_width;
+
+    /* attempt write particle sensing configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_particle_sensing_config_register(device, reg), TAG, "write particle sensing configuration register for write particle LED pulse width failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_particle_adc_resolution(max30105_handle_t handle, max30105_adc_range_controls_t *const resolution) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for read particle adc resolution failed" );
+
+    /* set ouput parameter */
+    *resolution = reg.bits.adc_resolution;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_particle_adc_resolution(max30105_handle_t handle, const max30105_adc_range_controls_t resolution) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read particle sensing configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for write particle adc resolution failed" );
+
+    /* set parameter */
+    reg.bits.adc_resolution = resolution;
+
+    /* attempt write particle sensing configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_particle_sensing_config_register(device, reg), TAG, "write particle sensing configuration register for write particle adc resolution failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_particle_sample_rate(max30105_handle_t handle, max30105_sample_rate_controls_t *const rate) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for read particle sample rate failed" );
+
+    /* set ouput parameter */
+    *rate = reg.bits.sample_rate;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_particle_sample_rate(max30105_handle_t handle, const max30105_sample_rate_controls_t rate) {
+    max30105_particle_sensing_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_particle_sensing_config_register(device, &reg), TAG, "read particle sensing configuration register for write particle sample rate failed" );
+
+    /* set parameter */
+    reg.bits.sample_rate = rate;
+
+    /* attempt write control mode register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_particle_sensing_config_register(device, reg), TAG, "write particle sensing configuration register for write particle sample rate failed" );
+
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_fifo_sample_averaging(max30105_handle_t handle, max30105_sample_averages_t *const average) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for read FIFO sample averaging failed" );
+
+    /* set ouput parameter */
+    *average = reg.bits.fifo_sample_averaging;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_fifo_sample_averaging(max30105_handle_t handle, const max30105_sample_averages_t average) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for write FIFO sample averaging failed" );
+
+    /* set parameter */
+    reg.bits.fifo_sample_averaging = average;
+
+    /* attempt write fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_config_register(device, reg), TAG, "write FIFO configuration register for write FIFO sample averaging failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_get_fifo_almost_full_threshold(max30105_handle_t handle, uint8_t *const threshold) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for read FIFO almost full threshold failed" );
+
+    /* set ouput parameter */
+    *threshold = reg.bits.fifo_almost_full_threshold;
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_set_fifo_almost_full_threshold(max30105_handle_t handle, const uint8_t threshold) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for write FIFO almost full threshold failed" );
+
+    /* set parameter */
+    reg.bits.fifo_almost_full_threshold = threshold;
+
+    /* attempt write fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_config_register(device, reg), TAG, "write FIFO configuration register for write FIFO almost full threshold failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_enable_power(max30105_handle_t handle) {
+    max30105_mode_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read mode configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_mode_config_register(device, &reg), TAG, "read mode configuration register for enable power failed" );
+
+    /* set power on */
+    reg.bits.shutdown_enabled = false;
+
+    /* attempt write mode configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_mode_config_register(device, reg), TAG, "write mode configuration register for enable power failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_disable_power(max30105_handle_t handle) {
+    max30105_mode_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read mode configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_mode_config_register(device, &reg), TAG, "read mode configuration register for disable power failed" );
+
+    /* set power off */
+    reg.bits.shutdown_enabled = true;
+
+    /* attempt write mode configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_mode_config_register(device, reg), TAG, "write mode configuration register for disable power failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_enable_fifo_rollover(max30105_handle_t handle) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for enable FIFO rollover failed" );
+
+    /* set rollover enabled */
+    reg.bits.fifo_rollover_enabled = true;
+
+    /* attempt write fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_config_register(device, reg), TAG, "write FIFO configuration register for enable FIFO rollover failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t max30105_disable_fifo_rollover(max30105_handle_t handle) {
+    max30105_fifo_config_register_t reg;
+    max30105_device_t* device = (max30105_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt read fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_get_fifo_config_register(device, &reg), TAG, "read FIFO configuration register for disable FIFO rollover failed" );
+
+    /* set rollover disabled */
+    reg.bits.fifo_rollover_enabled = false;
+
+    /* attempt write fifo configuration register */
+    ESP_RETURN_ON_ERROR( max30105_i2c_set_fifo_config_register(device, reg), TAG, "write FIFO configuration register for disable FIFO rollover failed" );
+
+    return ESP_OK;
 }

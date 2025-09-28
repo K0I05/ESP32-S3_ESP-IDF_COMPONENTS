@@ -539,12 +539,12 @@ static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int3
 }
 
 /**
- * @brief BMP280 I2C HAL to setup and configuration.
+ * @brief BMP280 I2C HAL to setup and configuration of registers.
  * 
  * @param device BMP280 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_setup(bmp280_device_t *const device) {
+static inline esp_err_t bmp280_i2c_setup_registers(bmp280_device_t *const device) {
     bmp280_configuration_register_t       config_reg = { 0 };
     bmp280_control_measurement_register_t ctrl_meas_reg = { 0 };
 
@@ -632,7 +632,7 @@ esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config
     ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for init failed" );
 
     /* attempt to setup device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_setup(device), TAG, "unable to setup device, init failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_setup_registers(device), TAG, "unable to setup device, init failed" );
 
     /* set output parameter */
     *bmp280_handle = (bmp280_handle_t)device;
@@ -872,7 +872,7 @@ esp_err_t bmp280_reset(bmp280_handle_t handle) {
     ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for reset failed" );
 
     /* attempt to setup device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_setup(device), TAG, "unable to setup device, reset failed" );
+    ESP_RETURN_ON_ERROR( bmp280_i2c_setup_registers(device), TAG, "unable to setup device, reset failed" );
 
     return ESP_OK;
 }

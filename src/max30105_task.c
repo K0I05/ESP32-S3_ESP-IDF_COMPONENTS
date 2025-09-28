@@ -40,8 +40,9 @@ void i2c0_max30105_task( void *pvParameters ) {
     TickType_t         last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    max30105_config_t dev_cfg          = MAX30105_CONFIG_DEFAULT;
-    max30105_handle_t dev_hdl;
+    //max30105_config_t dev_cfg          = MAX30105_CONFIG_DEFAULT;
+    max30105_config_t dev_cfg          = MAX30105_PARTICLE_CONFIG_DEFAULT;
+    max30105_handle_t dev_hdl          = NULL;
     //
     // init device
     max30105_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
@@ -55,6 +56,35 @@ void i2c0_max30105_task( void *pvParameters ) {
         ESP_LOGI(APP_TAG, "######################## MAX30105 - START #########################");
         //
         // handle sensor
+        esp_err_t                                  result = ESP_OK;
+        max30105_adc_channels_count_data_t adc_count_data = { 0 };
+        //
+        result = max30105_get_optical_counts(dev_hdl, &adc_count_data);
+        if (result != ESP_OK) {
+            ESP_LOGE(APP_TAG, "max30105 get optical channel counts failed: %s", esp_err_to_name(result));
+            //assert(result == ESP_OK);
+        } else {
+
+            ESP_LOGW(APP_TAG, "number of samples: %d", adc_count_data.sample_size);
+
+            for(uint8_t i = 0; i < adc_count_data.sample_size; i++) {
+                switch(dev_cfg.control_mode) {
+                    case MAX30105_CM_RED_LED:
+                        ESP_LOGW(APP_TAG, "sample[%d]: Red(%u)", i, adc_count_data.red_count[i]);
+                        break;
+                    case MAX30105_CM_RED_IR_LED:
+                        ESP_LOGW(APP_TAG, "sample[%d]: Red(%u) | IR(%u)", i, adc_count_data.red_count[i], adc_count_data.ir_count[i]);
+                        break;
+                    case MAX30105_CM_GREEN_RED_IR_LED:
+                        ESP_LOGW(APP_TAG, "sample[%d]: Red(%u) | IR(%u) | Green(%u)", i, adc_count_data.red_count[i], adc_count_data.ir_count[i], adc_count_data.green_count[i]);
+                        break;
+                    default:
+                        ESP_LOGE(APP_TAG, "unknown control mode in mode configuration register");
+                        break;
+                }
+            }
+        }
+
         //
         ESP_LOGI(APP_TAG, "######################## MAX30105 - END ###########################");
         //

@@ -780,12 +780,12 @@ static inline esp_err_t bmp390_i2c_get_adc_signals(bmp390_device_t *const device
 }
 
 /**
- * @brief BMP390 I2C HAL setup.
+ * @brief BMP390 I2C HAL setup and configuration of registers.
  * 
  * @param device BMP390 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp390_i2c_setup(bmp390_device_t *const device) {
+static inline esp_err_t bmp390_i2c_setup_registers(bmp390_device_t *const device) {
     /* configuration registers */
     bmp390_power_control_register_t     power_ctrl_reg = { 0 };
     bmp390_config_register_t            config_reg = { 0 };
@@ -889,7 +889,7 @@ esp_err_t bmp390_init(i2c_master_bus_handle_t master_handle, const bmp390_config
     ESP_GOTO_ON_ERROR(bmp390_i2c_set_reset_register(device), err_handle, TAG, "soft-reset register for init failed");
 
     /* attempt to setup the device */
-    ESP_GOTO_ON_ERROR(bmp390_i2c_setup(device), err_handle, TAG, "setup for init failed");
+    ESP_GOTO_ON_ERROR(bmp390_i2c_setup_registers(device), err_handle, TAG, "setup for init failed");
 
     /* copy configuration */
     *bmp390_handle = (bmp390_handle_t)device;
@@ -1160,7 +1160,7 @@ esp_err_t bmp390_reset(bmp390_handle_t handle) {
     ESP_RETURN_ON_ERROR( bmp390_i2c_set_reset_register(device), TAG, "write reset register for reset failed" );
 
     /* attempt to setup device  */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_setup(device), TAG, "setup for reset failed" );
+    ESP_RETURN_ON_ERROR( bmp390_i2c_setup_registers(device), TAG, "setup for reset failed" );
 
     return ESP_OK;
 }
