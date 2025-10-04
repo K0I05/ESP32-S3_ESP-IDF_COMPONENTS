@@ -53,7 +53,10 @@ extern "C"
 
 #define I2C_MAX30105_DEV_ADDR              UINT8_C(0x57) //!< max30105 I2C address
 
-#define MAX30105_CH_SMP_MAX                UINT8_C(32) //!< max30105 maximum number of samples by channel (i.e. red, ir, green)
+#define I2C_MAX30105_BUFFER_SIZE           UINT16_C(12 * 32) //!< max30105 I2C buffer size
+
+#define MAX30105_CH_SMP_MAX                UINT8_C(32)  //!< max30105 maximum number of samples by channel (i.e. red, ir, green)
+#define MAX30105_CH_SMP_SIZE               UINT8_C(10)  //!< max30105 sample storage size by channel (i.e. red, ir, green)
 
 /*
  * MAX30105 macro definitions
@@ -61,47 +64,88 @@ extern "C"
 #define MAX30105_CONFIG_DEFAULT {                                  \
     .i2c_address                   = I2C_MAX30105_DEV_ADDR,        \
     .i2c_clock_speed               = I2C_MAX30105_DEV_CLK_SPD,     \
-    .fifo_almost_full_threshold    = 0x0,                          \
+    .fifo_almost_full_value        = MAX30105_FIFO_AFV_32SMP,      \
     .fifo_rollover_enabled         = true,                         \
-    .fifo_sample_average           = MAX30105_SMP_AVG_8,           \
-    .control_mode                  = MAX30105_CM_GREEN_RED_IR_LED, \
-    .particle_sample_rate          = MAX30105_SRC_800SPS,          \
+    .fifo_sample_average           = MAX30105_SMP_AVG_1,           \
+    .control_mode                  = MAX30105_CM_MULTI_LED,        \
+    .particle_sample_rate          = MAX30105_SRC_1000SPS,         \
     .particle_adc_resolution       = MAX30105_ARC_7_81LSB_2048FS,  \
     .particle_led_pulse_width      = MAX30105_LPWC_411US_18BITS,   \
     .multi_led_mode_slot1          = MAX30105_MLCM_RED_LED1_PA,    \
     .multi_led_mode_slot2          = MAX30105_MLCM_IR_LED2_PA,     \
     .multi_led_mode_slot3          = MAX30105_MLCM_GREEN_LED3_PA,  \
-    .multi_led_mode_slot4          = MAX30105_MLCM_NONE,           \
-    .red_led_pulse_amplitude       = MAX30105_LPA_6_4MA,           \
-    .ir_led_pulse_amplitude        = MAX30105_LPA_6_4MA,           \
-    .green_led_pulse_amplitude     = MAX30105_LPA_6_4MA,           \
-    .proximity_led_pulse_amplitude = MAX30105_LPA_6_4MA,           \
+    .multi_led_mode_slot4          = MAX30105_MLCM_DISABLED,       \
+    .red_led_pulse_amplitude       = MAX30105_LPA_12_5MA,          \
+    .ir_led_pulse_amplitude        = MAX30105_LPA_12_5MA,          \
+    .green_led_pulse_amplitude     = MAX30105_LPA_12_5MA,          \
+    .proximity_led_pulse_amplitude = MAX30105_LPA_0_0MA,           \
     }
 
 #define MAX30105_PARTICLE_CONFIG_DEFAULT {                              \
     .i2c_address                   = I2C_MAX30105_DEV_ADDR,             \
     .i2c_clock_speed               = I2C_MAX30105_DEV_CLK_SPD,          \
-    .fifo_almost_full_threshold    = 0x0,                               \
+    .fifo_almost_full_value        = MAX30105_FIFO_AFV_32SMP,           \
     .fifo_rollover_enabled         = true,                              \
-    .fifo_sample_average           = MAX30105_SMP_AVG_8,                \
-    .control_mode                  = MAX30105_CM_RED_IR_LED,            \
+    .fifo_sample_average           = MAX30105_SMP_AVG_32,               \
+    .control_mode                  = MAX30105_CM_MULTI_LED,             \
     .particle_sample_rate          = MAX30105_SRC_800SPS,               \
     .particle_adc_resolution       = MAX30105_ARC_7_81LSB_2048FS,       \
     .particle_led_pulse_width      = MAX30105_LPWC_411US_18BITS,        \
     .multi_led_mode_slot1          = MAX30105_MLCM_RED_LED1_PA,         \
     .multi_led_mode_slot2          = MAX30105_MLCM_IR_LED2_PA,          \
-    .multi_led_mode_slot3          = MAX30105_MLCM_NONE,                \
-    .multi_led_mode_slot4          = MAX30105_MLCM_NONE,                \
-    .red_led_pulse_amplitude       = MAX30105_LPA_6_4MA,                \
-    .ir_led_pulse_amplitude        = MAX30105_LPA_6_4MA,                \
-    .green_led_pulse_amplitude     = MAX30105_LPA_6_4MA,                \
-    .proximity_led_pulse_amplitude = MAX30105_LPA_6_4MA,                \
+    .multi_led_mode_slot3          = MAX30105_MLCM_GREEN_LED3_PA,       \
+    .multi_led_mode_slot4          = MAX30105_MLCM_DISABLED,            \
+    .red_led_pulse_amplitude       = MAX30105_LPA_0_0MA,                \
+    .ir_led_pulse_amplitude        = MAX30105_LPA_0_0MA,                \
+    .green_led_pulse_amplitude     = MAX30105_LPA_12_5MA,               \
+    .proximity_led_pulse_amplitude = MAX30105_LPA_0_0MA,                \
     }
 
+#define MAX30105_PRESENCE_CONFIG_DEFAULT {                              \
+    .i2c_address                   = I2C_MAX30105_DEV_ADDR,             \
+    .i2c_clock_speed               = I2C_MAX30105_DEV_CLK_SPD,          \
+    .fifo_almost_full_value        = MAX30105_FIFO_AFV_32SMP,           \
+    .fifo_rollover_enabled         = true,                              \
+    .fifo_sample_average           = MAX30105_SMP_AVG_4 ,               \
+    .control_mode                  = MAX30105_CM_RED_IR_LED,            \
+    .particle_sample_rate          = MAX30105_SRC_400SPS,               \
+    .particle_adc_resolution       = MAX30105_ARC_7_81LSB_2048FS,       \
+    .particle_led_pulse_width      = MAX30105_LPWC_411US_18BITS,        \
+    .multi_led_mode_slot1          = MAX30105_MLCM_RED_LED1_PA,         \
+    .multi_led_mode_slot2          = MAX30105_MLCM_IR_LED2_PA,          \
+    .multi_led_mode_slot3          = MAX30105_MLCM_DISABLED,            \
+    .multi_led_mode_slot4          = MAX30105_MLCM_DISABLED,            \
+    .red_led_pulse_amplitude       = MAX30105_LPA_0_0MA,                \
+    .ir_led_pulse_amplitude        = MAX30105_LPA_50_0MA,               \
+    .green_led_pulse_amplitude     = MAX30105_LPA_0_0MA,                \
+    .proximity_led_pulse_amplitude = MAX30105_LPA_0_0MA,                \
+    }
 
 /*
 * MAX30105 enumerator and structure declarations
 */
+
+/**
+ * @brief MAX30105 FIFO almost full values enumerator.
+ */
+typedef enum max30105_fifo_almost_full_values_e {
+    MAX30105_FIFO_AFV_32SMP = (0x0), /*!< max30105 FIFO almost full value of 32-samples */
+    MAX30105_FIFO_AFV_31SMP = (0x1), /*!< max30105 FIFO almost full value of 31-samples */
+    MAX30105_FIFO_AFV_30SMP = (0x2), /*!< max30105 FIFO almost full value of 30-samples */  
+    MAX30105_FIFO_AFV_29SMP = (0x3), /*!< max30105 FIFO almost full value of 29-samples */ 
+    MAX30105_FIFO_AFV_28SMP = (0x4), /*!< max30105 FIFO almost full value of 28-samples */ 
+    MAX30105_FIFO_AFV_27SMP = (0x5), /*!< max30105 FIFO almost full value of 27-samples */ 
+    MAX30105_FIFO_AFV_26SMP = (0x6), /*!< max30105 FIFO almost full value of 26-samples */ 
+    MAX30105_FIFO_AFV_25SMP = (0x7), /*!< max30105 FIFO almost full value of 25-samples */ 
+    MAX30105_FIFO_AFV_24SMP = (0x8), /*!< max30105 FIFO almost full value of 24-samples */ 
+    MAX30105_FIFO_AFV_23SMP = (0x9), /*!< max30105 FIFO almost full value of 23-samples */ 
+    MAX30105_FIFO_AFV_22SMP = (0xA), /*!< max30105 FIFO almost full value of 22-samples */ 
+    MAX30105_FIFO_AFV_21SMP = (0xB), /*!< max30105 FIFO almost full value of 21-samples */ 
+    MAX30105_FIFO_AFV_20SMP = (0xC), /*!< max30105 FIFO almost full value of 20-samples */
+    MAX30105_FIFO_AFV_19SMP = (0xD), /*!< max30105 FIFO almost full value of 19-samples */ 
+    MAX30105_FIFO_AFV_18SMP = (0xE), /*!< max30105 FIFO almost full value of 18-samples */ 
+    MAX30105_FIFO_AFV_17SMP = (0xF), /*!< max30105 FIFO almost full value of 17-samples */ 
+} max30105_fifo_almost_full_values_t;
 
 /**
  * @brief MAX30105 particle-sensing ADC range controls enumerator (register 0x0a).
@@ -141,10 +185,19 @@ typedef enum max30105_led_pulse_width_controls_e {
  * @brief MAX30105 control modes enumerator.
  */
 typedef enum max30105_control_modes_e {
-    MAX30105_CM_RED_LED          = (0b010), /*!< max30105 particle sensing mode with 1 LED, red only */
-    MAX30105_CM_RED_IR_LED       = (0b011), /*!< max30105 particle sensing mode with 2 LEDs, red and IR */
-    MAX30105_CM_GREEN_RED_IR_LED = (0b111), /*!< max30105 multiple LED mode, green, red, and/or IR */  
+    MAX30105_CM_RED_LED    = (0b010), /*!< max30105 particle sensing mode with 1 LED, red only */
+    MAX30105_CM_RED_IR_LED = (0b011), /*!< max30105 particle sensing mode with 2 LEDs, red and IR */
+    MAX30105_CM_MULTI_LED  = (0b111), /*!< max30105 multiple LED mode, green, red, and/or IR */  
 } max30105_control_modes_t;
+
+/**
+ * @brief MAX30105 control mode channel sizes (bytes) enumerator.
+ */
+typedef enum max30105_control_mode_channel_sizes_e {
+    MAX30105_CMCS_RED_LED    = 3, /*!< max30105 particle sensing mode with 1 LED, red only has 3 bytes per sample */
+    MAX30105_CMCS_RED_IR_LED = 6, /*!< max30105 particle sensing mode with 2 LEDs, red and IR has 6 bytes per sample */
+    MAX30105_CMCS_MULTI_LED  = 9, /*!< max30105 multiple LED mode, green, red, and/or IR has 9 bytes per sample */  
+} max30105_control_mode_channel_sizes_t;
 
 /**
  * @brief MAX30105 multi-LED control modes enumerator (registers 0x11-0x12).
@@ -154,7 +207,7 @@ typedef enum max30105_multi_led_control_modes_e {
     MAX30105_MLCM_RED_LED1_PA         = (0b001), /*!< max30105 red LED1 pulse amplitude */
     MAX30105_MLCM_IR_LED2_PA          = (0b010), /*!< max30105 infrared LED2 pulse amplitude */  
     MAX30105_MLCM_GREEN_LED3_PA       = (0b011), /*!< max30105 green LED3 pulse amplitude */ 
-    MAX30105_MLCM_NONE                = (0b100), /*!< max30105 none */
+    //MAX30105_MLCM_NONE                = (0b100), /*!< max30105 none */
     MAX30105_MLCM_RED_LED1_PILOT_PA   = (0b101), /*!< max30105 red LED1 proximity mode pulse amplitude */
     MAX30105_MLCM_IR_LED2_PILOT_PA    = (0b110), /*!< max30105 infrared LED2 proximity mode pulse amplitude  */  
     MAX30105_MLCM_GREEN_LED3_PILOT_PA = (0b111), /*!< max30105 green LED3 proximity mode pulse amplitude */ 
@@ -213,8 +266,20 @@ typedef struct max30105_adc_channels_count_data_s {
     uint32_t red_count[MAX30105_CH_SMP_MAX];
     uint32_t ir_count[MAX30105_CH_SMP_MAX];
     uint32_t green_count[MAX30105_CH_SMP_MAX];
-    uint8_t  sample_size;
+    uint8_t  number_of_samples;
+    max30105_control_modes_t control_mode;
+    uint8_t overflow_count;
 } max30105_adc_channels_count_data_t;
+
+
+typedef struct max30105_data_record_s {
+    uint32_t red[MAX30105_CH_SMP_SIZE];
+    uint32_t ir[MAX30105_CH_SMP_SIZE];
+    uint32_t green[MAX30105_CH_SMP_SIZE];
+    uint8_t  head;
+    uint8_t  tail;
+    uint8_t overflow_count;
+} max30105_data_record_t;
 
 /**
  * @brief MAX30105 interrupt status flags structure definition.
@@ -240,7 +305,7 @@ typedef struct max30105_config_s {
     max30105_led_pulse_width_controls_t particle_led_pulse_width;       /*!< max30105 particle-sensing LED pulse width and ADC resolution */
     max30105_sample_averages_t          fifo_sample_average;            /*!< max30105 FIFO sample averaging */
     bool                                fifo_rollover_enabled;          /*!< max30105 FIFO rollover enabled */
-    uint8_t                             fifo_almost_full_threshold;     /*!< max30105 FIFO almost full interrupt threshold (number of samples: 0x0h = 32, 0x1h = 31, 0xFh = 17) */
+    max30105_fifo_almost_full_values_t  fifo_almost_full_value;         /*!< max30105 FIFO almost full interrupt threshold (number of samples: 0x0h = 32, 0x1h = 31, 0xFh = 17) */
     max30105_led_pulse_amplitudes_t     red_led_pulse_amplitude;        /*!< max30105 red LED pulse amplitude */
     max30105_led_pulse_amplitudes_t     ir_led_pulse_amplitude;         /*!< max30105 infrared LED pulse amplitude */
     max30105_led_pulse_amplitudes_t     green_led_pulse_amplitude;      /*!< max30105 green LED pulse amplitude */
@@ -275,6 +340,48 @@ esp_err_t max30105_init(i2c_master_bus_handle_t master_handle, const max30105_co
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t max30105_get_optical_counts(max30105_handle_t handle, max30105_adc_channels_count_data_t *const data);
+
+/**
+ * @brief Tells caller how many samples are available to read from the MAX30105 FIFO.
+ * 
+ * @param handle MAX30105 device handle.
+ * @return int8_t Number of samples available to read from the MAX30105 FIFO (0 to 32). Returns -1 on error.
+ */
+int8_t max30105_fifo_samples_available(max30105_handle_t handle);
+
+/**
+ * @brief Polls the MAX30105 FIFO to see how many new samples are available to read.
+ * 
+ * @param handle MAX30105 device handle.
+ * @param number_of_samples Number of new samples available to read from the MAX30105 FIFO (0 to 32).
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t max30105_fifo_sampling_check(max30105_handle_t handle, uint8_t *const number_of_samples);
+
+/**
+ * @brief Advances the sample tail to the next sample in the MAX30105 FIFO buffer.
+ * 
+ * @param handle MAX30105 device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t max30105_fifo_next_sample(max30105_handle_t handle);
+
+esp_err_t max30105_fifo_get_red_ch_head(max30105_handle_t handle, uint32_t *const channel);
+esp_err_t max30105_fifo_get_ir_ch_head(max30105_handle_t handle, uint32_t *const channel);
+esp_err_t max30105_fifo_get_green_ch_head(max30105_handle_t handle, uint32_t *const channel);
+
+esp_err_t max30105_fifo_get_red_ch_tail(max30105_handle_t handle, uint32_t *const channel);
+esp_err_t max30105_fifo_get_ir_ch_tail(max30105_handle_t handle, uint32_t *const channel);
+esp_err_t max30105_fifo_get_green_ch_tail(max30105_handle_t handle, uint32_t *const channel);
+
+/**
+ * @brief Reads die temperature in degrees Celsius from MAX30105.
+ * 
+ * @param handle MAX30105 device handle.
+ * @param temperature Die temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t max30105_get_temperature(max30105_handle_t handle, float *const temperature);
 
 /**
  * @brief Reads FIFO data status from MAX30105.
@@ -440,7 +547,7 @@ esp_err_t max30105_set_fifo_sample_averaging(max30105_handle_t handle, const max
  * @param threshold MAX30105 FIFO almost full threshold setting.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t max30105_get_fifo_almost_full_threshold(max30105_handle_t handle, uint8_t *const threshold);
+esp_err_t max30105_get_fifo_almost_full_threshold(max30105_handle_t handle, max30105_fifo_almost_full_values_t *const threshold);
 
 /**
  * @brief Writes FIFO almost full threshold to MAX30105.
@@ -449,7 +556,7 @@ esp_err_t max30105_get_fifo_almost_full_threshold(max30105_handle_t handle, uint
  * @param threshold MAX30105 FIFO almost full threshold setting.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t max30105_set_fifo_almost_full_threshold(max30105_handle_t handle, const uint8_t threshold);
+esp_err_t max30105_set_fifo_almost_full_threshold(max30105_handle_t handle, const max30105_fifo_almost_full_values_t threshold);
 
 /**
  * @brief Enables power on MAX30105.

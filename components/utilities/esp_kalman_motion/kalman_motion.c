@@ -25,6 +25,8 @@
  * @file kalman_motion.c
  *
  * ESP-IDF kalman motion filter library
+ * 
+ * https://github.com/SMotlaq/open-watch/blob/master/open-watch-firmware/my_watch_software/MyDrivers/KalmanFilter/Kalman.c
  *
  * Ported from esp-open-rtos
  *
@@ -44,7 +46,7 @@
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
 /*
-* static constant declerations
+* static constant declarations
 */
 static const char *TAG = "kalman_motion";
 
