@@ -275,7 +275,7 @@ Supported drivers include the following device peripherals:
 - I2C: [Honeywell HMC5883L](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_hmc5883l>)
 - I2C: [Texas Instruments INA226](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ina226>)
 - I2C: [Lite-On LTR390UV](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ltr390uv>)
-- I2C: Maxim-Integrated MAX30105 - Work in Progress
+- I2C: [Maxim-Integrated MAX30105](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_max30105>)
 - I2C: [Melexis MLX90614](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mlx90614>)
 - I2C: [Memsic MMC56X3](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mmc56x3>)
 - I2C: [InvenSense MPU6050](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_mpu6050>)
@@ -283,6 +283,7 @@ Supported drivers include the following device peripherals:
 - I2C: [Sensirion SGP4X](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sgp4x>)
 - I2C: [Sensirion SHT4X](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sht4x>)
 - I2C: [Generic SSD1306](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ssd1306>)
+- I2C: [OSRAM TCS3472](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_tcs3472>)
 - I2C: Infineon TLV493D - Work in Progress
 - I2C: [Vishay VEML6040](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_veml6040>)
 - I2C: [Vishay VEML7700](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_veml7700>)
