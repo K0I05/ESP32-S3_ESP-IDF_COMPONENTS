@@ -51,12 +51,7 @@ void i2c0_veml6040_task( void *pvParameters ) {
         assert(dev_hdl);
     }
     //
-    veml6040_config_register_t cfg_reg;
     //
-    veml6040_get_configuration_register(dev_hdl, &cfg_reg);
-    //
-    ESP_LOGI(APP_TAG, "Configuration Register: 0x%02x (%s)", cfg_reg.reg, uint16_to_binary(cfg_reg.reg));
-    // 
     // task loop entry point
     for ( ;; ) {
         ESP_LOGI(APP_TAG, "######################## VEML6040 - START #########################");

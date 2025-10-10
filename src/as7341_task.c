@@ -96,7 +96,7 @@ static inline void get_flicker_detection_status(as7341_handle_t handle) {
                 break;
         }
     }
-    as7341_clear_flicker_detection_status_register(handle);
+    //as7341_clear_flicker_detection_status_register(handle);
 }
 
 void i2c0_as7341_task( void *pvParameters ) {

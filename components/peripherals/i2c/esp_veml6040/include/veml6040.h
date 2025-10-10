@@ -111,21 +111,7 @@ typedef enum veml6040_modes_e {
     VEML6040_MODE_MANUAL = 1    /*!< veml6040 manual force mode */
 } veml6040_modes_t;
 
-/**
- * @brief VEML6040 configuration register structure.
-**/
-typedef union __attribute__((packed)) veml6040_config_register_u {
-    struct {
-        bool                                shutdown_enabled:1;     /*!< shut-down when true                        (bit:0)     */
-        veml6040_modes_t                    mode:1;                 /*!< mode, auto or manual                       (bit:1) */
-        veml6040_triggers_t                 trigger:1;              /*!< trigger, none or one-time detect cycle     (bit:2)     */
-        uint8_t                             reserved1:2;            /*!< reserved and set to 0                      (bit:3)   */
-        veml6040_integration_times_t        integration_time:4;     /*!< time to measure                            (bit:6-4)   */
-        uint8_t                             reserved2:1;            /*!< reserved and set to 0                      (bit:7)   */
-        uint8_t                             reserved3:8;            /*!< reserved and set to 0 (high byte)          (bit:0-7)   */
-    } bits;
-    uint16_t reg;
-} veml6040_config_register_t;
+
 
 /**
  * @brief VEML6040 configuration structure.
@@ -145,23 +131,7 @@ typedef struct veml6040_config_s {
  */
 typedef void* veml6040_handle_t;
 
-/**
- * @brief Reads configuration register from VEML6040.
- *
- * @param[in] handle VEML6040 device handle.
- * @param[out] reg VEML6040 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t veml6040_get_configuration_register(veml6040_handle_t handle, veml6040_config_register_t *const reg);
 
-/**
- * @brief Writes configuration register to VEML6040.
- *
- * @param[in] handle VEML6040 device handle.
- * @param[in] reg VEML6040 configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t veml6040_set_configuration_register(veml6040_handle_t handle, const veml6040_config_register_t reg);
 
 /**
  * @brief Initializes an VEML6040 device onto the I2C master bus.
