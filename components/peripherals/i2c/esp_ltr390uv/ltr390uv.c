@@ -508,9 +508,6 @@ static inline esp_err_t ltr390uv_i2c_set_control_register(ltr390uv_device_t *con
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(device, LTR390UV_REG_MAIN_CTRL_RW, ctrl.reg), TAG, "write control register failed" );
 
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -527,9 +524,6 @@ static inline esp_err_t ltr390uv_i2c_get_measure_register(ltr390uv_device_t *con
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(device, LTR390UV_REG_ALS_UVS_MEAS_RW, &reg->reg), TAG, "read measure register failed" );
-
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -553,9 +547,6 @@ static inline esp_err_t ltr390uv_i2c_set_measure_register(ltr390uv_device_t *con
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(device, LTR390UV_REG_ALS_UVS_MEAS_RW, msr.reg), TAG, "write measure register failed" );
 
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -572,9 +563,6 @@ static inline esp_err_t ltr390uv_i2c_get_gain_register(ltr390uv_device_t *const 
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(device, LTR390UV_REG_ALS_UVS_GAIN_RW, &reg->reg), TAG, "read gain register failed" );
-
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -597,9 +585,6 @@ static inline esp_err_t ltr390uv_i2c_set_gain_register(ltr390uv_device_t *const 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(device, LTR390UV_REG_ALS_UVS_GAIN_RW, gain.reg), TAG, "write gain register failed" );
 
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -616,9 +601,6 @@ static inline esp_err_t ltr390uv_i2c_get_interrupt_config_register(ltr390uv_devi
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(device, LTR390UV_REG_INT_CFG_RW, &reg->reg), TAG, "read interrupt configuration register failed" );
-
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -643,9 +625,6 @@ static inline esp_err_t ltr390uv_i2c_set_interrupt_config_register(ltr390uv_devi
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_write_byte_to(device, LTR390UV_REG_INT_CFG_RW, irq.reg), TAG, "write interrupt configuration register failed" );
 
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -662,9 +641,6 @@ static inline esp_err_t ltr390uv_i2c_get_status_register(ltr390uv_device_t *cons
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(device, LTR390UV_REG_MAIN_STS_R, &reg->reg), TAG, "read status register failed" );
-
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     return ESP_OK;
 }

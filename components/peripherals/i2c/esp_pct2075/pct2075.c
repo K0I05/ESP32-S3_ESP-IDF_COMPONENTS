@@ -555,7 +555,7 @@ static inline esp_err_t pct2075_i2c_get_adc_signal_register(pct2075_device_t *co
  * @param[in] device PCT2075 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t pct2075_i2c_setup(pct2075_device_t *const device) {
+static inline esp_err_t pct2075_i2c_setup_registers(pct2075_device_t *const device) {
     pct2075_config_register_t cfg_reg = { 0 };
     pct2075_sampling_period_register_t smp_reg = { 0 };
 
@@ -641,7 +641,7 @@ esp_err_t pct2075_init(const i2c_master_bus_handle_t master_handle, const pct207
     vTaskDelay(pdMS_TO_TICKS(PCT2075_CMD_DELAY_MS));
 
     /* setup device */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_setup(device), TAG, "setup device failed" );
+    ESP_RETURN_ON_ERROR( pct2075_i2c_setup_registers(device), TAG, "setup device failed" );
 
     /* set device handle */
     *pct2075_handle = (pct2075_handle_t)device;
