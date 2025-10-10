@@ -219,6 +219,8 @@ void app_main( void ) {
 }
 ```
 
+See [src](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/src>) folder for more examples ('[component-name]_task.c').
+
 ## ESP Peripheral Components (ADC, I2C, OWB, SPI, UART)
 
 The ESP peripheral components accommodate ADC, I2C, OWB, SPI, and UART device interfacing supported by various device manufacturers.
