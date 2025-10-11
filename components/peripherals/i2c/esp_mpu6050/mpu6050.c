@@ -24,7 +24,7 @@
 /**
  * @file aht2x.c
  *
- * ESP-IDF driver for MPU6050 sensor
+ * ESP-IDF driver for MPU6050 motion-tracking sensor
  *
  * Ported from esp-open-rtos
  *

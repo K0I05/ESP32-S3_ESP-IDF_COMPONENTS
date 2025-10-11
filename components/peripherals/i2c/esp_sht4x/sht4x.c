@@ -284,14 +284,13 @@ static inline esp_err_t sht4x_calculate_dewpoint(const float temperature, const 
 /**
  * @brief Reads serial number from SHT4X.
  *
- * @param[in] handle SHT4X device handle.
+ * @param[in] device SHT4X device descriptor.
  * @param[out] serial_number SHT4X serial number. 
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t sht4x_get_serial_number(sht4x_handle_t handle, uint32_t *const serial_number) {
+static inline esp_err_t sht4x_i2c_get_serial_number(sht4x_device_t *const device, uint32_t *const serial_number) {
     const bit8_uint8_buffer_t tx = { SHT4X_CMD_SERIAL };
     bit48_uint8_buffer_t      rx = { 0 };
-    sht4x_device_t* device = (sht4x_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -308,8 +307,18 @@ static inline esp_err_t sht4x_get_serial_number(sht4x_handle_t handle, uint32_t 
     /* set serial number */
     *serial_number = ((uint32_t)rx[0] << 24) | ((uint32_t)rx[1] << 16) | ((uint32_t)rx[3] << 8) | rx[4];
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(SHT4X_CMD_DELAY_MS));
+    return ESP_OK;
+}
+
+static inline esp_err_t sht4x_i2c_set_reset(sht4x_device_t *const device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to reset device */
+    ESP_RETURN_ON_ERROR( sht4x_i2c_write_command(device, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
+
+    /* delay before next command - soft-reset */
+    vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
 
     return ESP_OK;
 }
@@ -348,7 +357,10 @@ esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t
     vTaskDelay(pdMS_TO_TICKS(SHT4X_CMD_DELAY_MS));
 
     /* attempt to reset the device */
-    ESP_GOTO_ON_ERROR(sht4x_reset((sht4x_handle_t)device), err_handle, TAG, "unable to soft-reset device, device handle initialization failed");
+    ESP_GOTO_ON_ERROR(sht4x_i2c_set_reset(device), err_handle, TAG, "unable to soft-reset device, device handle initialization failed");
+
+    /* sht4x attempt to read device serial number */
+    ESP_GOTO_ON_ERROR(sht4x_i2c_get_serial_number(device, &device->serial_number), err_handle, TAG, "unable to read serial number, device reset failed");
 
     /* set device handle */
     *sht4x_handle = (sht4x_handle_t)device;
@@ -482,13 +494,10 @@ esp_err_t sht4x_reset(sht4x_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_write_command(device, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
-
-    /* delay before next command - soft-reset */
-    vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
+    ESP_RETURN_ON_ERROR( sht4x_i2c_set_reset(device), TAG, "unable to write to device handle, device reset failed");
 
     /* sht4x attempt to read device serial number */
-    ESP_RETURN_ON_ERROR(sht4x_get_serial_number(handle, &device->serial_number), TAG, "unable to read serial number, device reset failed");
+    ESP_RETURN_ON_ERROR(sht4x_i2c_get_serial_number(device, &device->serial_number), TAG, "unable to read serial number, device reset failed");
 
     return ESP_OK;
 }

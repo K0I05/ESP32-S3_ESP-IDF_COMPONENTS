@@ -152,58 +152,6 @@ typedef enum ens160_validity_flags_e {
     ENS160_VALFLAG_INVALID_OUTPUT   = 0x03  /*!< ens160 invalid output validity flag */
 } ens160_validity_flags_t;
 
-/**
- * @brief ENS160 status register structure.
- */
-typedef union __attribute__((packed)) ens160_status_register_u {
-    struct STS_REG_BIT_TAG {
-        bool                        new_gpr_data:1;   /*!< true indicates new data is available in `GPR_READ` registers (bit:0)   */
-        bool                        new_data:1;       /*!< true indicates new data is available in `DATA_x` registers   (bit:1)   */
-        ens160_validity_flags_t     state:2;          /*!< device status                                                (bit:2-3) */
-        uint8_t                     reserved:2;       /*!< reserved and set 0                                           (bit:4-5) */
-        bool                        error:1;          /*!< true indicates an error is detected                          (bit:6)   */
-        bool                        mode:1;           /*!< true indicates an operating mode is running                  (bit:7)   */
-    } bits;            /*!< represents the 8-bit status register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit status register as `uint8_t`.   */
-} ens160_status_register_t;
-
-/**
- * @brief ENS160 interrupt configuration register structure.
- */
-typedef union __attribute__((packed)) ens160_interrupt_config_register_u {
-    struct CFG_REG_BIT_TAG {
-        bool                        irq_enabled:1;       /*!< true indicates interrupt pin is enabled                       (bit:0)   */
-        bool                        irq_data_enabled:1;  /*!< true indicates interrupt pin is asserted when new data is available in `DATA_XXX` registers  (bit:1)   */
-        uint8_t                     reserved1:1;         /*!< reserved and set to 0                                         (bit:2)   */
-        bool                        irq_gpr_enabled:1;   /*!< true indicates interrupt pin is asserted when new data is available in general purpose registers (bit:3) */
-        uint8_t                     reserved2:1;         /*!< reserved and set to 0                                         (bit:4)   */
-        ens160_interrupt_pin_drivers_t irq_pin_driver:1; /*!< interrupt pin driver configuration                        (bit:5)   */
-        ens160_interrupt_pin_polarities_t irq_pin_polarity:1; /*!< interrupt pin polarity configuration                 (bit:6)   */
-        uint8_t                     reserved3:1;         /*!< reserved and set to 0                                         (bit:7)   */
-    } bits;            /*!< represents the 8-bit interrupt configuration register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit interrupt configuration register as `uint8_t`.   */
-} ens160_interrupt_config_register_t;
-
-/**
- * @brief ENS160 application version register structure.
- */
-typedef union ens160_app_version_u {
-    uint8_t major;      /*!< ens160 major firmware version */
-    uint8_t minor;      /*!< ens160 minor firmware version */
-    uint8_t release;    /*!< ens160 firmware version release */
-    uint8_t bytes[3];   /*!< represents app version as a byte array. */
-} ens160_app_version_t;
-
-/**
- * @brief ENS160 calculated air quality index (aqi) data register structure.  See datasheet for AQI-UBA details.
- */
-typedef union __attribute__((packed)) ens160_caqi_data_register_u {
-    struct CAL_AQI_REG_BITS_TAG {
-        uint8_t          aqi_uba:3;     /*!< air quality index per uba[1..5] (default: 0x01)  (bit:0-2)  */
-        uint8_t          reserved:5;    /*!< reserved and set to 0                            (bit:3-7)  */
-    } bits;        /*!< represents the 8-bit calculated air quality index data register parts in bits.  */
-    uint8_t value; /*!< represents the 8-bit calculated air quality index data register as `uint8_t`.   */
-} ens160_caqi_data_register_t;
 
 /**
  * @brief ENS160 air quality data structure.
@@ -262,69 +210,6 @@ typedef struct ens160_config_s {
 typedef void* ens160_handle_t;
 
 
-/**
- * @brief Reads interrupt configuration register from ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[out] reg ENS160 interrupt configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_get_interrupt_config_register(ens160_handle_t handle, ens160_interrupt_config_register_t *const reg);
-
-/**
- * @brief Writes interrupt configuration register to ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[in] reg ENS160 interrupt configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_set_interrupt_config_register(ens160_handle_t handle, const ens160_interrupt_config_register_t reg);
-
-/**
- * @brief Reads status register from ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[out] reg ENS160 status configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_get_status_register(ens160_handle_t handle, ens160_status_register_t *const reg);
-
-/**
- * @brief Resets command to operate normal and clears general purpose registers on ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_clear_command_register(ens160_handle_t handle);
-
-/**
- * @brief Reads temperature and humidity compensation registers from ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[out] temperature temperature compensation in degree Celsius.
- * @param[out] humidity humidity compensation in percentage.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_get_compensation_registers(ens160_handle_t handle, float *const temperature, float *const humidity);
-
-/**
- * @brief Writes temperature and humidity compensation registers to ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[in] temperature temperature compensation in degree Celsius.
- * @param[in] humidity humidity compensation in percentage.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_set_compensation_registers(ens160_handle_t handle, const float temperature, const float humidity);
-
-/**
- * @brief Reads part identifier register from ENS160.
- *
- * @param[in] handle ENS160 device handle.
- * @param[out] reg Part id register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t ens160_get_part_id_register(ens160_handle_t handle, uint16_t *const reg);
 
 /**
  * @brief Initializes an ENS160 device onto the I2C master bus.

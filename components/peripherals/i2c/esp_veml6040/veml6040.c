@@ -85,10 +85,10 @@ typedef union __attribute__((packed)) veml6040_config_register_u {
         bool                                shutdown_enabled:1;     /*!< shut-down when true                        (bit:0)     */
         veml6040_modes_t                    mode:1;                 /*!< mode, auto or manual                       (bit:1) */
         veml6040_triggers_t                 trigger:1;              /*!< trigger, none or one-time detect cycle     (bit:2)     */
-        uint8_t                             reserved1:2;            /*!< reserved and set to 0                      (bit:3)   */
-        veml6040_integration_times_t        integration_time:4;     /*!< time to measure                            (bit:6-4)   */
+        uint8_t                             reserved1:1;            /*!< reserved and set to 0                      (bit:3)   */
+        veml6040_integration_times_t        integration_time:3;     /*!< time to measure                            (bit:6-4)   */
         uint8_t                             reserved2:1;            /*!< reserved and set to 0                      (bit:7)   */
-        uint8_t                             reserved3:8;            /*!< reserved and set to 0 (high byte)          (bit:0-7)   */
+        uint8_t                             reserved3:8;            /*!< reserved and set to 0 (high byte)          (bit:8-15)   */
     } bits;
     uint16_t reg;
 } veml6040_config_register_t;

@@ -90,10 +90,6 @@
 typedef struct hmc5883l_device_s {
     hmc5883l_config_t                       config;
     i2c_master_dev_handle_t                 i2c_handle;     /*!< I2C device handle */
-    //i2c_hmc5883l_configuration1_register_t  config1_reg;
-    //i2c_hmc5883l_configuration2_register_t  config2_reg;
-    //i2c_hmc5883l_mode_register_t            mode_reg;
-    //i2c_hmc5883l_status_register_t          status_reg;
     uint32_t                                dev_id;
     float                                   declination;        /*!< magnetic declination angle http://www.magnetic-declination.com/ */
     bool                                    gain_calibrated;

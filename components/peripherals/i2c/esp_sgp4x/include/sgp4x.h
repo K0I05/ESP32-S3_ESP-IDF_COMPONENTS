@@ -116,7 +116,7 @@ esp_err_t sgp4x_init(i2c_master_bus_handle_t master_handle, const sgp4x_config_t
  * 10-seconds but do not run the conditioning longer than 10-seconds, otherwise damage may occur to the SGP4X.
  * 
  * @param[in] handle SGP4X device handle.
- * @param[in] temperature Temperature compensation in degree celcius.
+ * @param[in] temperature Temperature compensation in degree celsius.
  * @param[in] humidity Humidity compensation in percentage.
  * @param[out] sraw_voc Raw signal of VOC in ticks which is proportional to the logarithm of the resistance of the sensing element.
  * @return esp_err_t ESP_OK on success.
@@ -173,7 +173,7 @@ esp_err_t sgp4x_execute_self_test(sgp4x_handle_t handle, sgp4x_self_test_result_
  * @param[in] handle SGP4X device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sgp4x_turn_heater_off(sgp4x_handle_t handle);
+esp_err_t sgp4x_disable_heater(sgp4x_handle_t handle);
 
 /**
  * @brief Issues soft-reset and initializes SGP4X.  See datasheet for details.
