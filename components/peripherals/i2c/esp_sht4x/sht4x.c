@@ -302,7 +302,15 @@ static inline esp_err_t sht4x_i2c_get_serial_number(sht4x_device_t *const device
     vTaskDelay(pdMS_TO_TICKS(SHT4X_TX_RX_DELAY_MS));
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( sht4x_i2c_read(device, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to i2c device handle, get serial number failed");
+    ESP_RETURN_ON_ERROR( sht4x_i2c_read(dev, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to i2c device handle, get serial number failed");
+
+    /**
+    * The serial number is returned as two 16-bit words, each with its own CRC.
+    * [MSB1, LSB1, CRC1, MSB2, LSB2, CRC2]
+    */
+    if (rx[2] != sht4x_calculate_crc8(rx, 2) || rx[5] != sht4x_calculate_crc8(rx + 3, 2)) {
+        return ESP_ERR_INVALID_CRC;
+    }
 	
     /* set serial number */
     *serial_number = ((uint32_t)rx[0] << 24) | ((uint32_t)rx[1] << 16) | ((uint32_t)rx[3] << 8) | rx[4];
