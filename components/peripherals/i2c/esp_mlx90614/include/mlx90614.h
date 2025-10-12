@@ -59,7 +59,7 @@ extern "C" {
 /*
  * macro definitions
 */
-#define I2C_MLX90614_CONFIG_DEFAULT {                        \
+#define MLX90614_CONFIG_DEFAULT {                        \
         .i2c_address            = I2C_MLX90614_DEV_ADDR,     \
         .i2c_clock_speed        = I2C_MLX90614_DEV_CLK_SPD }
 

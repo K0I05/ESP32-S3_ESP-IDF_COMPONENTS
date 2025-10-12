@@ -41,7 +41,7 @@ void i2c0_mlx90614_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    mlx90614_config_t dev_cfg       = I2C_MLX90614_CONFIG_DEFAULT;
+    mlx90614_config_t dev_cfg       = MLX90614_CONFIG_DEFAULT;
     mlx90614_handle_t dev_hdl;
     //
     // init device
