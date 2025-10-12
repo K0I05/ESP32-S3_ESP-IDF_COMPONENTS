@@ -41,7 +41,7 @@ void i2c0_sht4x_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    sht4x_config_t dev_cfg          = I2C_SHT4X_CONFIG_DEFAULT;
+    sht4x_config_t dev_cfg          = SHT4X_CONFIG_DEFAULT;
     sht4x_handle_t dev_hdl;
     //
     // init device

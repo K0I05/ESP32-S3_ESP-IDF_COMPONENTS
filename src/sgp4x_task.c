@@ -42,7 +42,7 @@ void i2c0_sgp4x_task( void *pvParameters ) {
     TickType_t     last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    sgp4x_config_t dev_cfg          = I2C_SGP41_CONFIG_DEFAULT;
+    sgp4x_config_t dev_cfg          = SGP41_CONFIG_DEFAULT;
     sgp4x_handle_t dev_hdl;
     bool           dev_self_tested  = false;
     bool           dev_conditioned  = false;

@@ -66,7 +66,7 @@ extern "C" {
 /**
  * @brief Macro that initializes `i2c_sht4x_config_t` to default configuration settings.
  */
-#define I2C_SHT4X_CONFIG_DEFAULT {                      \
+#define SHT4X_CONFIG_DEFAULT {                      \
         .i2c_address    = I2C_SHT4X_DEV_ADDR_LO,        \
         .i2c_clock_speed= I2C_SHT4X_DEV_CLK_SPD,        \
         .repeat_mode    = SHT4X_REPEAT_HIGH,            \

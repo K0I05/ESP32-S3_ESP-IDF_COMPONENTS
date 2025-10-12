@@ -57,7 +57,7 @@ extern "C"
 /*
  * SGP4X macro definitions
  */
-#define I2C_SGP41_CONFIG_DEFAULT {                   \
+#define SGP41_CONFIG_DEFAULT {                   \
     .i2c_address        = I2C_SGP4X_DEV_ADDR,        \
     .i2c_clock_speed    = I2C_SGP4X_DEV_CLK_SPD,     \
     .dev_version        = SGP4X_VERSION_SGP41 }
