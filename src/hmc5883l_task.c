@@ -41,7 +41,7 @@ void i2c0_hmc5883l_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    hmc5883l_config_t dev_cfg       = I2C_HMC5883L_CONFIG_DEFAULT;
+    hmc5883l_config_t dev_cfg       = HMC5883L_CONFIG_DEFAULT;
     hmc5883l_handle_t dev_hdl;
     //
     // init device
@@ -74,7 +74,7 @@ void i2c0_hmc5883l_task( void *pvParameters ) {
         //
         //
         // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE / 2 );
     }
     //
     // free resources

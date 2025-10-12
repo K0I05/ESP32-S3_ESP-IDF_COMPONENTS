@@ -56,7 +56,7 @@ extern "C" {
 /*
  * macro definitions
 */
-#define I2C_HMC5883L_CONFIG_DEFAULT {                                   \
+#define HMC5883L_CONFIG_DEFAULT {                                   \
         .i2c_address                    = I2C_HMC5883L_DEV_ADDR,        \
         .i2c_clock_speed                = I2C_HMC5883L_DEV_CLK_SPD,     \
         .mode                           = HMC5883L_MODE_CONTINUOUS, \
@@ -86,7 +86,6 @@ typedef enum hmc5883l_modes_e {
     HMC5883L_MODE_CONTINUOUS = (0b00), //!< Continuous mode
     HMC5883L_MODE_SINGLE     = (0b01), //!< Single measurement mode, default
     HMC5883L_MODE_IDLE       = (0b10), //!< Idle mode
-    HMC5883L_MODE_IDLE2      = (0b11), //!< Idle mode
 } hmc5883l_modes_t;
 
 /**
@@ -110,7 +109,7 @@ typedef enum hmc5883l_data_rates_e {
     HMC5883L_DATA_RATE_15_00  = (0b100), //!< 15 Hz, default
     HMC5883L_DATA_RATE_30_00  = (0b101), //!< 30 Hz
     HMC5883L_DATA_RATE_75_00  = (0b110), //!< 75 Hz
-    HMC5883L_DATA_RATE_RESERVED = (0b111)  //!< 220 Hz, HMC5983 only
+//    HMC5883L_DATA_RATE_RESERVED = (0b111)  //!< 220 Hz, HMC5983 only
 } hmc5883l_data_rates_t;
 
 /**
@@ -120,7 +119,7 @@ typedef enum hmc5883l_biases_e {
     HMC5883L_BIAS_NORMAL   = (0b00), //!< Default flow, no bias
     HMC5883L_BIAS_POSITIVE = (0b01),   //!< Positive bias configuration all axes, used for self test (see datasheet)
     HMC5883L_BIAS_NEGATIVE = (0b10),    //!< Negative bias configuration all axes, used for self test (see datasheet)
-    HMC5883L_BIAS_RESERVED = (0b11)
+//    HMC5883L_BIAS_RESERVED = (0b11)
 } hmc5883l_biases_t;
 
 /**
@@ -136,53 +135,6 @@ typedef enum hmc5883l_gains_e {
     HMC5883L_GAIN_330  = (0b110), //!< 3.03 mG/LSb, range -5.6..+5.6 G
     HMC5883L_GAIN_230  = (0b111)  //!< 4.35 mG/LSb, range -8.1..+8.1 G
 } hmc5883l_gains_t;
-
-/**
- * @brief HMC5883L configuration 1 (a) register structure.
- */
-typedef union __attribute__((packed)) hmc5883l_configuration1_register_u {
-    struct CFG1_REG_BITS_TAG {
-        hmc5883l_biases_t           bias:2;       /*!< measurement configuration, measurement bias (bit:0-1)   */
-        hmc5883l_data_rates_t       data_rate:3;  /*!< data rate at which data is written          (bit:2-4)   */
-        hmc5883l_sample_averages_t  sample_avg:2; /*!< number of samples averaged                  (bit:5-6)   */
-        uint8_t                     reserved:1;   /*!< reserved and set to 0                       (bit:7)     */
-    } bits;            /*!< represents the 8-bit configuration 1 register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit configuration 1 register as `uint8_t`.   */
-} hmc5883l_configuration1_register_t;
-
-/**
- * @brief HMC5883L configuration 2 (b) register structure.
- */
-typedef union __attribute__((packed)) hmc5883l_configuration2_register_u {
-    struct CFG2_REG_BITS_TAG {
-        uint8_t                     reserved:5;   /*!< reserved and set to 0                       (bit:0-4)     */
-        hmc5883l_gains_t            gain:3;       /*!< gain configuration for all channels         (bit:5-7)   */
-    } bits;            /*!< represents the 8-bit configuration 2 register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit configuration 2 register as `uint8_t`.   */
-} hmc5883l_configuration2_register_t;
-
-/**
- * @brief HMC5883L mode register structure.
- */
-typedef union __attribute__((packed)) hmc5883l_mode_register_u {
-    struct HMC5883L_MODE_REG_BITS_TAG {
-        hmc5883l_modes_t            mode:2;        /*!< operation mode                              (bit:0-1)   */
-        uint8_t                     high_speed:6;  /*!< set high to enable i2c high speed (3400khz) (bit:2-7)   */
-    } bits;            /*!< represents the 8-bit mode register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit mode register as `uint8_t`.   */
-} hmc5883l_mode_register_t;
-
-/**
- * @brief HMC5883L status register structure.
- */
-typedef union __attribute__((packed)) hmc5883l_status_register_u {
-    struct STATUS_REG_BITS_TAG {
-        bool            data_ready:1;     /*!< data is ready when asserted to true        (bit:0)   */
-        bool            data_locked:1;    /*!< data is locked when asserted to true        (bit:1)   */
-        uint8_t         reserved:6;       /*!< reserved (bit:2-7)   */
-    } bits;            /*!< represents the 8-bit status register parts in bits.   */
-    uint8_t reg;       /*!< represents the 8-bit status register as `uint8_t`.   */
-} hmc5883l_status_register_t;
 
 /**
  * HMC5883L raw measurement result
@@ -226,7 +178,7 @@ typedef struct hmc5883l_config_s {
     hmc5883l_data_rates_t       rate;           /*!< data rate */
     hmc5883l_gains_t            gain;           /*!< used measurement mode */
     hmc5883l_biases_t           bias;           /*!< measurement mode (bias) */
-    float                           declination;    /*!< magnetic declination angle http://www.magnetic-declination.com/ */
+    float                       declination;    /*!< magnetic declination angle http://www.magnetic-declination.com/ */
 } hmc5883l_config_t;
 
 
@@ -236,68 +188,6 @@ typedef struct hmc5883l_config_s {
 typedef void* hmc5883l_handle_t;
 
 
-/**
- * @brief Reads configuration 1 register from HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[out] reg HMC5883L configuration 1 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883l_configuration1_register_t *const reg);
-
-/**
- * @brief Writes configuration 1 register to HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[in] reg HMC5883L configuration 1 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const hmc5883l_configuration1_register_t reg);
-
-/**
- * @brief Reads configuration 2 register from HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[out] reg HMC5883L configuration 2 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883l_configuration2_register_t *const reg);
-
-/**
- * @brief Writes configuration 2 register to HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[in] reg HMC5883L configuration 2 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const hmc5883l_configuration2_register_t reg);
-
-/**
- * @brief Reads mode register from HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[out] reg HMC5883L mode register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_register_t *const reg);
-
-/**
- * @brief Writes mode register to HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[in] reg HMC5883L mode register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mode_register_t reg);
-
-/**
- * @brief Reads status register from HMC5883L.
- * 
- * @param[in] handle HMC5883L device handle.
- * @param[out] reg HMC5883L status register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_get_status_register(hmc5883l_handle_t handle, hmc5883l_status_register_t *const reg);
 
 /**
  * @brief Initializes an HMC5883L device onto the I2C master bus.

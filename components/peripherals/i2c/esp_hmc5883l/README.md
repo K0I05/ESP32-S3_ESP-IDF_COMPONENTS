@@ -45,10 +45,10 @@ Once a driver instance is instantiated the sensor is ready for usage as shown in
 
 void i2c0_hmc5883l_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t     last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    hmc5883l_config_t dev_cfg       = I2C_HMC5883L_CONFIG_DEFAULT;
+    hmc5883l_config_t dev_cfg       = HMC5883L_CONFIG_DEFAULT;
     hmc5883l_handle_t dev_hdl;
     //
     // init device
@@ -90,4 +90,4 @@ void i2c0_hmc5883l_task( void *pvParameters ) {
 }
 ```
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

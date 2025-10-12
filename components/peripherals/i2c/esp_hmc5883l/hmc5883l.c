@@ -84,6 +84,55 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+
+
+/**
+ * @brief HMC5883L configuration 1 (a) register structure.
+ */
+typedef union __attribute__((packed)) hmc5883l_configuration1_register_u {
+    struct CFG1_REG_BITS_TAG {
+        hmc5883l_biases_t           bias:2;       /*!< measurement configuration, measurement bias (bit:0-1)   */
+        hmc5883l_data_rates_t       data_rate:3;  /*!< data rate at which data is written          (bit:2-4)   */
+        hmc5883l_sample_averages_t  sample_avg:2; /*!< number of samples averaged                  (bit:5-6)   */
+        uint8_t                     reserved:1;   /*!< reserved and set to 0                       (bit:7)     */
+    } bits;            /*!< represents the 8-bit configuration 1 register parts in bits.   */
+    uint8_t reg;       /*!< represents the 8-bit configuration 1 register as `uint8_t`.   */
+} hmc5883l_configuration1_register_t;
+
+/**
+ * @brief HMC5883L configuration 2 (b) register structure.
+ */
+typedef union __attribute__((packed)) hmc5883l_configuration2_register_u {
+    struct CFG2_REG_BITS_TAG {
+        uint8_t                     reserved:5;   /*!< reserved and set to 0                       (bit:0-4)     */
+        hmc5883l_gains_t            gain:3;       /*!< gain configuration for all channels         (bit:5-7)   */
+    } bits;            /*!< represents the 8-bit configuration 2 register parts in bits.   */
+    uint8_t reg;       /*!< represents the 8-bit configuration 2 register as `uint8_t`.   */
+} hmc5883l_configuration2_register_t;
+
+/**
+ * @brief HMC5883L mode register structure.
+ */
+typedef union __attribute__((packed)) hmc5883l_mode_register_u {
+    struct HMC5883L_MODE_REG_BITS_TAG {
+        hmc5883l_modes_t            mode:2;        /*!< operation mode                              (bit:0-1)   */
+        uint8_t                     high_speed:6;  /*!< set high to enable i2c high speed (3400khz) (bit:2-7)   */
+    } bits;            /*!< represents the 8-bit mode register parts in bits.   */
+    uint8_t reg;       /*!< represents the 8-bit mode register as `uint8_t`.   */
+} hmc5883l_mode_register_t;
+
+/**
+ * @brief HMC5883L status register structure.
+ */
+typedef union __attribute__((packed)) hmc5883l_status_register_u {
+    struct STATUS_REG_BITS_TAG {
+        bool            data_ready:1;     /*!< data is ready when asserted to true        (bit:0)   */
+        bool            data_locked:1;    /*!< data is locked when asserted to true        (bit:1)   */
+        uint8_t         reserved:6;       /*!< reserved (bit:2-7)   */
+    } bits;            /*!< represents the 8-bit status register parts in bits.   */
+    uint8_t reg;       /*!< represents the 8-bit status register as `uint8_t`.   */
+} hmc5883l_status_register_t;
+
 /**
  * @brief HMC5883L device descriptor structure definition.
  */
@@ -182,7 +231,7 @@ static inline esp_err_t hmc5883l_i2c_read_from(hmc5883l_device_t *const device, 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_get_identification_register(hmc5883l_handle_t handle, uint32_t *const reg) {
+static inline esp_err_t hmc5883l_get_identification_register(hmc5883l_handle_t handle, uint32_t *const reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -198,12 +247,19 @@ esp_err_t hmc5883l_get_identification_register(hmc5883l_handle_t handle, uint32_
     *reg = ident_a | (ident_b << 8) | (ident_c << 16);
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883l_configuration1_register_t *const reg) {
+/**
+ * @brief Reads configuration 1 register from HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[out] reg HMC5883L configuration 1 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883l_configuration1_register_t *const reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -213,12 +269,19 @@ esp_err_t hmc5883l_get_configuration1_register(hmc5883l_handle_t handle, hmc5883
     ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_CONFIG_A, &reg->reg), TAG, "read configuration 1 register failed" );
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const hmc5883l_configuration1_register_t reg) {
+/**
+ * @brief Writes configuration 1 register to HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[in] reg HMC5883L configuration 1 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const hmc5883l_configuration1_register_t reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -234,12 +297,19 @@ esp_err_t hmc5883l_set_configuration1_register(hmc5883l_handle_t handle, const h
     ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_CONFIG_A, config1.reg), TAG, "write configuration 1 register failed");
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883l_configuration2_register_t *const reg) {
+/**
+ * @brief Reads configuration 2 register from HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[out] reg HMC5883L configuration 2 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883l_configuration2_register_t *const reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -249,12 +319,19 @@ esp_err_t hmc5883l_get_configuration2_register(hmc5883l_handle_t handle, hmc5883
     ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_CONFIG_B, &reg->reg), TAG, "read configuration 2 register failed" );
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const hmc5883l_configuration2_register_t reg) {
+/**
+ * @brief Writes configuration 2 register to HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[in] reg HMC5883L configuration 2 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const hmc5883l_configuration2_register_t reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -270,12 +347,19 @@ esp_err_t hmc5883l_set_configuration2_register(hmc5883l_handle_t handle, const h
     ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_CONFIG_B, config2.reg), TAG, "write configuration 2 register failed");
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_register_t *const reg) {
+/**
+ * @brief Reads mode register from HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[out] reg HMC5883L mode register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_register_t *const reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -285,12 +369,19 @@ esp_err_t hmc5883l_get_mode_register(hmc5883l_handle_t handle, hmc5883l_mode_reg
     ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_MODE, &reg->reg), TAG, "read mode register failed" );
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mode_register_t reg) {
+/**
+ * @brief Writes mode register to HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[in] reg HMC5883L mode register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mode_register_t reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -303,12 +394,19 @@ esp_err_t hmc5883l_set_mode_register(hmc5883l_handle_t handle, const hmc5883l_mo
     ESP_RETURN_ON_ERROR(hmc5883l_i2c_write_byte_to(dev, HMC5883L_REG_MODE, mode.reg), TAG, "write mode register failed");
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t hmc5883l_get_status_register(hmc5883l_handle_t handle, hmc5883l_status_register_t *const reg) {
+/**
+ * @brief Reads status register from HMC5883L.
+ * 
+ * @param[in] handle HMC5883L device handle.
+ * @param[out] reg HMC5883L status register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hmc5883l_get_status_register(hmc5883l_handle_t handle, hmc5883l_status_register_t *const reg) {
     hmc5883l_device_t* dev = (hmc5883l_device_t*)handle;
 
     /* validate arguments */
@@ -318,7 +416,7 @@ esp_err_t hmc5883l_get_status_register(hmc5883l_handle_t handle, hmc5883l_status
     ESP_RETURN_ON_ERROR( hmc5883l_i2c_read_byte_from(dev, HMC5883L_REG_STATUS, &reg->reg), TAG, "read status register failed" );
 
     /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
+    //vTaskDelay(pdMS_TO_TICKS(HMC5883L_CMD_DELAY_MS));
 
     return ESP_OK;
 }
