@@ -151,10 +151,10 @@ To get started, create a new PlatformIO project, and copy the `esp_bmp390` compo
 
 void i2c0_bmp390_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t          last_wake_time  = xTaskGetTickCount ();
+    TickType_t      last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    bmp390_config_t dev_cfg         = I2C_BMP390_CONFIG_DEFAULT;
+    bmp390_config_t dev_cfg         = BMP390_CONFIG_DEFAULT;
     bmp390_handle_t dev_hdl;
     //
     // init device
@@ -219,7 +219,7 @@ void app_main( void ) {
 }
 ```
 
-See [src](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/src>) folder for more examples ('[component-name]_task.c').
+See [src](<https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/src>) folder for more examples ('[component-name]_task.c').  In addition, review the README included with each component, they include a basic implementation example.
 
 ## ESP Peripheral Components (ADC, I2C, OWB, SPI, UART)
 
