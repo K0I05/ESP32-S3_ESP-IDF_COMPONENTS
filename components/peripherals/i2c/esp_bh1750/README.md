@@ -47,7 +47,7 @@ void i2c0_bh1750_task( void *pvParameters ) {
     TickType_t          last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    bh1750_config_t dev_cfg         = I2C_BH1750_CONFIG_DEFAULT;
+    bh1750_config_t dev_cfg         = BH1750_CONFIG_DEFAULT;
     bh1750_handle_t dev_hdl;
     //
     // init device

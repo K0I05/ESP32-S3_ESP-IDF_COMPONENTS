@@ -47,7 +47,7 @@ void i2c0_tcs3472_task( void *pvParameters ) {
     TickType_t       last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    tcs3472_config_t dev_cfg          = I2C_TCS3472_CONFIG_DEFAULT;
+    tcs3472_config_t dev_cfg          = TCS3472_CONFIG_DEFAULT;
     tcs3472_handle_t dev_hdl;
     //
     // init device

@@ -47,7 +47,7 @@ void i2c0_ahtxx_task( void *pvParameters ) {
     TickType_t         last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    ahtxx_config_t dev_cfg          = I2C_AHT20_CONFIG_DEFAULT;
+    ahtxx_config_t dev_cfg          = AHT20_CONFIG_DEFAULT;
     ahtxx_handle_t dev_hdl;
     //
     // init device
@@ -84,4 +84,4 @@ void i2c0_ahtxx_task( void *pvParameters ) {
 }
 ```
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)
