@@ -626,11 +626,11 @@ esp_err_t ak8975_power_down(ak8975_handle_t handle) {
 }
 
 esp_err_t ak8975_remove(ak8975_handle_t handle) {
-    ak8975_device_t* dev = (ak8975_device_t*)handle;
+    ak8975_device_t* device = (ak8975_device_t*)handle;
 
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    return i2c_master_bus_rm_device(device->i2c_handle);
 }
 
 esp_err_t ak8975_delete(ak8975_handle_t handle) {

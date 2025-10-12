@@ -142,6 +142,300 @@
 #define ESP_TIMEOUT_CHECK(start, len) ((uint64_t)(esp_timer_get_time() - (start)) >= (len))
 #define ESP_ARG_CHECK(VAL) do { if (!(VAL)) return ESP_ERR_INVALID_ARG; } while (0)
 
+
+
+/**
+ * @brief AS7341 enable register (0x80) structure. 
+ * 
+ * @note To operate the device enable power and interrupts before enabling spectral measurements.
+ * 
+ */
+typedef union __attribute__((packed)) as7341_enable_register_u {
+    struct {
+        bool    power_enabled:1;                /*!< as7341 power enabled when true                                                             (bit:0)  */
+        bool    spectral_measurement_enabled:1; /*!< as7341 spectral measurement enabled when true                                              (bit:1)  */
+        uint8_t reserved1:1;                    /*!< reserved                                                                                   (bit:2) */
+        bool    wait_time_enabled:1;            /*!< as7341 wait time between two consecutive spectral measurements enabled when true           (bit:3) */
+        bool    smux_enabled:1;                 /*!< as7341 starts SMUX command when true and bit is cleared when SMUX operation is finished    (bit:4) */
+        uint8_t reserved2:1;                    /*!< reserved                                                                                   (bit:5) */
+        bool    flicker_detection_enabled:1;    /*!< as7341 flicker detection enabled when true                                                 (bit:6)  */
+        uint8_t reserved3:1;                    /*!< reserved                                                                                   (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_enable_register_t;
+
+/**
+ * @brief AS7341 configuration register (0x70) structure.
+ */
+typedef union __attribute__((packed)) as7341_config_register_u {
+    struct {
+        as7341_als_modes_t      irq_mode:2;                 /*!< as7341 ambient light sensing mode                              (bit:0-1)  */
+        bool                    irq_sync_signal_enabled:1;  /*!< as7341 sync signal applied on output pin interrupt when true   (bit:2) */
+        bool                    led_ldr_control_enabled:1;  /*!< as7341 register LED controls LED connected to pin LDR when true (register 0x74), otherwise, exernal LED is not controlled by as7341 (bit:3) */
+        uint8_t                 reserved:4;                 /*!< reserved                                                       (bit:4-7) */
+    } bits;
+    uint8_t reg;
+} as7341_config_register_t;
+
+/**
+ * @brief AS7341 flicker detection time 1 register (0xD8) structure.  THIS ISN'T NEEDED
+ */
+typedef union __attribute__((packed)) as7341_flicker_detection_time1_register_u {
+    struct {
+        uint8_t                 fd_integration_time:8;  /*!< as7341 flicker detection integration time LSB (t = FD_TIME * 2.78us) (bit:0-7) */
+    } bits;
+    uint8_t reg;
+} as7341_flicker_detection_time1_register_t;
+
+/**
+ * @brief AS7341 flicker detection time 2 register (0xDA) structure.
+ */
+typedef union __attribute__((packed)) as7341_flicker_detection_time2_register_u {
+    struct {
+        uint8_t                          fd_integration_time:3;  /*!< as7341 flicker detection integration time MSB (t = FD_TIME * 2.78us) (bit:0-2) */
+        as7341_flicker_detection_gains_t fd_gain:5;              /*!< as7341 flicker detection gain      (bit:3-7) */
+    } bits;
+    uint8_t reg;
+} as7341_flicker_detection_time2_register_t;
+
+/**
+ * @brief AS7341 gpio1 register (0x73) structure.
+ */
+typedef union __attribute__((packed)) as7341_gpio1_register_u {
+    struct {
+        bool                    photo_diode_irq_enabled:1;  /*!< as7341 photo diode connected to interrupt pin when true (bit:0) */
+        bool                    photo_diode_gpio_enabled:1; /*!< as7341 photo diode connected to GPIO pin when true      (bit:1) */
+        uint8_t                 reserved:6;                 /*!< reserved                                                (bit:2-7) */
+    } bits;
+    uint8_t reg;
+} as7341_gpio1_register_t;
+
+/**
+ * @brief AS7341 gpio2 register (0xbe) structure.
+ */
+typedef union __attribute__((packed)) as7341_gpio2_register_u {
+    struct {
+        bool                    gpio_input_state:1;     /*!< as7341 GPIO pin is input when true if gpio input is enabled (bit:0) */
+        bool                    gpio_output_state:1;    /*!< as7341 output state of GPIO pin is active when true         (bit:1) */
+        bool                    gpio_input_enabled:1;   /*!< as7341 GPIO pin accepts non-floating input when true        (bit:2) */
+        bool                    gpio_output_inverted:1; /*!< as7341 output state of GPIO pin is inverted when true       (bit:3) */
+        uint8_t                 reserved:4;             /*!< reserved                                                    (bit:4-7) */
+    } bits;
+    uint8_t reg;
+} as7341_gpio2_register_t;
+
+/**
+ * @brief AS7341 led register (0x74) structure.
+ */
+typedef union __attribute__((packed)) as7341_led_register_u {
+    struct {
+        as7341_led_drive_strengths_t    led_drive_strength:7;   /*!< as7341 LED driving strength (bit:0-6) */
+        bool                            led_ldr_enabled:1;      /*!< as7341 external LED connected to LDR pin is enabled when true (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_led_register_t;
+
+/**
+ * @brief AS7341 interrupt enable register (0xf9) structure.
+ */
+typedef union __attribute__((packed)) as7341_interrupt_enable_register_u {
+    struct {
+        bool                    irq_system_enabled:1;           /*!< as7341 interrupt asserted when system interrupts occur when enabled (bit:0) */
+        uint8_t                 reserved1:1;                    /*!< reserved         (bit:1) */
+        bool                    irq_fifo_enabled:1;             /*!< as7341 interrupt asserted when FIFO LVL exceeds FIFO threshold condition when enabled (bit:2) */
+        bool                    irq_spectral_enabled:1;         /*!< as7341 interrupt asserted subject to spectral thresholds and persistence filter when enabled (bit:3) */
+        uint8_t                 reserved2:3;                    /*!< reserved         (bit:4-6) */
+        bool                    irq_spectral_flicker_enabled:1; /*!< as7341 spectral and flicker detection interrupt asserted when enabled (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_interrupt_enable_register_t;
+
+/**
+ * @brief AS7341 interrupt status register (0x93) structure.
+ */
+typedef union __attribute__((packed)) as7341_interrupt_status_register_u {
+    struct {
+        bool                    irq_system:1;           /*!< as7341 system interrupt asserted when true (bit:0) */
+        bool                    irq_calibration:1;      /*!< as7341 calibration interrupt asserted when true         (bit:1) */
+        bool                    irq_fifo:1;             /*!< as7341 interrupt asserted when FIFO LVL exceeds FIFO threshold condition when true (bit:2) */
+        bool                    irq_spectral:1;         /*!< as7341 interrupt asserted subject to spectral threholds and persistence filter when true (bit:3) */
+        uint8_t                 reserved:3;             /*!< reserved         (bit:4-6) */
+        bool                    irq_spectral_flicker:1; /*!< as7341 spectral and flicker detection interrupt asserted when true (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_interrupt_status_register_t;
+
+/**
+ * @brief AS7341 device status register (0x71) structure.
+ */
+typedef union __attribute__((packed)) as7341_device_status_register_u {
+    struct {
+        bool    data_ready:1;       /*!< as7341 spectral measurement status is ready when true (bit:0) */
+        bool    gpio_wait_sync:1;   /*!< as7341 device waits for sync pulse on GPIO to start integration when true (bit:1) */
+        uint8_t reserved:6;         /*!< reserved                       (bit:2-7) */
+    } bits;
+    uint8_t reg;
+} as7341_device_status_register_t;
+
+/**
+ * @brief AS7341 astatus register (0x94) structure.
+ */
+typedef union __attribute__((packed)) as7341_astatus_register_u {
+    struct {
+        uint8_t again_status:4; /*!< as7341 gain applied for the spectral data latched to this ASTATUS read (bit:3-0) */
+        uint8_t reserved:3;     /*!< reserved                                                               (bit:4-6) */
+        bool    asat_status:1;  /*!< as7341 latched data is affected by analog or digital saturation        (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_astatus_register_t;
+
+/**
+ * @brief AS7341 status 2 register (0xa3) structure.
+ */
+typedef union __attribute__((packed)) as7341_status2_register_u {
+    struct {
+        bool    flicker_detect_digital_saturation:1;    /*!< as7341 maximum counter value has been reached during flicker detection when true (bit:0) */
+        bool    flicker_detect_analog_saturation:1;     /*!< as7341 intensity of ambient light ha exceeded the maximum integration level for analg circuit for flicker detection when true (bit:1) */
+        uint8_t reserved1:1;                            /*!< reserved         (bit:2) */
+        bool    analog_saturation:1;                    /*!< as7341 intensity of ambient light ha exceeded the maximum integration level for spectral analg circuit when true (bit:3) */
+        bool    digital_saturation:1;                   /*!< as7341 maximum counter value has been reached when true, dependent of ATIME register (bit:4) */
+        uint8_t reserved2:1;                            /*!< reserved         (bit:5) */
+        bool    spectral_valid:1;                       /*!< as7341 spectral measurement has been completed when true (bit:6) */
+        uint8_t reserved3:1;                            /*!< reserved         (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_status2_register_t;
+
+/**
+ * @brief AS7341 status 3 register (0xa4) structure.
+ */
+typedef union __attribute__((packed)) as7341_status3_register_u {
+    struct {
+        uint8_t reserved1:4;                    /*!< reserved                                                                   (bit:3-0) */
+        bool    irq_spectral_threshold_lo:1;    /*!< as7341 spectral interrupt asserted when data is below the low threshold    (bit:4) */
+        bool    irq_spectral_threshold_hi:1;    /*!< as7341 spectral interrupt asserted when data is above the high threshold   (bit:5) */
+        uint8_t reserved2:2;                    /*!< reserved                                                                   (bit:6-7) */
+    } bits;
+    uint8_t reg;
+} as7341_status3_register_t;
+
+/**
+ * @brief AS7341 status 5 register (0xa6) structure.
+ */
+typedef union __attribute__((packed)) as7341_status5_register_u {
+    struct {
+        uint8_t reserved1:2;                /*!< reserved                                                                           (bit:1-0) */
+        bool    irq_smux_operation:1;       /*!< as7341 SMUX command execution has finished when true                               (bit:2) */
+        bool    irq_flicker_detection:1;    /*!< as7341 FD_STATUS register status has changed when true and if SIEN_FD is enabled   (bit:3) */
+        uint8_t reserved2:4;                /*!< reserved                                                                           (bit:4-7) */
+    } bits;
+    uint8_t reg;
+} as7341_status5_register_t;
+
+/**
+ * @brief AS7341 status 6 register (0xa7) structure.
+ */
+typedef union __attribute__((packed)) as7341_status6_register_u {
+    struct {
+        bool    initializing:1;                 /*!< as7341 device is initializing when true, wait until cleared                (bit:0) */
+        bool    sleep_after_irq:1;              /*!< as7341 device is in sleep due to an interrupt when true                    (bit:1) */
+        bool    spectral_trigger_error:1;       /*!< as7341 timing error when true, WTIME to short for ATIME                    (bit:2) */
+        uint8_t reserved1:1;                    /*!< reserved                                                                   (bit:3) */
+        bool    flicker_detect_trigger_error:1; /*!< as7341 timing error that prevents flicker detect from working correctly    (bit:4) */
+        bool    over_temperature_detected:1;    /*!< as7341 device temperature is to high when true                             (bit:5) */
+        uint8_t reserved2:1;                    /*!< reserved                                                                   (bit:6) */
+        bool    fifo_buffer_overflow:1;         /*!< as7341 FIFO buffer overflowed and information is lost when true            (bit:7) */
+    } bits;
+    uint8_t reg;
+} as7341_status6_register_t;
+
+/**
+ * @brief AS7341 flicker detection status register (0xdb) structure.
+ */
+typedef union __attribute__((packed)) as7341_flicker_detection_status_register_u {
+    struct {
+        bool    fd_100hz_flicker:1;         /*!< as7341 ambient light source is flickering at 100Hz when true                       (bit:0) */
+        bool    fd_120hz_flicker:1;         /*!< as7341 ambient light source is flickering at 120Hz when true                       (bit:1) */
+        bool    fd_100hz_flicker_valid:1;   /*!< as7341 100Hz flicker detection calculation is valid when true, write true to clear (bit:2) */
+        bool    fd_120hz_flicker_valid:1;   /*!< as7341 120Hz flicker detection calculation is valid when true, write true to clear (bit:3) */
+        bool    fd_saturation_detected:1;   /*!< as7341 saturation ocurred during the last flicker detection measurement when true,write true to clear  (bit:4) */
+        bool    fd_measurement_valid:1;     /*!< as7341 flicker detection measurement is complete when true, write true to clear    (bit:5) */
+        uint8_t reserved:2;                 /*!< reserved                                                                           (bit:6-7) */
+    } bits;
+    uint8_t reg;
+} as7341_flicker_detection_status_register_t;
+
+/**
+ * @brief AS7341 auxiliary identifier register (0x90) structure.
+ */
+typedef union __attribute__((packed)) as7341_auxiliary_id_register_u {
+    struct {
+        uint8_t identifier:4;   /*!< as7341 auxiliary identification    (bit:0-3) */
+        uint8_t reserved:4;     /*!< reserved                           (bit:4-7) */
+    } bits;
+    uint8_t reg;
+} as7341_auxiliary_id_register_t;
+
+/**
+ * @brief AS7341 revision number identifier register (0x91) structure.
+ */
+typedef union __attribute__((packed)) as7341_revision_id_register_u {
+    struct {
+        uint8_t identifier:3;   /*!< as7341 revision number identification  (bit:0-2) */
+        uint8_t reserved:5;     /*!< reserved                               (bit:3-7) */
+    } bits;
+    uint8_t reg;
+} as7341_revision_id_register_t;
+
+/**
+ * @brief AS7341 part number identifier register (0x92) structure.
+ */
+typedef union __attribute__((packed)) as7341_part_id_register_u {
+    struct {
+        uint8_t reserved:2;     /*!< reserved                                   (bit:0-1) */
+        uint8_t identifier:6;   /*!< as7341 device part number identification   (bit:2-7) */
+    } bits;
+    uint8_t reg;
+} as7341_part_id_register_t;
+
+/**
+ * @brief AS7341 configuration 0 register (0xa9) structure.
+ */
+typedef union __attribute__((packed)) as7341_config0_register_u {
+    struct {
+        uint8_t reserved1:2;        /*!< reserved                                                   (bit:1-0) */
+        bool    trigger_long:1;     /*!< increase te WTIME setting by a factor of 16 when asserted  (bit:2) */
+        uint8_t reserved2:1;        /*!< reserved                                                   (bit:3) */
+        bool    reg_bank_access:1;  /*!< bit needs to be set to access registers 0x60 to 0x70       (bit:4) */
+        bool    low_power:1;        /*!< device will run in a low power modem when asserted         (bit:5) */
+        uint8_t reserved3:2;        /*!< reserved                                                   (bit:6-7) */
+    } bits;
+    uint8_t reg;
+} as7341_config0_register_t;
+
+/**
+ * @brief AS7341 configuration 1 register (0xaa) structure.
+ */
+typedef union __attribute__((packed)) as7341_config1_register_u {
+    struct {
+        as7341_spectral_gains_t spectral_gain:5;    /*!< spectral sensitivity  (bit:4-0) */
+        uint8_t                 reserved:3;         /*!< reserved              (bit:5-7) */
+    } bits;
+    uint8_t reg;
+} as7341_config1_register_t;
+
+/**
+ * @brief AS7341 configuration 6 register (0xaf) structure.
+ */
+typedef union __attribute__((packed)) as7341_config6_register_u {
+    struct {
+        uint8_t                 reserved1:3;    /*!< reserved                                                   (bit:2-0) */
+        as7341_smux_commands_t  smux_command:2; /*!< as7341 SMUX command to execute when smux enabled gets set  (bit:3-4) */
+        uint8_t                 reserved2:3;    /*!< reserved                                                   (bit:5-7) */
+    } bits;
+    uint8_t reg;
+} as7341_config6_register_t;
+
 /**
  * @brief AS7341 device descriptor structure definition.
  */
@@ -245,65 +539,6 @@ static inline esp_err_t as7341_i2c_read_byte_from(as7341_device_t *const device,
     return ESP_OK;
 }
 
-/**
- * @brief Converts an ADC spectral gain sensitivity enumerator to a spectral gain sensitivity multiplier.
- * 
- * @param gain ADC spectral gain sensitivity enumerator.
- * @return float ADC spectral gain sensitivity multiplier.
- */
-static inline float as7341_get_spectral_gain_sensitivity(as7341_spectral_gains_t gain) {
-    /* determine gain sensitivity */
-    switch (gain) {
-        case AS7341_SPECTRAL_GAIN_0_5X:
-            return 0.5;
-        case AS7341_SPECTRAL_GAIN_1X:
-            return 1;
-        case AS7341_SPECTRAL_GAIN_2X:
-            return 2;
-        case AS7341_SPECTRAL_GAIN_4X:
-            return 4;
-        case AS7341_SPECTRAL_GAIN_8X:
-            return 8;
-        case AS7341_SPECTRAL_GAIN_16X:
-            return 16;
-        case AS7341_SPECTRAL_GAIN_32X:
-            return 32;
-        case AS7341_SPECTRAL_GAIN_64X:
-            return 64;
-        case AS7341_SPECTRAL_GAIN_128X:
-            return 128;
-        case AS7341_SPECTRAL_GAIN_256X:
-            return 256;
-        case AS7341_SPECTRAL_GAIN_512X:
-            return 512;
-        default:
-            return 1;
-    }
-}
-
-/**
- * @brief Calculated integration time (𝑡𝑖𝑛𝑡 = (𝐴𝑇𝐼𝑀𝐸 + 1) × (𝐴𝑆𝑇𝐸𝑃 + 1) × 2.78μ𝑠), from ATIME and ASTEP registers, in milli-seconds.
- * 
- * @param as7341_handle AS7341 device handle.
- * @param time Integration time in milli-seconds
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t as7341_get_integration_time(as7341_handle_t handle, float *time) {
-    uint8_t atime;
-    uint16_t astep;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( handle );
-
-    /* attempt to read astep and atime registers */
-    ESP_RETURN_ON_ERROR( as7341_get_astep_register(handle, &astep), TAG, "read astep register for get integration time failed" );
-    ESP_RETURN_ON_ERROR( as7341_get_atime_register(handle, &atime), TAG, "read atime register for get integration time failed" );
-
-    /* compute integration time */
-    *time = (float)(atime + 1) * (astep + 1) * 2.78f / 1000.0f;
-
-    return ESP_OK;
-}
 
 /**
  * @brief Configures SMUX registers for low channels F1-F4, Clear and NIR.
@@ -311,7 +546,7 @@ static inline esp_err_t as7341_get_integration_time(as7341_handle_t handle, floa
  * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_lo_channels(as7341_device_t *const device) {
+static inline esp_err_t as7341_i2c_setup_smux_lo_channels(as7341_device_t *const device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -349,7 +584,7 @@ static inline esp_err_t as7341_setup_smux_lo_channels(as7341_device_t *const dev
  * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_hi_channels(as7341_device_t *const device) {
+static inline esp_err_t as7341_i2c_setup_smux_hi_channels(as7341_device_t *const device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -382,58 +617,12 @@ static inline esp_err_t as7341_setup_smux_hi_channels(as7341_device_t *const dev
 }
 
 /**
- * @brief Configures SMUX registers for low channels (F1-F4, Clear and NIR).
- * 
- * @param as7341_handle AS7341 device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t as7341_set_smux_lo_channels(as7341_handle_t handle) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
-    ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX low channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_set_smux_command(handle, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX low channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_setup_smux_lo_channels(dev), TAG, "setup SMUX low channels for set SMUX low channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX low channels failed" );
-
-    return ESP_OK;
-}
-
-/**
- * @brief Configures SMUX registers for high channels (F5-F8, Clear and NIR).
- * 
- * @param as7341_handle AS7341 device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t as7341_set_smux_hi_channels(as7341_handle_t handle) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
-    ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX high channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_set_smux_command(handle, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX high channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_setup_smux_hi_channels(dev), TAG, "setup SMUX high channels for set SMUX high channels failed" );
-
-    ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX high channels failed" );
-
-    return ESP_OK;
-}
-
-/**
  * @brief Configures SMUX registers for flicker detection.
  * 
  * @param device AS7341 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t as7341_setup_smux_flicker_detection(as7341_device_t *const device) {
+static inline esp_err_t as7341_i2c_setup_smux_flicker_detection(as7341_device_t *const device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -465,56 +654,39 @@ static inline esp_err_t as7341_setup_smux_flicker_detection(as7341_device_t *con
     return ESP_OK;
 }
 
-esp_err_t as7341_get_led_register(as7341_handle_t handle, as7341_led_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads ASTATUS register (0x94) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg ASTATUS register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_astatus_register(as7341_device_t *const device, as7341_astatus_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
-    /* attempt to enable low register bank */
-    as7341_enable_lo_register_bank(handle);
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_LED, &reg->reg), TAG, "read LED register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_ASTATUS, &reg->reg), TAG, "read astatus register failed" );
 
-    /* attempt to enable high register bank */
-    as7341_enable_hi_register_bank(handle);
-    
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
 
     return ESP_OK;
 }
 
-esp_err_t as7341_set_led_register(as7341_handle_t handle, const as7341_led_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads status 2 register (0xA3) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Status 2 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_status2_register(as7341_device_t *const device, as7341_status2_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
-     /* attempt to enable low register bank */
-    as7341_enable_lo_register_bank(handle);
-    
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_LED, reg.reg), TAG, "write LED register failed" );
-
-    /* attempt to enable high register bank */
-    as7341_enable_hi_register_bank(handle);
-    
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
-    
-    return ESP_OK;
-}
-
-esp_err_t as7341_get_astatus_register(as7341_handle_t handle, as7341_astatus_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ASTATUS, &reg->reg), TAG, "read astatus register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_STATUS2, &reg->reg), TAG, "read status 2 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -522,14 +694,19 @@ esp_err_t as7341_get_astatus_register(as7341_handle_t handle, as7341_astatus_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_get_status2_register(as7341_handle_t handle, as7341_status2_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads enable register (0x80) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Enable register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_enable_register(as7341_device_t *const device, as7341_enable_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_STATUS2, &reg->reg), TAG, "read status 2 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_ENABLE, &reg->reg), TAG, "read enable register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -537,38 +714,16 @@ esp_err_t as7341_get_status2_register(as7341_handle_t handle, as7341_status2_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_disable_enable_register(as7341_handle_t handle) {
+/**
+ * @brief Writes enable register (0x80) to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Enable register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_enable_register(as7341_device_t *const device, const as7341_enable_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
-
-    as7341_enable_register_t enable = { .reg = 0 };
-
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "disable enable register failed" );
-
-    return ESP_OK;
-}
-
-esp_err_t as7341_get_enable_register(as7341_handle_t handle, as7341_enable_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ENABLE, &reg->reg), TAG, "read enable register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
-
-    return ESP_OK;
-}
-
-esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_enable_register_t enable = { .reg = reg.reg };
@@ -579,7 +734,7 @@ esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable
     enable.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ENABLE, enable.reg), TAG, "write enable register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_ENABLE, enable.reg), TAG, "write enable register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -587,14 +742,37 @@ esp_err_t as7341_set_enable_register(as7341_handle_t handle, const as7341_enable
     return ESP_OK;
 }
 
-esp_err_t as7341_get_auxiliary_id_register(as7341_handle_t handle, as7341_auxiliary_id_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Disables spectral readings, flicker detection, power, etc.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_disable_enable_register(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
+
+    as7341_enable_register_t enable = { .reg = 0 };
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "disable enable register failed" );
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Reads auxiliary id register (0x90) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Auxiliary id register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_auxiliary_id_register(as7341_device_t *const device, as7341_auxiliary_id_register_t *const reg) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_AUXID, &reg->reg), TAG, "read auxiliary id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_AUXID, &reg->reg), TAG, "read auxiliary id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -602,14 +780,19 @@ esp_err_t as7341_get_auxiliary_id_register(as7341_handle_t handle, as7341_auxili
     return ESP_OK;
 }
 
-esp_err_t as7341_get_revision_id_register(as7341_handle_t handle, as7341_revision_id_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads revision id register (0x91) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Revision id register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_revision_id_register(as7341_device_t *const device, as7341_revision_id_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_REVID, &reg->reg), TAG, "read revision id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_REVID, &reg->reg), TAG, "read revision id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -617,15 +800,19 @@ esp_err_t as7341_get_revision_id_register(as7341_handle_t handle, as7341_revisio
     return ESP_OK;
 }
 
-esp_err_t as7341_get_part_id_register(as7341_handle_t handle, as7341_part_id_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads part id register (0x92) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Part id register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_part_id_register(as7341_device_t *const device, as7341_part_id_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
-
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ID, &reg->reg), TAG, "read part id register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_ID, &reg->reg), TAG, "read part id register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -633,14 +820,19 @@ esp_err_t as7341_get_part_id_register(as7341_handle_t handle, as7341_part_id_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_get_config_register(as7341_handle_t handle, as7341_config_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads configuration register (0x70) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Configuration register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_config_register(as7341_device_t *const device, as7341_config_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG, &reg->reg), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_CONFIG, &reg->reg), TAG, "read configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -648,11 +840,16 @@ esp_err_t as7341_get_config_register(as7341_handle_t handle, as7341_config_regis
     return ESP_OK;
 }
 
-esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes configuration register (0x70) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Configuration register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_config_register(as7341_device_t *const device, const as7341_config_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_config_register_t config = { .reg = reg.reg };
@@ -661,7 +858,7 @@ esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config
     config.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_CONFIG, config.reg), TAG, "write configuration register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -669,14 +866,19 @@ esp_err_t as7341_set_config_register(as7341_handle_t handle, const as7341_config
     return ESP_OK;
 }
 
-esp_err_t as7341_get_config0_register(as7341_handle_t handle, as7341_config0_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads configuration 0 register (0xA9) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Configuration 0 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_config0_register(as7341_device_t *const device, as7341_config0_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG0, &reg->reg), TAG, "read configuration 0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_CONFIG0, &reg->reg), TAG, "read configuration 0 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -684,11 +886,16 @@ esp_err_t as7341_get_config0_register(as7341_handle_t handle, as7341_config0_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_config0_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes configuration 0 register (0xA9) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Configuration 0 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_config0_register(as7341_device_t *const device, const as7341_config0_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_config0_register_t config0 = { .reg = reg.reg };
@@ -699,7 +906,7 @@ esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_confi
     config0.bits.reserved3 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG0, config0.reg), TAG, "write configuration 0 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_CONFIG0, config0.reg), TAG, "write configuration 0 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -707,14 +914,19 @@ esp_err_t as7341_set_config0_register(as7341_handle_t handle, const as7341_confi
     return ESP_OK;
 }
 
-esp_err_t as7341_get_config1_register(as7341_handle_t handle, as7341_config1_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads configuration 1 (0xAA) register from AS7341.  This register configures the 6 integrated ADC (CH0 to CH5).
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Configuration 1 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_config1_register(as7341_device_t *const device, as7341_config1_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG1, &reg->reg), TAG, "read configuration 1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_CONFIG1, &reg->reg), TAG, "read configuration 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -722,11 +934,16 @@ esp_err_t as7341_get_config1_register(as7341_handle_t handle, as7341_config1_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_config1_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes configuration 1 (0xAA) register to AS7341.  This register configures the 6 integrated ADC (CH0 to CH5).
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Configuration 1 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_config1_register(as7341_device_t *const device, const as7341_config1_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_config1_register_t config1 = { .reg = reg.reg };
@@ -735,7 +952,7 @@ esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_confi
     config1.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG1, config1.reg), TAG, "write configuration 1 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_CONFIG1, config1.reg), TAG, "write configuration 1 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -743,14 +960,19 @@ esp_err_t as7341_set_config1_register(as7341_handle_t handle, const as7341_confi
     return ESP_OK;
 }
 
-esp_err_t as7341_get_config6_register(as7341_handle_t handle, as7341_config6_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads configuration 6 register (0xAF) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Configuration 6 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_config6_register(as7341_device_t *const device, as7341_config6_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_CONFIG6, &reg->reg), TAG, "read configuration 6 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_CONFIG6, &reg->reg), TAG, "read configuration 6 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -758,11 +980,16 @@ esp_err_t as7341_get_config6_register(as7341_handle_t handle, as7341_config6_reg
     return ESP_OK;
 }
 
-esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_config6_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes configuration 6 register (0xAF) to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Configuration 6 register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_config6_register(as7341_device_t *const device, const as7341_config6_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_config6_register_t config6 = { .reg = reg.reg };
@@ -772,7 +999,7 @@ esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_confi
     config6.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_CONFIG6, config6.reg), TAG, "write configuration 6 register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_CONFIG6, config6.reg), TAG, "write configuration 6 register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -780,14 +1007,19 @@ esp_err_t as7341_set_config6_register(as7341_handle_t handle, const as7341_confi
     return ESP_OK;
 }
 
-esp_err_t as7341_get_atime_register(as7341_handle_t handle, uint8_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads ATIME (0x81) register from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Number of integration steps from 1 to 256, a value of 29 is recommended as a starting point, 50ms integration time.  ATIME and ASTEP cannot both be zero.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_atime_register(as7341_device_t *const device, uint8_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_ATIME, reg), TAG, "read atime register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_ATIME, reg), TAG, "read atime register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -795,14 +1027,19 @@ esp_err_t as7341_get_atime_register(as7341_handle_t handle, uint8_t *const reg) 
     return ESP_OK;
 }
 
-esp_err_t as7341_set_atime_register(as7341_handle_t handle, const uint8_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes ATIME (0x81) register to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Number of integration steps from 1 to 256, a value of 29 is recommended as a starting point, 50ms integration time.  ATIME and ASTEP cannot both be zero.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_atime_register(as7341_device_t *const device, const uint8_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ATIME, reg), TAG, "write atime register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_ATIME, reg), TAG, "write atime register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -810,14 +1047,19 @@ esp_err_t as7341_set_atime_register(as7341_handle_t handle, const uint8_t reg) {
     return ESP_OK;
 }
 
-esp_err_t as7341_get_astep_register(as7341_handle_t handle, uint16_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads ASTEP (0xCA, 0xCB) register from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Integration time step size.  Integration time step increment of 2.78us, a value of 599 is recommended as a starting point, 50ms integration time.  ATIME and ASTEP cannot both be zero.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_astep_register(as7341_device_t *const device, uint16_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_word_from(dev, AS7341_ASTEP_L, reg), TAG, "read astep register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_word_from(device, AS7341_ASTEP_L, reg), TAG, "read astep register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -825,14 +1067,19 @@ esp_err_t as7341_get_astep_register(as7341_handle_t handle, uint16_t *const reg)
     return ESP_OK;
 }
 
-esp_err_t as7341_set_astep_register(as7341_handle_t handle, const uint16_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes ASTEP (0xCA, 0xCB) register to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Integration time step size.  Integration time step increment of 2.78us, a value of 599 is recommended as a starting point, 50ms integration time.  ATIME and ASTEP cannot both be zero.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_astep_register(as7341_device_t *const device, const uint16_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_ASTEP_L, reg), TAG, "write astep register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_ASTEP_L, reg), TAG, "write astep register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -840,14 +1087,19 @@ esp_err_t as7341_set_astep_register(as7341_handle_t handle, const uint16_t reg) 
     return ESP_OK;
 }
 
-esp_err_t as7341_get_flicker_detection_status_register(as7341_handle_t handle, as7341_flicker_detection_status_register_t *const reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Reads flicker detection status (0xDB) register from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg Flicker detection status register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_flicker_detection_status_register(as7341_device_t *const device, as7341_flicker_detection_status_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(dev, AS7341_FD_STATUS, &reg->reg), TAG, "read flicker detection status register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_FD_STATUS, &reg->reg), TAG, "read flicker detection status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -855,11 +1107,16 @@ esp_err_t as7341_get_flicker_detection_status_register(as7341_handle_t handle, a
     return ESP_OK;
 }
 
-esp_err_t as7341_set_flicker_detection_status_register(as7341_handle_t handle, const as7341_flicker_detection_status_register_t reg) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
-
+/**
+ * @brief Writes flicker detection status (0xDB) register to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg Flicker detection status register structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_flicker_detection_status_register(as7341_device_t *const device, const as7341_flicker_detection_status_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     as7341_flicker_detection_status_register_t flicker_detection_status = { .reg = reg.reg };
@@ -868,7 +1125,7 @@ esp_err_t as7341_set_flicker_detection_status_register(as7341_handle_t handle, c
     flicker_detection_status.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(dev, AS7341_FD_STATUS, flicker_detection_status.reg), TAG, "write flicker detection status register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_FD_STATUS, flicker_detection_status.reg), TAG, "write flicker detection status register failed" );
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
@@ -876,9 +1133,15 @@ esp_err_t as7341_set_flicker_detection_status_register(as7341_handle_t handle, c
     return ESP_OK;
 }
 
-esp_err_t as7341_clear_flicker_detection_status_register(as7341_handle_t handle) {
+/**
+ * @brief Clears flicker detection status (0xDB) register on AS7341.
+ * 
+ * @param device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_clear_flicker_detection_status_register(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* clear resettable flags */
     as7341_flicker_detection_status_register_t flicker_detection_status = {
@@ -889,66 +1152,312 @@ esp_err_t as7341_clear_flicker_detection_status_register(as7341_handle_t handle)
     };
 
     /* attempt to set device handle register */
-    ESP_RETURN_ON_ERROR( as7341_set_flicker_detection_status_register(handle, flicker_detection_status), TAG, "write flicker detection status register for clear flicker detection status register failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_flicker_detection_status_register(device, flicker_detection_status), TAG, "write flicker detection status register for clear flicker detection status register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t as7341_enable_hi_register_bank(as7341_handle_t handle) {
+/**
+ * @brief Enables access to the AS7341 high register bank (0x80 to 0xFF).
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_enable_hi_register_bank(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* copy register from handle */
     as7341_config0_register_t config0_reg;
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_config0_register(handle, &config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config0_register(device, &config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
 
     /* enable high registers */
     config0_reg.bits.reg_bank_access = false; // 0 or false to access register 0x80 and above
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_config0_register(handle, config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config0_register(device, config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
 
     return ESP_OK;
 }
 
-esp_err_t as7341_enable_lo_register_bank(as7341_handle_t handle) {
+/**
+ * @brief Enables access to the AS7341 low register bank (0x60 to 0x74).
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_enable_lo_register_bank(as7341_device_t *const device) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* copy register from handle */
     as7341_config0_register_t config0_reg;
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_config0_register(handle, &config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config0_register(device, &config0_reg), TAG, "write configuration 0 register for enable high registers failed" );
 
     /* enable low registers */
     config0_reg.bits.reg_bank_access = true; // 1 or true to access register 0x60 to 0x74
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_config0_register(handle, config0_reg), TAG, "write configuration 0 register for enable low registers failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config0_register(device, config0_reg), TAG, "write configuration 0 register for enable low registers failed" );
 
     return ESP_OK;
 }
 
-esp_err_t as7341_set_smux_command(as7341_handle_t handle, const as7341_smux_commands_t command) {
+/**
+ * @brief Writes SMUX command to AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] command SMUX command.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_smux_command(as7341_device_t *const device, const as7341_smux_commands_t command) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* set smux command */
     as7341_config6_register_t config6_reg = { .bits.smux_command = command };
 
     /* attempt to set register */
-    ESP_RETURN_ON_ERROR( as7341_set_config6_register(handle, config6_reg), TAG, "write configuration 6 register for set smux command failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config6_register(device, config6_reg), TAG, "write configuration 6 register for set smux command failed" );
+
+    return ESP_OK;
+}
+
+
+/**
+ * @brief Reads LED register (0x74) from AS7341.
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[out] reg LED register structure.
+ * @return esp_err_t ESP_OK on success. 
+ */
+static inline esp_err_t as7341_i2c_get_led_register(as7341_device_t *const device, as7341_led_register_t *const reg) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to enable low register bank */
+    as7341_i2c_enable_lo_register_bank(device);
+
+    /* attempt i2c read transaction */
+    ESP_RETURN_ON_ERROR( as7341_i2c_read_byte_from(device, AS7341_LED, &reg->reg), TAG, "read LED register failed" );
+
+    /* attempt to enable high register bank */
+    as7341_i2c_enable_hi_register_bank(device);
+    
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Writes LED register (0x74) to AS7341
+ * 
+ * @param[in] device AS7341 device descriptor.
+ * @param[in] reg LED register structure.
+ * @return esp_err_t ESP_OK on success. 
+ */
+static inline esp_err_t as7341_i2c_set_led_register(as7341_device_t *const device, const as7341_led_register_t reg) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+     /* attempt to enable low register bank */
+    as7341_i2c_enable_lo_register_bank(device);
+    
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( as7341_i2c_write_byte_to(device, AS7341_LED, reg.reg), TAG, "write LED register failed" );
+
+    /* attempt to enable high register bank */
+    as7341_i2c_enable_hi_register_bank(device);
+    
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
+    
+    return ESP_OK;
+}
+
+
+/**
+ * @brief Configures SMUX registers for low channels (F1-F4, Clear and NIR).
+ * 
+ * @param device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_smux_lo_channels(as7341_device_t *const device) {
+    as7341_enable_register_t enable;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register, for set SMUX low channels failed" );
+
+    /* disable spectral measurement */
+    enable.bits.spectral_measurement_enabled = false;
+
+    /* attempt to write enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register, for set SMUX low channels failed" );
+
+    //ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX low channels failed" );
+
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_smux_command(device, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX low channels failed" );
+
+    ESP_RETURN_ON_ERROR( as7341_i2c_setup_smux_lo_channels(device), TAG, "setup SMUX low channels for set SMUX low channels failed" );
+
+    /* enable smux */
+    enable.bits.smux_enabled = true;
+
+    /* attempt to write enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register, for set SMUX low channels failed" );
+    //ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX low channels failed" );
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Configures SMUX registers for high channels (F5-F8, Clear and NIR).
+ * 
+ * @param device AS7341 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_set_smux_hi_channels(as7341_device_t *const device) {
+    as7341_enable_register_t enable;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register, for set SMUX high channels failed" );
+
+    /* disable spectral measurement */
+    enable.bits.spectral_measurement_enabled = false;
+
+    /* attempt to write enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register, for set SMUX high channels failed" );
+
+    //ESP_RETURN_ON_ERROR( as7341_disable_spectral_measurement(handle), TAG, "disable spectral measurement for set SMUX high channels failed" );
+
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_smux_command(device, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for set SMUX high channels failed" );
+
+    ESP_RETURN_ON_ERROR( as7341_i2c_setup_smux_hi_channels(device), TAG, "setup SMUX high channels for set SMUX high channels failed" );
+
+    /* enable smux */
+    enable.bits.smux_enabled = true;
+
+    /* attempt to write enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register, for set SMUX high channels failed" );
+    //ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX for set SMUX high channels failed" );
+
+    return ESP_OK;
+}
+
+
+/**
+ * @brief Converts an ADC spectral gain sensitivity enumerator to a spectral gain sensitivity multiplier.
+ * 
+ * @param gain ADC spectral gain sensitivity enumerator.
+ * @return float ADC spectral gain sensitivity multiplier.
+ */
+static inline float as7341_get_spectral_gain_sensitivity(as7341_spectral_gains_t gain) {
+    /* determine gain sensitivity */
+    switch (gain) {
+        case AS7341_SPECTRAL_GAIN_0_5X:
+            return 0.5f;
+        case AS7341_SPECTRAL_GAIN_1X:
+            return 1.0f;
+        case AS7341_SPECTRAL_GAIN_2X:
+            return 2.0f;
+        case AS7341_SPECTRAL_GAIN_4X:
+            return 4.0f;
+        case AS7341_SPECTRAL_GAIN_8X:
+            return 8.0f;
+        case AS7341_SPECTRAL_GAIN_16X:
+            return 16.0f;
+        case AS7341_SPECTRAL_GAIN_32X:
+            return 32.0f;
+        case AS7341_SPECTRAL_GAIN_64X:
+            return 64.0f;
+        case AS7341_SPECTRAL_GAIN_128X:
+            return 128.0f;
+        case AS7341_SPECTRAL_GAIN_256X:
+            return 256.0f;
+        case AS7341_SPECTRAL_GAIN_512X:
+            return 512.0f;
+        default:
+            return 1.0f;
+    }
+}
+
+/**
+ * @brief Calculated integration time (𝑡𝑖𝑛𝑡 = (𝐴𝑇𝐼𝑀𝐸 + 1) × (𝐴𝑆𝑇𝐸𝑃 + 1) × 2.78μ𝑠), from ATIME and ASTEP registers, in milli-seconds.
+ * 
+ * @param device AS7341 device descriptor.
+ * @param time Integration time in milli-seconds
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t as7341_i2c_get_integration_time(as7341_device_t *const device, float *time) {
+    uint8_t atime;
+    uint16_t astep;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read astep and atime registers */
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_astep_register(device, &astep), TAG, "read astep register for get integration time failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_atime_register(device, &atime), TAG, "read atime register for get integration time failed" );
+
+    /* compute integration time */
+    *time = (float)(atime + 1) * (astep + 1) * 2.78f / 1000.0f;
+
+    return ESP_OK;
+}
+
+static inline esp_err_t as7341_i2c_setup_registers(as7341_device_t *const device) {
+    as7341_part_id_register_t part_id;
+    as7341_revision_id_register_t revision_id;
+    as7341_enable_register_t enable;
+    as7341_config1_register_t config1;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register, for setup registers failed" );
+
+    enable.bits.power_enabled = device->config.power_enabled;
+
+    /* attempt to write enable register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register, for setup registers failed" );
+
+    /* attempt to read part id */
+    ESP_RETURN_ON_ERROR(as7341_i2c_get_part_id_register(device, &part_id), TAG, "read part id register for setup registers failed");
+
+    /* attempt to read revision id */
+    ESP_RETURN_ON_ERROR(as7341_i2c_get_revision_id_register(device, &revision_id), TAG, "read revision id register for setup registers failed");
+
+    /* copy configuration */
+    device->part_id = part_id.bits.identifier;
+    device->revision_id = revision_id.bits.identifier;
+
+    /* attempt to write atime configuration */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_atime_register(device, device->config.atime), TAG, "write atime for setup registers failed" );
+
+    /* attempt to write astep configuration */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_astep_register(device, device->config.astep), TAG, "write astep for setup registers failed" );
+
+    config1.bits.spectral_gain = device->config.spectral_gain;
+
+    /* attempt to write configuration 1 register */
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config1_register(device, config1), TAG, "write configuration 1 register for setup registers failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_init(i2c_master_bus_handle_t master_handle, const as7341_config_t *as7341_config, as7341_handle_t *as7341_handle) {
-    as7341_part_id_register_t part_id;
-    as7341_revision_id_register_t revision_id;
-
     /* validate arguments */
     ESP_ARG_CHECK( master_handle && as7341_config );
 
@@ -960,51 +1469,32 @@ esp_err_t as7341_init(i2c_master_bus_handle_t master_handle, const as7341_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, as7341 device handle initialization failed", as7341_config->i2c_address);
 
     /* validate memory availability for handle */
-    as7341_device_t* dev = (as7341_device_t*)calloc(1, sizeof(as7341_device_t));
-    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as7341 device, init failed");
+    as7341_device_t* device = (as7341_device_t*)calloc(1, sizeof(as7341_device_t));
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c as7341 device, init failed");
 
     /* copy configuration */
-    dev->config = *as7341_config;
+    device->config = *as7341_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = dev->config.i2c_address,
-        .scl_speed_hz       = dev->config.i2c_clock_speed,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (dev->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (device->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_CMD_DELAY_MS));
 
-    /* attempt to enable power */
-    ESP_GOTO_ON_ERROR(as7341_enable_power((as7341_handle_t)dev), err_handle, TAG, "enable power for init failed");
-
-    /* attempt to read part id */
-    ESP_GOTO_ON_ERROR(as7341_get_part_id_register((as7341_handle_t)dev, &part_id), err_handle, TAG, "read part id register for init failed");
-
-    /* attempt to read revision id */
-    ESP_GOTO_ON_ERROR(as7341_get_revision_id_register((as7341_handle_t)dev, &revision_id), err_handle, TAG, "read revision id register for init failed");
-
-    /* copy configuration */
-    dev->part_id = part_id.bits.identifier;
-    dev->revision_id = revision_id.bits.identifier;
-
-    /* attempt to write atime configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_atime((as7341_handle_t)dev, dev->config.atime), err_handle, TAG, "write atime for init failed");
-
-    /* attempt to write astep configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_astep((as7341_handle_t)dev, dev->config.astep), err_handle, TAG, "write astep for init failed");
-
-    /*attempt to write spectral gain configuration */
-    ESP_GOTO_ON_ERROR(as7341_set_spectral_gain((as7341_handle_t)dev, dev->config.spectral_gain), err_handle, TAG, "write spectral gain for init failed");
+    /* attempt to setup registers */
+    ESP_GOTO_ON_ERROR(as7341_i2c_setup_registers(device), err_handle, TAG, "setup registers for init failed");
 
     /* set device handle */
-    *as7341_handle = (as7341_handle_t)dev;
+    *as7341_handle = (as7341_handle_t)device;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AS7341_APPSTART_DELAY_MS));
@@ -1012,40 +1502,53 @@ esp_err_t as7341_init(i2c_master_bus_handle_t master_handle, const as7341_config
     return ESP_OK;
 
     err_handle:
-        if (dev && dev->i2c_handle) {
-            i2c_master_bus_rm_device(dev->i2c_handle);
+        if (device && device->i2c_handle) {
+            i2c_master_bus_rm_device(device->i2c_handle);
         }
-        free(dev);
+        free(device);
     err:
         return ret;
 }
 
 esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channels_spectral_data_t *const spectral_data) {
+    as7341_enable_register_t enable;
     esp_err_t   ret              = ESP_OK;
     float       integration_time = 0;
     uint64_t    start_time       = esp_timer_get_time();
     bool        data_is_ready    = false;
     uint8_t     rx[12]           = { 0 };
-    as7341_device_t* dev = (as7341_device_t*)handle;
+    as7341_device_t* device      = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read enable register */
+    ESP_GOTO_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), err, TAG, "read enable register, for get adc measurements failed" );
 
     /* attempt to read integration time */
-    ESP_GOTO_ON_ERROR( as7341_get_integration_time(handle, &integration_time), err, TAG, "read integration time, for get adc measurements failed." );
+    ESP_GOTO_ON_ERROR( as7341_i2c_get_integration_time(device, &integration_time), err, TAG, "read integration time, for get adc measurements failed." );
 
     // ************ LOW CHANNELS ***********
 
     /* attempt to setup low channels */
-    ESP_GOTO_ON_ERROR( as7341_set_smux_lo_channels(handle), err, TAG, "setup of SMUX low channels for get adc measurements failed." );
+    ESP_GOTO_ON_ERROR( as7341_i2c_set_smux_lo_channels(device), err, TAG, "setup of SMUX low channels for get adc measurements failed." );
 
     /* attempt to enable spectral measurement for low channels */
-    ESP_GOTO_ON_ERROR( as7341_enable_spectral_measurement(handle), err, TAG, "enable spectral measurement, low channels, for get adc measurements failed." );
+    enable.bits.spectral_measurement_enabled = true;
+    //ESP_GOTO_ON_ERROR( as7341_enable_spectral_measurement(handle), err, TAG, "enable spectral measurement, low channels, for get adc measurements failed." );
+    ESP_GOTO_ON_ERROR( as7341_i2c_set_enable_register(device, enable), err, TAG, "read enable register, for get adc measurements failed" );
+
 
     /* attempt to poll until data, low channels, is available or timeout */
     do {
+        as7341_status2_register_t status2;
+
         /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( as7341_get_data_status(handle, &data_is_ready), err, TAG, "data ready read, low channels, for get adc measurements failed." );
+        //ESP_GOTO_ON_ERROR( as7341_get_data_status(handle, &data_is_ready), err, TAG, "data ready read, low channels, for get adc measurements failed." );
+        /* attempt to read device status register */
+        ESP_GOTO_ON_ERROR( as7341_i2c_get_status2_register(device, &status2), err, TAG, "read status 2 register (data ready state), for get adc measurements failed" );
+
+        data_is_ready = status2.bits.spectral_valid;
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(AS7341_DATA_READY_DELAY_MS));
@@ -1056,7 +1559,7 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     } while (data_is_ready == false);
 
     /* attempt to read spectral adc data from low channels */
-    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(dev, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read low channel measurements for get adc measurements failed" );
+    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(device, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read low channel measurements for get adc measurements failed" );
 
     /* set adc data for low channels */
     spectral_data->f1 = (uint16_t)rx[0]  | (uint16_t)(rx[1] << 8);
@@ -1071,10 +1574,13 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     // ************ HIGH CHANNELS ***********
 
     /* attempt to setup low channels */
-    ESP_GOTO_ON_ERROR( as7341_set_smux_hi_channels(handle), err, TAG, "setup of SMUX high channels for get adc measurements failed." );
+    ESP_GOTO_ON_ERROR( as7341_i2c_set_smux_hi_channels(device), err, TAG, "setup of SMUX high channels for get adc measurements failed." );
 
     /* attempt to enable spectral measurement for low channels */
-    ESP_GOTO_ON_ERROR( as7341_enable_spectral_measurement(handle), err, TAG, "enable spectral measurement, high channels, for get adc measurements failed." );
+    enable.bits.spectral_measurement_enabled = true;
+    //ESP_GOTO_ON_ERROR( as7341_enable_spectral_measurement(handle), err, TAG, "enable spectral measurement, high channels, for get adc measurements failed." );
+    ESP_GOTO_ON_ERROR( as7341_i2c_set_enable_register(device, enable), err, TAG, "read enable register, for get adc measurements failed" );
+
 
     /* reset start time for timeout monitoring and reset data ready flag */
     start_time = esp_timer_get_time();
@@ -1082,8 +1588,14 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
 
     /* attempt to poll until data, high channels, is available or timeout */
     do {
+        as7341_status2_register_t status2;
+
         /* attempt to check if data is ready */
-        ESP_GOTO_ON_ERROR( as7341_get_data_status(handle, &data_is_ready), err, TAG, "data ready read, low channels, for get adc measurements failed." );
+        //ESP_GOTO_ON_ERROR( as7341_get_data_status(handle, &data_is_ready), err, TAG, "data ready read, low channels, for get adc measurements failed." );
+        /* attempt to read device status register */
+        ESP_GOTO_ON_ERROR( as7341_i2c_get_status2_register(device, &status2), err, TAG, "read status 2 register (data ready state), for get adc measurements failed" );
+
+        data_is_ready = status2.bits.spectral_valid;
 
         /* delay task before next i2c transaction */
         vTaskDelay(pdMS_TO_TICKS(AS7341_DATA_READY_DELAY_MS));
@@ -1094,7 +1606,7 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
     } while (data_is_ready == false);
 
     /* attempt to read spectral adc data from high channels */
-    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(dev, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read high channel measurements for get adc measurements failed" );
+    ESP_GOTO_ON_ERROR( as7341_i2c_read_from(device, AS7341_CH0_ADC_DATA_L, rx, sizeof(rx)), err, TAG, "read high channel measurements for get adc measurements failed" );
 
     /* set adc data for high channels */
     spectral_data->f5    = (uint16_t)rx[0]  | (uint16_t)(rx[1] << 8);
@@ -1114,20 +1626,22 @@ esp_err_t as7341_get_spectral_measurements(as7341_handle_t handle, as7341_channe
 }
 
 esp_err_t as7341_get_basic_counts(as7341_handle_t handle, const as7341_channels_spectral_data_t spectral_data, as7341_channels_basic_counts_data_t *const basic_counts_data) {
+    as7341_device_t* device = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     as7341_config1_register_t config1;
 
     /* attempt to read registers (config1) */
-    ESP_RETURN_ON_ERROR( as7341_get_config1_register(handle, &config1), TAG, "read configuration 1 register for get integration time failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config1_register(device, &config1), TAG, "read configuration 1 register for get integration time failed" );
 
     /* determine gain sensitivity */
     float gain = as7341_get_spectral_gain_sensitivity(config1.bits.spectral_gain);
 
     /* compute integration time */
     float integration_time = 0;
-    ESP_RETURN_ON_ERROR( as7341_get_integration_time(handle, &integration_time), TAG, "read integration time failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_integration_time(device, &integration_time), TAG, "read integration time failed" );
 
     /* convert adc value to basic counts value */
     basic_counts_data->f1       = (float)spectral_data.f1 / gain * integration_time;
@@ -1146,33 +1660,43 @@ esp_err_t as7341_get_basic_counts(as7341_handle_t handle, const as7341_channels_
 
 esp_err_t as7341_get_flicker_detection_status(as7341_handle_t handle, as7341_flicker_detection_states_t *const state) {
     as7341_flicker_detection_status_register_t fd_status;
+    as7341_enable_register_t enable;
     esp_err_t ret           = ESP_OK;
     uint64_t  start_time    = 0;
     bool      data_is_ready = false;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read */
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for disable power failed" );
 
     /* attempt to disable enable register */
-    ESP_RETURN_ON_ERROR( as7341_disable_enable_register(handle), TAG, "disable enable register, for get flicker detection status failed." );
+    ESP_RETURN_ON_ERROR( as7341_i2c_disable_enable_register(device), TAG, "disable enable register, for get flicker detection status failed." );
 
-    /* attempt to enable power */
-    ESP_RETURN_ON_ERROR( as7341_enable_power(handle), TAG, "enable power, for get flicker detection status failed" );
+    /* attempt to enable power, spectral, flicker */
+    enable.bits.power_enabled = true;
+    enable.bits.spectral_measurement_enabled = true;
+    enable.bits.flicker_detection_enabled = true;
+    enable.bits.smux_enabled = true;
+
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for get flicker detection status failed" );
 
     /* attempt to write SMU configuration from RAM to set SMUX chain registers */
-    ESP_RETURN_ON_ERROR( as7341_set_smux_command(handle, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for get flicker detection status failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_smux_command(device, AS7341_SMUX_CMD_WRITE), TAG, "write SMUX command for get flicker detection status failed" );
 
     /* attempt to setup SMUX flicker detection */
-    ESP_RETURN_ON_ERROR( as7341_setup_smux_flicker_detection(handle), TAG, "setup SMUX for flicker detection, for get flicker detection status failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_setup_smux_flicker_detection(device), TAG, "setup SMUX for flicker detection, for get flicker detection status failed" );
 
     /* attempt to enable SMUX */
-    ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX, for get flicker detection status failed" );
+    //ESP_RETURN_ON_ERROR( as7341_enable_smux(handle), TAG, "enable SMUX, for get flicker detection status failed" );
 
     /* attempt to enable spectral measurement */
-    ESP_RETURN_ON_ERROR( as7341_enable_spectral_measurement(handle), TAG, "enable spectral measurement, for get flicker detection status failed." );
+    //ESP_RETURN_ON_ERROR( as7341_enable_spectral_measurement(handle), TAG, "enable spectral measurement, for get flicker detection status failed." );
 
     /* attempt to enable flicker detection */
-    ESP_RETURN_ON_ERROR( as7341_enable_flicker_detection(handle), TAG, "enable flicker detection, for get flicker detection status failed" );
+    //ESP_RETURN_ON_ERROR( as7341_enable_flicker_detection(handle), TAG, "enable flicker detection, for get flicker detection status failed" );
 
     /* set start time for timeout monitoring */
     start_time = esp_timer_get_time();
@@ -1181,7 +1705,7 @@ esp_err_t as7341_get_flicker_detection_status(as7341_handle_t handle, as7341_fli
     do {
 
         /* attempt to check if flicker detection measurement is ready */
-        ESP_GOTO_ON_ERROR( as7341_get_flicker_detection_status_register(handle, &fd_status), err, TAG, "read flicker detection status register, for get flicker detection status failed" );
+        ESP_GOTO_ON_ERROR( as7341_i2c_get_flicker_detection_status_register(device, &fd_status), err, TAG, "read flicker detection status register, for get flicker detection status failed" );
 
         /* if the measurement is valid or saturation is detected, set data ready flag to true */
         if(fd_status.bits.fd_measurement_valid == true || fd_status.bits.fd_saturation_detected == true) {
@@ -1197,7 +1721,9 @@ esp_err_t as7341_get_flicker_detection_status(as7341_handle_t handle, as7341_fli
     } while (data_is_ready == false);
 
     /* attempt to disable flicker detection */
-    ESP_RETURN_ON_ERROR( as7341_disable_flicker_detection(handle), TAG, "disable flicker detection, for get flicker detection status failed" );
+    //ESP_RETURN_ON_ERROR( as7341_disable_flicker_detection(handle), TAG, "disable flicker detection, for get flicker detection status failed" );
+    enable.bits.flicker_detection_enabled = false;
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for get flicker detection status failed" );
 
     ESP_LOGW(TAG, "FD Status Register:  0x%02x (0b%s)", fd_status.reg, uint8_to_binary(fd_status.reg));
 
@@ -1228,12 +1754,13 @@ esp_err_t as7341_get_flicker_detection_status(as7341_handle_t handle, as7341_fli
 
 esp_err_t as7341_get_data_status(as7341_handle_t handle, bool *const ready) {
     as7341_status2_register_t status2;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read device status register */
-    ESP_RETURN_ON_ERROR( as7341_get_status2_register(handle, &status2), TAG, "read status 2 register (data ready state) failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_status2_register(device, &status2), TAG, "read status 2 register (data ready state) failed" );
 
     /* set ready state */
     *ready = status2.bits.spectral_valid;
@@ -1242,53 +1769,62 @@ esp_err_t as7341_get_data_status(as7341_handle_t handle, bool *const ready) {
 }
 
 esp_err_t as7341_get_atime(as7341_handle_t handle, uint8_t *const atime) {
+    as7341_device_t* device = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_get_atime_register(handle, atime), TAG, "read atime register for get atime failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_atime_register(device, atime), TAG, "read atime register for get atime failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_set_atime(as7341_handle_t handle, const uint8_t atime) {
+    as7341_device_t* device = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to set register */
-    ESP_RETURN_ON_ERROR( as7341_set_atime_register(handle, atime), TAG, "write atime register for set atime failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_atime_register(device, atime), TAG, "write atime register for set atime failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_get_astep(as7341_handle_t handle, uint16_t *const astep) {
+    as7341_device_t* device = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_get_astep_register(handle, astep), TAG, "read atime register for get astep failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_astep_register(device, astep), TAG, "read atime register for get astep failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_set_astep(as7341_handle_t handle, const uint16_t astep) {
+    as7341_device_t* device = (as7341_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to set register */
-    ESP_RETURN_ON_ERROR( as7341_set_astep_register(handle, astep), TAG, "write astep register for set astep failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_astep_register(device, astep), TAG, "write astep register for set astep failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_get_spectral_gain(as7341_handle_t handle, as7341_spectral_gains_t *const gain) {
     as7341_config1_register_t config1;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_get_config1_register(handle, &config1), TAG, "read configuration 1 register for get spectral gain failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config1_register(device, &config1), TAG, "read configuration 1 register for get spectral gain failed" );
 
     /* set output parameter */
     *gain = config1.bits.spectral_gain;
@@ -1298,36 +1834,38 @@ esp_err_t as7341_get_spectral_gain(as7341_handle_t handle, as7341_spectral_gains
 
 esp_err_t as7341_set_spectral_gain(as7341_handle_t handle, const as7341_spectral_gains_t gain) {
     as7341_config1_register_t config1;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( as7341_get_config1_register(handle, &config1), TAG, "read configuration 1 register for get spectral gain failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config1_register(device, &config1), TAG, "read configuration 1 register for get spectral gain failed" );
 
     /* set spectral gain */
     config1.bits.spectral_gain = gain;
 
     /* attempt to set register */
-    ESP_RETURN_ON_ERROR( as7341_set_config1_register(handle, config1), TAG, "write configuration 1 register for set spectral gain failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config1_register(device, config1), TAG, "write configuration 1 register for set spectral gain failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_get_ambient_light_sensing_mode(as7341_handle_t handle, as7341_als_modes_t *const mode) {
     as7341_config_register_t config;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to enable low register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_lo_register_bank(handle), TAG, "enable low register bank for get ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_lo_register_bank(device), TAG, "enable low register bank for get ambient light sensing mode failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( as7341_get_config_register(handle, &config), TAG, "read configuration register for get ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config_register(device, &config), TAG, "read configuration register for get ambient light sensing mode failed" );
 
     /* attempt to enable high register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_hi_register_bank(handle), TAG, "enable high register bank for get ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_hi_register_bank(device), TAG, "enable high register bank for get ambient light sensing mode failed" );
 
     /* set output parameter */
     *mode = config.bits.irq_mode;
@@ -1337,84 +1875,88 @@ esp_err_t as7341_get_ambient_light_sensing_mode(as7341_handle_t handle, as7341_a
 
 esp_err_t as7341_set_ambient_light_sensing_mode(as7341_handle_t handle, const as7341_als_modes_t mode) {
     as7341_config_register_t config;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to enable low register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_lo_register_bank(handle), TAG, "enable low register bank for set ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_lo_register_bank(device), TAG, "enable low register bank for set ambient light sensing mode failed" );
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( as7341_get_config_register(handle, &config), TAG, "read configuration register for set ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config_register(device, &config), TAG, "read configuration register for set ambient light sensing mode failed" );
 
     /* set mode */
     config.bits.irq_mode = mode;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( as7341_set_config_register(handle, config), TAG, "write configuration register for set ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config_register(device, config), TAG, "write configuration register for set ambient light sensing mode failed" );
 
     /* attempt to enable high register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_hi_register_bank(handle), TAG, "enable high register bank for set ambient light sensing mode failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_hi_register_bank(device), TAG, "enable high register bank for set ambient light sensing mode failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_enable_flicker_detection(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for enable flicker detection failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable flicker detection failed" );
 
     /* enable flicker detection */
     enable.bits.flicker_detection_enabled = true;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for enable flicker detection failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for enable flicker detection failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_disable_flicker_detection(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for disable flicker detection failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for disable flicker detection failed" );
 
     /* disable flicker detection */
     enable.bits.flicker_detection_enabled = false;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for disable flicker detection failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for disable flicker detection failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_enable_smux(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for enable SMUX failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable SMUX failed" );
 
     /* enable smux */
     enable.bits.smux_enabled = true;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for enable SMUX failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for enable SMUX failed" );
 
     /* validate SMUX operation completed */
     uint16_t timeout = 1000;
     for (uint16_t time = 0; time < timeout; time++) {
         // The SMUXEN bit is cleared once the SMUX operation is finished
-        ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for enable SMUX failed" );
+        ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable SMUX failed" );
 
         if (!enable.bits.smux_enabled) {
             return ESP_OK;
@@ -1429,72 +1971,76 @@ esp_err_t as7341_enable_smux(as7341_handle_t handle) {
 
 esp_err_t as7341_enable_spectral_measurement(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for enable spectral measurement failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable spectral measurement failed" );
 
     /* enable spectral measurement */
     enable.bits.spectral_measurement_enabled = true;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for enable spectral measurement failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for enable spectral measurement failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_disable_spectral_measurement(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for disable spectral measurement failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for disable spectral measurement failed" );
 
     /* disable spectral measurement */
     enable.bits.spectral_measurement_enabled = false;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for enable spectral measurement failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for enable spectral measurement failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_enable_power(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for enable power failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable power failed" );
 
     /* enable power */
     enable.bits.power_enabled = true;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for enable power failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for enable power failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_disable_power(as7341_handle_t handle) {
     as7341_enable_register_t enable;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read */
-    ESP_RETURN_ON_ERROR( as7341_get_enable_register(handle, &enable), TAG, "read enable register for disable power failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_enable_register(device, &enable), TAG, "read enable register for disable power failed" );
 
     /* disable power */
     enable.bits.power_enabled = false;
 
     /* attempt to write */
-    ESP_RETURN_ON_ERROR( as7341_set_enable_register(handle, enable), TAG, "write enable register for disable power failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_enable_register(device, enable), TAG, "write enable register for disable power failed" );
 
     return ESP_OK;
 }
@@ -1502,31 +2048,32 @@ esp_err_t as7341_disable_power(as7341_handle_t handle) {
 esp_err_t as7341_enable_led(as7341_handle_t handle) {
     as7341_config_register_t config;
     as7341_led_register_t    led;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to enable low register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_lo_register_bank(handle), TAG, "enable low register bank for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_lo_register_bank(device), TAG, "enable low register bank for enable LED failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( as7341_get_config_register(handle, &config), TAG, "read configuration register for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config_register(device, &config), TAG, "read configuration register for enable LED failed" );
 
     /* attempt to write to led register*/
-    ESP_RETURN_ON_ERROR( as7341_get_led_register(handle, &led), TAG, "read led register for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_led_register(device, &led), TAG, "read led register for enable LED failed" );
 
     /* enable led */
     config.bits.led_ldr_control_enabled = true;
     led.bits.led_ldr_enabled            = true;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( as7341_set_config_register(handle, config), TAG, "write configuration register for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config_register(device, config), TAG, "write configuration register for enable LED failed" );
 
     /* attempt to write to led register*/
-    ESP_RETURN_ON_ERROR( as7341_set_led_register(handle, led), TAG, "write led register for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_led_register(device, led), TAG, "write led register for enable LED failed" );
 
     /* attempt to enable high register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_hi_register_bank(handle), TAG, "enable high register bank for enable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_hi_register_bank(device), TAG, "enable high register bank for enable LED failed" );
 
     return ESP_OK;
 }
@@ -1534,43 +2081,44 @@ esp_err_t as7341_enable_led(as7341_handle_t handle) {
 esp_err_t as7341_disable_led(as7341_handle_t handle) {
     as7341_config_register_t config;
     as7341_led_register_t    led;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to enable low register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_lo_register_bank(handle), TAG, "enable low register bank for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_lo_register_bank(device), TAG, "enable low register bank for disable LED failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( as7341_get_config_register(handle, &config), TAG, "read configuration register for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_config_register(device, &config), TAG, "read configuration register for disable LED failed" );
 
     /* attempt to write to led register*/
-    ESP_RETURN_ON_ERROR( as7341_get_led_register(handle, &led), TAG, "read led register for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_get_led_register(device, &led), TAG, "read led register for disable LED failed" );
 
     /* enable led */
     config.bits.led_ldr_control_enabled = false;
     led.bits.led_ldr_enabled            = false;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( as7341_set_config_register(handle, config), TAG, "write configuration register for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_config_register(device, config), TAG, "write configuration register for disable LED failed" );
 
     /* attempt to write to led register*/
-    ESP_RETURN_ON_ERROR( as7341_set_led_register(handle, led), TAG, "write led register for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_set_led_register(device, led), TAG, "write led register for disable LED failed" );
 
     /* attempt to enable high register bank */
-    ESP_RETURN_ON_ERROR( as7341_enable_hi_register_bank(handle), TAG, "enable high register bank for disable LED failed" );
+    ESP_RETURN_ON_ERROR( as7341_i2c_enable_hi_register_bank(device), TAG, "enable high register bank for disable LED failed" );
 
     return ESP_OK;
 }
 
 esp_err_t as7341_remove(as7341_handle_t handle) {
-    as7341_device_t* dev = (as7341_device_t*)handle;
+    as7341_device_t* device = (as7341_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    return i2c_master_bus_rm_device(device->i2c_handle);
 }
 
 esp_err_t as7341_delete(as7341_handle_t handle) {

@@ -68,11 +68,19 @@ void i2c0_mmc56x3_task( void *pvParameters ) {
             //ESP_LOGI(APP_TAG, "True Heading:    %f °", mmc56x3_convert_to_true_heading(dev_hdl->dev_config.declination, magnetic_axes));
         }
         //
+        float temperature;
+        result = mmc56x3_get_temperature(dev_hdl, &temperature);
+        if(result != ESP_OK) {
+            ESP_LOGE(APP_TAG, "mmc56x3 device read failed (%s)", esp_err_to_name(result));
+        } else {
+            ESP_LOGI(APP_TAG, "Temperature: %f °C", temperature);
+        }
+        //
         ESP_LOGI(APP_TAG, "######################## MMC56X3 - END ###########################");
         //
         //
         // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE / 2 );
     }
     //
     // free resources

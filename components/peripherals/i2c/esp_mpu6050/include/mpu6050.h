@@ -26,7 +26,7 @@
  * @defgroup drivers mpu6050
  * @{
  *
- * ESP-IDF driver for mpu6050 sensor
+ * ESP-IDF driver for mpu6050 motion-tracking sensor
  *
  * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
  *

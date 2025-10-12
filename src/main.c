@@ -598,9 +598,9 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_INA226);
     //i2c0_component_example_start(I2C_COMPONENT_INA228);
     //i2c0_component_example_start(I2C_COMPONENT_LTR390UV);
-    i2c0_component_example_start(I2C_COMPONENT_MAX30105);
+    //i2c0_component_example_start(I2C_COMPONENT_MAX30105);
     //i2c0_component_example_start(I2C_COMPONENT_MLX90614);
-    //i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
+    i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
     //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);

@@ -197,51 +197,6 @@ typedef void* mmc56x3_handle_t;
 
 
 /**
- * @brief Reads status register from MMC56X3.
- * 
- * @param handle MMC56X3 device handle.
- * @param[out] reg MMC56X3 status register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t mmc56x3_get_status_register(mmc56x3_handle_t handle, mmc56x3_status_register_t *const reg);
-
-/**
- * @brief Writes control 0 register to MMC56X3.
- * 
- * @param handle MMC56X3 device handle.
- * @param reg MMC56X3 control 0 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t mmc56x3_set_control0_register(mmc56x3_handle_t handle, const mmc56x3_control0_register_t reg);
-
-/**
- * @brief Writes control 1 register to MMC56X3.
- * 
- * @param handle MMC56X3 device handle.
- * @param reg MMC56X3 control 1 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t mmc56x3_set_control1_register(mmc56x3_handle_t handle, const mmc56x3_control1_register_t reg);
-
-/**
- * @brief Writes control 2 register to MMC56X3.
- * 
- * @param handle MMC56X3 device handle.
- * @param reg MMC56X3 control 2 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t mmc56x3_set_control2_register(mmc56x3_handle_t handle, const mmc56x3_control2_register_t reg);
-
-/**
- * @brief Reads product identifier register from MMC56X3.
- * 
- * @param handle MMC56X3 device handle.
- * @param reg MMC56X3 product id register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t mmc56x3_get_product_id_register(mmc56x3_handle_t handle, uint8_t *const reg);
-
-/**
  * @brief Initializes an MMC56X3 device onto the I2C master bus.
  *
  * @param[in] master_handle I2C master bus handle.

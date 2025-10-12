@@ -39,13 +39,13 @@
 
 void i2c0_sgp4x_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t     last_wake_time   = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
     sgp4x_config_t dev_cfg          = I2C_SGP41_CONFIG_DEFAULT;
     sgp4x_handle_t dev_hdl;
-    bool               dev_self_tested  = false;
-    bool               dev_conditioned  = false;
+    bool           dev_self_tested  = false;
+    bool           dev_conditioned  = false;
     
     /* initialize gas index parameters */
     GasIndexAlgorithmParams voc_params;
@@ -100,8 +100,7 @@ void i2c0_sgp4x_task( void *pvParameters ) {
                 GasIndexAlgorithm_process(&voc_params, sraw_voc, &voc_index);
                 GasIndexAlgorithm_process(&nox_params, sraw_nox, &nox_index);
 
-                ESP_LOGI(APP_TAG, "SRAW VOC: %u | VOC Index: %li", sraw_voc, voc_index);
-                ESP_LOGI(APP_TAG, "SRAW NOX: %u | NOX Index: %li", sraw_nox, nox_index);
+                ESP_LOGI(APP_TAG, "SRAW VOC: %u | VOC Index: %li | SRAW NOX: %u | NOX Index: %li", sraw_voc, voc_index, sraw_nox, nox_index);
             }
         }
         

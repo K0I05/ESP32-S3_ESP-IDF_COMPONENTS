@@ -369,7 +369,7 @@ bool time_into_interval(time_into_interval_handle_t handle) {
     // compute time delta until next time into interval condition
     int64_t delta_msec = ctxt->epoch_timestamp - now_unix_msec;
 
-    ESP_LOGW(TAG, "time_into_interval(%s):delta_msec: %lli", ctxt->name, delta_msec);
+    //ESP_LOGW(TAG, "time_into_interval(%s):delta_msec: %lli", ctxt->name, delta_msec);
 
     // validate time delta, when delta is <= 0, time has elapsed
     if(delta_msec <= 0) {
@@ -418,7 +418,7 @@ esp_err_t time_into_interval_delay(time_into_interval_handle_t handle) {
         delta_msec = ctxt->epoch_timestamp - now_unix_msec;
     }
 
-    ESP_LOGW(TAG, "time_into_interval_delay(%s):delta_msec: %lli", ctxt->name, delta_msec);
+    //ESP_LOGW(TAG, "time_into_interval_delay(%s):delta_msec: %lli", ctxt->name, delta_msec);
 
     /* unlock the mutex */
     xSemaphoreGive(ctxt->mutex_handle);

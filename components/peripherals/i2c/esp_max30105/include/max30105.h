@@ -75,9 +75,9 @@ extern "C"
     .multi_led_mode_slot2          = MAX30105_MLCM_IR_LED2_PA,     \
     .multi_led_mode_slot3          = MAX30105_MLCM_GREEN_LED3_PA,  \
     .multi_led_mode_slot4          = MAX30105_MLCM_DISABLED,       \
-    .red_led_pulse_amplitude       = MAX30105_LPA_12_5MA,          \
-    .ir_led_pulse_amplitude        = MAX30105_LPA_12_5MA,          \
-    .green_led_pulse_amplitude     = MAX30105_LPA_12_5MA,          \
+    .red_led_pulse_amplitude       = MAX30105_LPA_50_0MA,          \
+    .ir_led_pulse_amplitude        = MAX30105_LPA_50_0MA,          \
+    .green_led_pulse_amplitude     = MAX30105_LPA_50_0MA,          \
     .proximity_led_pulse_amplitude = MAX30105_LPA_0_0MA,           \
     }
 
