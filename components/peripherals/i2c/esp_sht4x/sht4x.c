@@ -176,7 +176,10 @@ static inline uint8_t sht4x_calculate_crc8(const uint8_t data[], const uint8_t l
 }
 
 /**
- * @brief Gets SHT4X measurement duration in milliseconds from device handle.  See datasheet for details.
+ * @brief Gets SHT4X measurement duration in milliseconds from device handle. 
+ * See datasheet for details (3.1 Timings), we added 100% margin to the maximum
+ * measurement time and for heater operations we added 20ms margin for the
+ * measurement.
  *
  * @param[in] device SHT4X device descriptor.
  * @return size_t Measurement duration in milliseconds.
@@ -188,19 +191,19 @@ static inline size_t sht4x_get_duration(sht4x_device_t *const device) {
         case SHT4X_HEATER_HIGH_LONG:
         case SHT4X_HEATER_MEDIUM_LONG:
         case SHT4X_HEATER_LOW_LONG:
-            return 1100;
+            return 1120;
         case SHT4X_HEATER_HIGH_SHORT:
         case SHT4X_HEATER_MEDIUM_SHORT:
         case SHT4X_HEATER_LOW_SHORT:
-            return 110;
+            return 120;
         default:
             switch (device->config.repeat_mode) {
                 case SHT4X_REPEAT_HIGH:
-                    return 10;
+                    return 20;
                 case SHT4X_REPEAT_MEDIUM:
-                    return 5; 
+                    return 10; 
                 default:
-                    return 2;
+                    return 4;
             }
     }
 }
