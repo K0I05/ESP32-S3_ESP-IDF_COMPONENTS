@@ -267,6 +267,7 @@ The ESP Utilities components are generally used in conjunction with peripheral c
 
 Supported components include the following:
 
+- `Compact Linear Algebra`: Support for complex matrix and vector operations, solving linear systems of equations, and more.
 - `Kalman Motion`: Kalman filter for motion based use-cases that leverage sensors such as a gyroscope and/or accelerometer.
 - `Sensirion Gas Index Algorithm`: A gas index algorithm for the Sensirion air quality sensors.  This code base is maintained by Sensirion.
 - `Pressure Tendency`: A pressure tendency algorithm that monitors if pressure is rising, falling, or steady over the past 3-hours.
