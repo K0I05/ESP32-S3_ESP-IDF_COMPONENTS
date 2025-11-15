@@ -628,9 +628,21 @@ esp_err_t ak8975_power_down(ak8975_handle_t handle) {
 esp_err_t ak8975_remove(ak8975_handle_t handle) {
     ak8975_device_t* device = (ak8975_device_t*)handle;
 
+    /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t ak8975_delete(ak8975_handle_t handle) {

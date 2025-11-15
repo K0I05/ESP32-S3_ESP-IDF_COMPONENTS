@@ -1062,11 +1062,23 @@ esp_err_t as3935_get_lightning_event(as3935_handle_t handle, as3935_lightning_di
 }
 
 esp_err_t as3935_remove(as3935_handle_t handle) {
-    as3935_device_t* dev = (as3935_device_t*)handle;
+    as3935_device_t* device = (as3935_device_t*)handle;
 
-    ESP_ARG_CHECK( dev );
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t as3935_delete(as3935_handle_t handle) {
@@ -1074,14 +1086,12 @@ esp_err_t as3935_delete(as3935_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( as3935_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = as3935_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* as3935_get_fw_version(void) {

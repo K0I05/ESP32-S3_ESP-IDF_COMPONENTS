@@ -53,6 +53,12 @@ extern "C" {
 
 #define I2C_HMC5883L_DEV_ADDR                   UINT8_C(0x1e)           //!< hmc5883l I2C address when ADDR pin floating/low
 
+#define HMC5883L_3X3_MATRIX_SIZE                UINT8_C(3)
+#define HMC5883L_9X9_MATRIX_SIZE                UINT8_C(9)
+#define HMC5883L_ELLIPSOID_COEFF_SIZE           UINT8_C(9)
+#define HMC5883L_CAL_SAMPLE_SIZE                UINT8_C(50)
+
+
 /*
  * macro definitions
 */
@@ -136,48 +142,65 @@ typedef enum hmc5883l_gains_e {
     HMC5883L_GAIN_230  = (0b111)  //!< 4.35 mG/LSb, range -8.1..+8.1 G
 } hmc5883l_gains_t;
 
+typedef double hmc5883l_ellipsoid_coefficients_t[HMC5883L_ELLIPSOID_COEFF_SIZE];
+
+typedef struct hmc5883l_3x3_matrix_s {
+    double m[HMC5883L_3X3_MATRIX_SIZE][HMC5883L_3X3_MATRIX_SIZE];   /*!<  */
+} hmc5883l_3x3_matrix_t;
+
+typedef struct hmc5883l_9x9_matrix_s {
+    double m[HMC5883L_9X9_MATRIX_SIZE][HMC5883L_9X9_MATRIX_SIZE];   /*!<  */
+} hmc5883l_9x9_matrix_t;
+
+typedef struct hmc5883l_3d_vector_s {
+    double x;   /*!< x axis */
+    double y;   /*!< y axis */
+    double z;   /*!< z axis */
+} hmc5883l_3d_vector_t;
+
+typedef hmc5883l_3d_vector_t hmc5883l_calibration_samples_t[HMC5883L_CAL_SAMPLE_SIZE];
+
+typedef hmc5883l_3d_vector_t hmc5883l_axes_data_t;
+
+typedef hmc5883l_3d_vector_t hmc5883l_offset_axes_data_t;
+
+typedef hmc5883l_3d_vector_t hmc5883l_gain_error_axes_data_t;
+
+typedef struct hmc5883l_3d_vector_int_s {
+    int16_t x; /*!< x axis */
+    int16_t y; /*!< y axis */
+    int16_t z; /*!< z axis */
+} hmc5883l_3d_vector_int_t;
+
 /**
  * HMC5883L raw measurement result
  */
-typedef struct hmc5883l_axes_data_s {
-    int16_t x_axis;
-    int16_t y_axis;
-    int16_t z_axis;
-} hmc5883l_axes_data_t;
+typedef hmc5883l_3d_vector_int_t hmc5883l_adc_axes_data_t;
 
 /**
- * HMC5883L measurement result, milligauss
+ * HMC5883L compensated measurement result, milligauss
  */
 typedef struct hmc5883l_magnetic_axes_data_s {
-    float x_axis;   /*!< x axis mG */
-    float y_axis;   /*!< y axis mG */
-    float z_axis;   /*!< z axis mG */
-    float heading;  /*!< heading in degrees */
+    float x_axis;       /*!< compensated x axis mG */
+    float y_axis;       /*!< compensated y axis mG */
+    float z_axis;       /*!< compensated z axis mG */
+    float heading;      /*!< heading in degrees */
+    float true_heading; /*!< true heading in degrees */
+    float earth_field;  /*!< earth's field in 3-axis */
 } hmc5883l_magnetic_axes_data_t;
 
-typedef struct hmc5883l_offset_axes_data_s {
-    float x_axis;   /*!< x axis */
-    float y_axis;   /*!< y axis */
-    float z_axis;   /*!< z axis */
-} hmc5883l_offset_axes_data_t;
-
-typedef struct hmc5883l_gain_error_axes_data_s {
-    float x_axis;   /*!< x axis */
-    float y_axis;   /*!< y axis */
-    float z_axis;   /*!< z axis */
-} hmc5883l_gain_error_axes_data_t;
 
 /**
  * @brief HMC5883L device configuration structure definition.
  */
 typedef struct hmc5883l_config_s {
-    uint16_t                    i2c_address;    /*!< ens160 i2c device address */
-    uint32_t                    i2c_clock_speed;/*!< ens160 i2c device scl clock speed in hz */
-    hmc5883l_modes_t            mode;           /*!< operating mode */
-    hmc5883l_sample_averages_t  sample;         /*!< number of samples averaged */
-    hmc5883l_data_rates_t       rate;           /*!< data rate */
-    hmc5883l_gains_t            gain;           /*!< used measurement mode */
-    hmc5883l_biases_t           bias;           /*!< measurement mode (bias) */
+    uint16_t                    i2c_address;    /*!< hmc5883l i2c device address */
+    uint32_t                    i2c_clock_speed;/*!< hmc5883l i2c device scl clock speed in hz */
+    hmc5883l_modes_t            mode;           /*!< hmc5883l operating mode */
+    hmc5883l_sample_averages_t  sample;         /*!< hmc5883l number of samples averaged */
+    hmc5883l_data_rates_t       rate;           /*!< hmc5883l data rate */
+    hmc5883l_gains_t            gain;           /*!< hmc5883l gain */
+    hmc5883l_biases_t           bias;           /*!< hmc5883l measurement mode (bias) */
     float                       declination;    /*!< magnetic declination angle http://www.magnetic-declination.com/ */
 } hmc5883l_config_t;
 
@@ -200,15 +223,6 @@ typedef void* hmc5883l_handle_t;
 esp_err_t hmc5883l_init(i2c_master_bus_handle_t master_handle, const hmc5883l_config_t *hmc5883l_config, hmc5883l_handle_t *hmc5883l_handle);
 
 /**
- * @brief Reads uncompensated axes measurements from HMC5883L.
- * 
- * @param handle HMC5883L device handle.
- * @param axes_data Uncompensated axes measurements (x, y, and z axes).
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t hmc5883l_get_fixed_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_axes_data_t *const axes_data);
-
-/**
  * @brief Reads compensated magnetic axes measurements from HMC5883L.
  * 
  * @param handle HMC5883L device handle.
@@ -222,6 +236,7 @@ esp_err_t hmc5883l_get_magnetic_axes(hmc5883l_handle_t handle, hmc5883l_magnetic
 
 esp_err_t hmc5883l_get_calibrated_offsets(hmc5883l_handle_t handle, const hmc5883l_calibration_options_t option);
 
+esp_err_t hmc5883l_calibrate(hmc5883l_handle_t handle);
 
 /**
  * @brief Reads data status from HMC5883L.

@@ -193,20 +193,20 @@ esp_err_t mux4052a_init(const mux4052a_config_t *mux4052a_config, mux4052a_handl
     ESP_ARG_CHECK( mux4052a_config );
 
     /* validate memory availability for handle */
-    mux4052a_device_t* dev = (mux4052a_device_t*)calloc(1, sizeof(mux4052a_device_t));
-    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for MUX4052A handle, init failed");
+    mux4052a_device_t* device = (mux4052a_device_t*)calloc(1, sizeof(mux4052a_device_t));
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for MUX4052A handle, init failed");
 
     /* copy configuration */
-    dev->config = *mux4052a_config;
+    device->config = *mux4052a_config;
 
     /* attempt to initialize gpio pins and levels */
-    ESP_GOTO_ON_ERROR( mux4052a_gpio_init(dev), err, TAG, "unable to init gpio, init failed");
+    ESP_GOTO_ON_ERROR( mux4052a_gpio_init(device), err, TAG, "unable to init gpio, init failed");
 
     /* attempt to initialize uart */
-    ESP_GOTO_ON_ERROR( mux4052a_uart_init(dev), err, TAG, "unable to init uart, init failed");
+    ESP_GOTO_ON_ERROR( mux4052a_uart_init(device), err, TAG, "unable to init uart, init failed");
 
     /* set output parameter */
-    *mux4052a_handle = (mux4052a_handle_t)dev;
+    *mux4052a_handle = (mux4052a_handle_t)device;
 
     return ESP_OK;
     err:
@@ -214,77 +214,75 @@ esp_err_t mux4052a_init(const mux4052a_config_t *mux4052a_config, mux4052a_handl
 }
 
 esp_err_t mux4052a_set_channel(mux4052a_handle_t handle, const mux4052a_channels_t channel) {
-    mux4052a_device_t* dev = (mux4052a_device_t*)handle;
+    mux4052a_device_t* device = (mux4052a_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* set serial port */
-    ESP_RETURN_ON_ERROR( mux4052a_set_serial_port(dev, channel), TAG, "Unable to set channel, set channel failed" );
+    ESP_RETURN_ON_ERROR( mux4052a_set_serial_port(device, channel), TAG, "Unable to set channel, set channel failed" );
 
     /* set port state */
-    dev->channel = channel;
+    device->channel = channel;
 
     return ESP_OK;
 }
 
 esp_err_t mux4052a_get_channel(mux4052a_handle_t handle, mux4052a_channels_t *const channel) {
-    mux4052a_device_t* dev = (mux4052a_device_t*)handle;
+    mux4052a_device_t* device = (mux4052a_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* set port state */
-    *channel = dev->channel;
+    *channel = device->channel;
 
     return ESP_OK;
 }
 
 esp_err_t mux4052a_enable(mux4052a_handle_t handle) {
-    mux4052a_device_t* dev = (mux4052a_device_t*)handle;
+    mux4052a_device_t* device = (mux4052a_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* set inhibit input pin to high */
-    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.ch_inhbt_in_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "Unable to set inhibit input gpio low, enable input failed" );
+    ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_inhbt_in_io_num, MUX4052A_GPIO_LEVEL_LO), TAG, "Unable to set inhibit input gpio low, enable input failed" );
 
     /* set input state */
-    dev->enabled = true;
+    device->enabled = true;
 
     return ESP_OK;
 }
 
 esp_err_t mux4052a_disable(mux4052a_handle_t handle) {
-    mux4052a_device_t* dev = (mux4052a_device_t*)handle;
+    mux4052a_device_t* device = (mux4052a_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* set inhibit input pin to low */
-    ESP_RETURN_ON_ERROR( gpio_set_level(dev->config.ch_inhbt_in_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "Unable to set inhibit input gpio high, enable input failed" );
+    ESP_RETURN_ON_ERROR( gpio_set_level(device->config.ch_inhbt_in_io_num, MUX4052A_GPIO_LEVEL_HI), TAG, "Unable to set inhibit input gpio high, enable input failed" );
 
     /* set input state */
-    dev->enabled = false;
+    device->enabled = false;
 
     return ESP_OK;
 }
 
 esp_err_t mux4052a_delete(mux4052a_handle_t handle) {
-    mux4052a_device_t* dev = (mux4052a_device_t*)handle;
+    mux4052a_device_t* device = (mux4052a_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* remove device from uart bus */
-    ESP_RETURN_ON_ERROR( uart_driver_delete(dev->config.uart_port), TAG, "unable to remove device from uart bus, delete handle failed" );
+    esp_err_t ret = uart_driver_delete(device->config.uart_port);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* mux4052a_get_fw_version(void) {

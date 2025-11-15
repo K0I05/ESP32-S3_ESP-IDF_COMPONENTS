@@ -357,6 +357,22 @@ esp_err_t tcs3472_get_irq_status(tcs3472_handle_t handle, bool *const asserted);
 esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bool *const irq_asserted);
 
 /**
+ * @brief Enables wait time on TCS3472.
+ * 
+ * @param[in] handle TCS3472 device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t tcs3472_enable_wait_time(tcs3472_handle_t handle);
+
+/**
+ * @brief Disables wait time on TCS3472.
+ * 
+ * @param[in] handle TCS3472 device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t tcs3472_disable_wait_time(tcs3472_handle_t handle);
+
+/**
  * @brief Enables long wait time (i.e. x12 multiplier) on TCS3472.
  * 
  * @param[in] handle TCS3472 device handle.

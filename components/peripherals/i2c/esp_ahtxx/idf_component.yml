@@ -1,4 +1,4 @@
-version: "1.2.7"
+version: "1.2.8"
 license: "MIT"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for Asair AHT10, AHT20, AHT21, AHT25, AHT30 temperature and humidity i2c sensors."

@@ -33,7 +33,7 @@
  * MIT Licensed as described in the file LICENSE
  */
 
-#include "quaternion.h"
+#include "include/quaternion.h"
 #include <string.h>
 #include <stdio.h>
 #include <esp_log.h>

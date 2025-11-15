@@ -72,7 +72,6 @@
 #include <freertos/task.h>
 
 /* components */
-//#include <i2c_master_ext.h>
 #include <nvs_ext.h>
 
 /* i2c component tasks */
@@ -116,6 +115,7 @@
 /* utilities tasks */
 #include <uuid_task.h>
 
+#include <cla.h>
 
 /**
  * @brief I2C components examples enumerator.
@@ -600,11 +600,11 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_LTR390UV);
     //i2c0_component_example_start(I2C_COMPONENT_MAX30105);
     //i2c0_component_example_start(I2C_COMPONENT_MLX90614);
-    i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
+    //i2c0_component_example_start(I2C_COMPONENT_MMC56X3);
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
     //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);
-    //i2c0_component_example_start(I2C_COMPONENT_SHT4X);
+    i2c0_component_example_start(I2C_COMPONENT_SHT4X);
     //i2c0_component_example_start(I2C_COMPONENT_SSD1306);
     //i2c0_component_example_start(I2C_COMPONENT_TCS3472);
     //i2c0_component_example_start(I2C_COMPONENT_TLV493D);
@@ -616,4 +616,8 @@ void app_main( void ) {
     //sch_component_example_start(SCH_COMPONENT_TIME_INTO_INTERVAL);
 
     //utils_component_example_start(UTILS_COMPONENT_UUID);
+
+
+    cla_matrix_ptr_t matrix;
+    cla_matrix_create(3, 3, &matrix);
 }

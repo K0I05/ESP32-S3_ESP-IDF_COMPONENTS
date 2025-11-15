@@ -542,14 +542,12 @@ esp_err_t ina228_delete(ina228_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( ina228_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = ina228_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* ina228_get_fw_version(void) {

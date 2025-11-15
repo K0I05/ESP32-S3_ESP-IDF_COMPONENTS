@@ -1,4 +1,4 @@
-version: "1.2.7"
+version: "1.2.8"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for Bosch BMP390 temperature and pressure I2C sensors."
 license: "MIT"

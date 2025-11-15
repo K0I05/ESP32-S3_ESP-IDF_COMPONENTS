@@ -851,25 +851,30 @@ esp_err_t mmc56x3_delete(mmc56x3_handle_t handle) {
 }
 
 float mmc56x3_convert_to_heading(const mmc56x3_magnetic_axes_data_t axes_data) {
-    float heading = 0;
+    float heading = 0.0f;
 
     /* honeywell application note AN-203 */
-    if(axes_data.y_axis > 0.0f) heading = 90.0f - atanf(axes_data.x_axis/axes_data.y_axis * 180.0f / M_PI);
-    if(axes_data.y_axis < 0.0f) heading = 270.0f - atanf(axes_data.x_axis/axes_data.y_axis * 180.0f / M_PI);
+    if(axes_data.y_axis > 0.0f) heading = 90.0f - atanf(axes_data.x_axis/axes_data.y_axis) * 180.0f / M_PI;
+    if(axes_data.y_axis < 0.0f) heading = 270.0f - atanf(axes_data.x_axis/axes_data.y_axis) * 180.0f / M_PI;
     if(axes_data.y_axis == 0.0f && axes_data.x_axis < 0.0f) heading = 180.0f;
-    if(axes_data.y_axis == 0.0f && axes_data.x_axis > 0.0f) heading = 180.0f;
+    if(axes_data.y_axis == 0.0f && axes_data.x_axis > 0.0f) heading = 0.0f;
+
+    /* convert magnetic axes to heading in degrees */
+    //heading = (atan2f(axes_data.y_axis, axes_data.x_axis) * 180.0f / (float)M_PI);
+    /* convert to heading to a 0..360 degree range */
+    //if (heading < 0.0f) { heading += 360.0f; }
 
     return heading;
 }
 
 float mmc56x3_convert_to_true_heading(const float declination, const mmc56x3_magnetic_axes_data_t axes_data) {
-    float heading = 0;
+    float heading = 0.0f;
 
     /* honeywell application note AN-203 */
-    if(axes_data.y_axis > 0.0f) heading = 90.0f - atanf(axes_data.x_axis/axes_data.y_axis * 180.0f / M_PI);
-    if(axes_data.y_axis < 0.0f) heading = 270.0f - atanf(axes_data.x_axis/axes_data.y_axis * 180.0f / M_PI);
+    if(axes_data.y_axis > 0.0f) heading = 90.0f - atanf(axes_data.x_axis/axes_data.y_axis) * 180.0f / M_PI;
+    if(axes_data.y_axis < 0.0f) heading = 270.0f - atanf(axes_data.x_axis/axes_data.y_axis) * 180.0f / M_PI;
     if(axes_data.y_axis == 0.0f && axes_data.x_axis < 0.0f) heading = 180.0f;
-    if(axes_data.y_axis == 0.0f && axes_data.x_axis > 0.0f) heading = 180.0f;
+    if(axes_data.y_axis == 0.0f && axes_data.x_axis > 0.0f) heading = 0.0f;
 
     return heading + declination;
 }

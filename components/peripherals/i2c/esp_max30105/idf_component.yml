@@ -1,19 +1,23 @@
-version: "0.0.1"
-description: "ESP-IDF MAX30105 I2C device driver component."
+version: "1.2.8"
+description: "ESP32 espressif IoT development framework (esp-idf) compatible component
+  for Maxim Integrated MAX30105 particulate matter I2C sensor."
 license: "MIT"
 url: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_max30105"
 repository: "https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS.git"
 registry_url: "https://components.espressif.com"
 tags:
-  - MAX30105
-  - I2C
-  - ESP-IDF
-  - ESP32
+- maxim
+- max30105
+- particles
+- infrared
+- i2c
+- espidf
+- esp32
 dependencies:
-  idf: 
+  idf:
     version: ">5.3.0"
-  k0i05/esp_type_utils: 
+  k0i05/esp_type_utils:
     version: ">=0.0.1"
     override_path: "../../" # use component in a local directory, not from registry
 maintainers:
- - Eric Gionet <gionet.c.eric@gmail.com>
+- Eric Gionet <gionet.c.eric@gmail.com>

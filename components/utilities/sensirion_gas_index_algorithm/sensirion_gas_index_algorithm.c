@@ -31,7 +31,7 @@
  * https://github.com/Sensirion/gas-index-algorithm/blob/master/README.md
  */
 
-#include "sensirion_gas_index_algorithm.h"
+#include "include/sensirion_gas_index_algorithm.h"
 #include <math.h>
 
 static void GasIndexAlgorithm__init_instances(GasIndexAlgorithmParams* params);

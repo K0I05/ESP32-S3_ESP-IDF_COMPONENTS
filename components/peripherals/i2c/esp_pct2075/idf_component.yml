@@ -1,4 +1,4 @@
-version: "1.2.7"
+version: "1.2.8"
 license: "MIT"
 description: "ESP32 espressif IoT development framework (esp-idf) compatible component
   for NXP Semiconductors PCT2075 temperature I2C sensor."

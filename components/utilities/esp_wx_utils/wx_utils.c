@@ -36,7 +36,7 @@
  * MIT Licensed as described in the file LICENSE
  */
 
-#include "wx_utils.h"
+#include "include/wx_utils.h"
 #include <string.h>
 #include <stdio.h>
 #include <esp_log.h>

@@ -1,16 +1,19 @@
+# Validate CMake version
 cmake_minimum_required(VERSION 3.16.0)
 
+# Append component directories
 list(APPEND EXTRA_COMPONENT_DIRS
-
+    # Utility related components
+    "components/utilities/esp_cla" 
     "components/utilities/sensirion_gas_index_algorithm"
     "components/utilities/esp_kalman_motion" 
     "components/utilities/esp_pressure_tendency" 
     "components/utilities/esp_scalar_trend" 
     "components/utilities/esp_type_utils"
     "components/utilities/esp_uuid" 
-
+    # ADC peripheral related components
     "components/peripherals/adc/esp_s12sd"
-
+    # I2c peripheral related components
     "components/peripherals/i2c/esp_ahtxx"
     "components/peripherals/i2c/esp_ak8975"
     "components/peripherals/i2c/esp_as3935"
@@ -39,25 +42,26 @@ list(APPEND EXTRA_COMPONENT_DIRS
     "components/peripherals/i2c/esp_tlv493d"
     "components/peripherals/i2c/esp_veml6040"
     "components/peripherals/i2c/esp_veml7700"
-
+    # OWB peripheral related components
     "components/peripherals/owb/onewire_bus"
     "components/peripherals/owb/esp_ds18b20"
-
+    # SPI peripheral related components
     "components/peripherals/spi/esp_max31865"
-
+    # UART peripheral related components
     "components/peripherals/uart/esp_mux4052a"
-
+    # Schedule related components
     "components/schedule/esp_time_into_interval"
-
+    # Storage related components
     "components/storage/esp_datalogger"
     "components/storage/esp_nvs_ext"
-
 )
 
+# Include project.cmake at the top level, before project() is called.
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 # Enable if components should be synchronized with platformio and esp-idf registries
-idf_build_set_property(COMPONENT_REGISTRY_SYNC "ENABLED") # ENABLED OR DISABLED
-idf_build_set_property(COMPONENT_REGISTRY_OWNER "k0i05")  # PlatformIO owner name
+idf_build_set_property(COMPONENT_REGISTRY_SYNC "ENABLED") # Registry synchronization is ENABLED OR DISABLED
+idf_build_set_property(COMPONENT_REGISTRY_OWNER "k0i05")  # PlatformIO registry owner name
 
+# Set project name
 project(ESP32-S3_ESP-IDF_COMPONENTS)

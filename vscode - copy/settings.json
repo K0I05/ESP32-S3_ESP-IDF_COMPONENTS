@@ -1,0 +1,42 @@
+{
+    "codeQL.createQuery.qlPackLocation": "c:\\Users\\lavco\\OneDrive\\Documents\\PlatformIO\\Projects\\ESP32-S3_ESP-IDF_COMPONENTS\\codeql_query",
+    "files.associations": {
+        "veml7700_task.h": "c",
+        "charconv": "c",
+        "optional": "c",
+        "format": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "bmp280_task.h": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "span": "c",
+        "string": "c",
+        "random": "c",
+        "cstdint": "c",
+        "at24cxxx.h": "c",
+        "ahtxx_task.h": "c",
+        "pct2075_task.h": "c",
+        "at24cxxx_task.h": "c",
+        "muxuart4052a.h": "c",
+        "task.h": "c",
+        "compare": "c",
+        "max30105_task.h": "c",
+        "lin_master.h": "c"
+    },
+    "sonarlint.pathToCompileCommands": "${workspaceFolder}\\.pio\\build\\esp32s3box\\compile_commands.json",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "C:\\Espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
+        "IDF_CCACHE_ENABLE": "1",
+        "ESP_ROM_ELF_DIR": "C:\\Espressif\\tools\\esp-rom-elfs\\20240305/",
+        "IDF_TARGET": "esp32s3"
+    },
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.portWin": "COM5"
+}

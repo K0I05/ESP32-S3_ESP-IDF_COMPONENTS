@@ -49,17 +49,17 @@ extern "C" {
 
 #define SSD1306_COMPONENT_NAME              "esp_ssd1306"
 /** Version release date  */
-#define SSD1306_FW_VERSION_DATE             "2025-06-07"
+#define SSD1306_FW_VERSION_DATE             "2025-10-12"
 /** Major version number (X.x.x) */
 #define SSD1306_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
 #define SSD1306_FW_VERSION_MINOR            2
 /** Patch version number (x.x.X) */
-#define SSD1306_FW_VERSION_PATCH            7
+#define SSD1306_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define SSD1306_FW_SEMANTIC_VERSION         "1.2.7-4"
+#define SSD1306_FW_SEMANTIC_VERSION         "1.2.8-71"
 /** Git version hash */
-#define SSD1306_FW_GIT_SHORT_SHA            "f32c566"
+#define SSD1306_FW_GIT_SHORT_SHA            "c5f4ea3"
 
 
 /**

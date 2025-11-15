@@ -963,13 +963,23 @@ esp_err_t ccs811_io_reset(ccs811_handle_t handle) {
 }
 
 esp_err_t ccs811_remove(ccs811_handle_t handle) {
-    ccs811_device_t* dev = (ccs811_device_t*)handle;
+    ccs811_device_t* device = (ccs811_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t ccs811_delete(ccs811_handle_t handle) {
@@ -977,14 +987,12 @@ esp_err_t ccs811_delete(ccs811_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( ccs811_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = ccs811_remove(handle);
 
     /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char *ccs811_err_to_message(ccs811_error_code_register_t error_reg) {

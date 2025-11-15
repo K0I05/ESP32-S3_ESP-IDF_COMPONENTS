@@ -375,13 +375,23 @@ esp_err_t at24cxxx_erase(at24cxxx_handle_t handle) {
 }
 
 esp_err_t at24cxxx_remove(at24cxxx_handle_t handle) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(dev->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t at24cxxx_delete(at24cxxx_handle_t handle) {
@@ -389,14 +399,12 @@ esp_err_t at24cxxx_delete(at24cxxx_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( at24cxxx_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = at24cxxx_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* at24cxxx_get_fw_version(void) {

@@ -59,32 +59,36 @@
 
 #define AHTXX_STATUS_WORD           UINT8_C(0x18)   /*!< ahtxx initialization status word (default) */
 
-#define AHTXX_REG_1B                UINT8_C(0x1b)
-#define AHTXX_REG_1C                UINT8_C(0x1c)
-#define AHTXX_REG_1E                UINT8_C(0x1e)
+/* Register addresses */
+#define AHTXX_REG_1B                UINT8_C(0x1b)   /*!< AHT2x/3x initialization register */
+#define AHTXX_REG_1C                UINT8_C(0x1c)   /*!< AHT2x/3x initialization register */
+#define AHTXX_REG_1E                UINT8_C(0x1e)   /*!< AHT2x/3x initialization register */
 
-#define AHTXX_CTRL_CALI             UINT8_C(0x08)
-#define AHTXX_CTRL_MEAS             UINT8_C(0x33)
-#define AHTXX_CTRL_NOP              UINT8_C(0x00)
+/* Control bytes */
+#define AHTXX_CTRL_CALI             UINT8_C(0x08)   /*!< Calibration enable control byte */
+#define AHTXX_CTRL_MEAS             UINT8_C(0x33)   /*!< Measurement control byte */
+#define AHTXX_CTRL_NOP              UINT8_C(0x00)   /*!< No operation control byte */
 
-#define AHTXX_CMD_AHT10_INIT        UINT8_C(0xe1)   /*!< aht10 initialization command + 0x08 + 0x00 */
-#define AHTXX_CMD_AHT20_INIT        UINT8_C(0xbe)   /*!< aht20 initialization command + 0x08 + 0x00 */
-#define AHTXX_CMD_STATUS            UINT8_C(0x71)   /*!< ahtxx status register command */
-#define AHTXX_CMD_TRIGGER_MEAS      UINT8_C(0xac)   /*!< ahtxx measurement trigger command + 0x33 + 0x00 */
-#define AHTXX_CMD_RESET             UINT8_C(0xba)   /*!< ahtxx soft-reset command */
+/* Commands */
+#define AHTXX_CMD_AHT10_INIT        UINT8_C(0xe1)   /*!< AHT10 initialization command + 0x08 + 0x00 */
+#define AHTXX_CMD_AHT20_INIT        UINT8_C(0xbe)   /*!< AHT20/2x/3x initialization command + 0x08 + 0x00 */
+#define AHTXX_CMD_STATUS            UINT8_C(0x71)   /*!< Status register read command */
+#define AHTXX_CMD_TRIGGER_MEAS      UINT8_C(0xac)   /*!< Measurement trigger command + 0x33 + 0x00 */
+#define AHTXX_CMD_RESET             UINT8_C(0xba)   /*!< Soft-reset command */
 
-#define AHTXX_DATA_POLL_TIMEOUT_MS  UINT16_C(100)
-#define AHTXX_DATA_READY_DELAY_MS   UINT16_C(2)
-#define AHTXX_POWERUP_DELAY_MS      UINT16_C(120)
-#define AHTXX_RESET_DELAY_MS        UINT16_C(25)
-#define AHTXX_SETUP_DELAY_MS        UINT16_C(15)
-#define AHTXX_APPSTART_DELAY_MS     UINT16_C(10)    /*!< ahtxx delay after initialization before application start-up */
-#define AHTXX_RETRY_DELAY_MS        UINT16_C(2)     /*!< ahtxx delay between an I2C receive transaction retry */
-#define AHTXX_CMD_DELAY_MS          UINT16_C(5)     /*!< ahtxx delay before attempting command transactions after a command is issued */
-#define AHTXX_MEAS_PROC_DELAY_MS    UINT16_C(80)    /*!< ahtxx delay before attempting read transaction after a measurement trigger command is issued */
-#define AHTXX_TX_RX_DELAY_MS        UINT16_C(10)    /*!< ahtxx delay after attempting a transmit transaction and attempting a receive transaction */
+/* Timing constants - All values from datasheet specifications */
+#define AHTXX_DATA_POLL_TIMEOUT_MS  UINT16_C(100)   /*!< Maximum time to wait for data ready (datasheet: max 80ms) */
+#define AHTXX_DATA_READY_DELAY_MS   UINT16_C(2)     /*!< Delay between status polls */
+#define AHTXX_POWERUP_DELAY_MS      UINT16_C(120)   /*!< Power-up time (datasheet: max 100ms, +20ms margin) */
+#define AHTXX_RESET_DELAY_MS        UINT16_C(25)    /*!< Reset recovery time (datasheet: max 20ms, +5ms margin) */
+#define AHTXX_SETUP_DELAY_MS        UINT16_C(15)    /*!< Initialization command processing time (datasheet: max 10ms) */
+#define AHTXX_APPSTART_DELAY_MS     UINT16_C(10)    /*!< Delay after init before first measurement */
+#define AHTXX_RETRY_DELAY_MS        UINT16_C(2)     /*!< Delay between I2C transaction retry attempts */
+#define AHTXX_CMD_DELAY_MS          UINT16_C(5)     /*!< Inter-command delay for bus stability */
+#define AHTXX_MEAS_PROC_DELAY_MS    UINT16_C(80)    /*!< Measurement processing time (datasheet: typical 75-80ms) */
+#define AHTXX_TX_RX_DELAY_MS        UINT16_C(10)    /*!< Delay between write and read transactions */
 
-#define I2C_XFR_TIMEOUT_MS          (500)          //!< I2C transaction timeout in milliseconds
+#define I2C_XFR_TIMEOUT_MS          (500)           /*!< I2C transaction timeout in milliseconds */
 
 
 /**
@@ -148,19 +152,57 @@ static inline uint8_t ahtxx_calculate_crc8(const uint8_t buffer[], const uint8_t
 }
 
 /**
+ * @brief Validates AHTXX measurement data using CRC8 checksum.
+ *
+ * @param[in] data Measurement data buffer (6 or 7 bytes).
+ * @param[in] len Length of data buffer.
+ * @return esp_err_t ESP_OK if CRC is valid, ESP_ERR_INVALID_CRC otherwise.
+ */
+static inline esp_err_t ahtxx_validate_crc(const uint8_t data[], const uint8_t len) {
+    /* CRC is only available for 7-byte responses (AHT20/21/25/30) */
+    if (len != BIT56_UINT8_BUFFER_SIZE) {
+        return ESP_OK;  // No CRC available for AHT10
+    }
+    
+    /* Calculate CRC on first 6 bytes */
+    const uint8_t calculated_crc = ahtxx_calculate_crc8(data, len - 1);
+    const uint8_t received_crc = data[len - 1];
+    
+    if (calculated_crc != received_crc) {
+        ESP_LOGE(TAG, "CRC mismatch: calculated=0x%02x, received=0x%02x", calculated_crc, received_crc);
+        return ESP_ERR_INVALID_CRC;
+    }
+    
+    return ESP_OK;
+}
+
+/**
  * @brief Calculates dew-point temperature from air temperature and relative humidity.
  *
- * @param[in] temperature air temperature in degrees Celsius.
- * @param[in] humidity relative humidity in percent.
- * @return float calculated dew-point temperature in degrees Celsius.
+ * @param[in] temperature Air temperature in degrees Celsius (valid range: -40 to 80°C).
+ * @param[in] humidity Relative humidity in percent (valid range: 0 to 100%).
+ * @param[out] dewpoint Calculated dew-point temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if parameters are out of range.
  */
-static inline float ahtxx_calculate_dewpoint(const float temperature, const float humidity) {
-    // validate parameters
-    if(temperature > 80 || temperature < -40) return ESP_ERR_INVALID_ARG;
-    if(humidity > 100 || humidity < 0) return ESP_ERR_INVALID_ARG;
-    // calculate dew-point temperature
-    float H = (log10f(humidity)-2)/0.4343f + (17.62f*temperature)/(243.12f+temperature);
-    return 243.12f*H/(17.62f-H);
+static inline esp_err_t ahtxx_calculate_dewpoint(const float temperature, const float humidity, float *dewpoint) {
+    /* validate parameters */
+    ESP_ARG_CHECK( dewpoint );
+    
+    if(temperature > 80.0f || temperature < -40.0f) {
+        ESP_LOGE(TAG, "Temperature %.2f°C out of valid range (-40 to 80°C)", temperature);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if(humidity > 100.0f || humidity < 0.0f) {
+        ESP_LOGE(TAG, "Humidity %.2f%% out of valid range (0 to 100%%)", humidity);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    /* calculate dew-point temperature using Magnus formula */
+    float H = (log10f(humidity) - 2.0f) / 0.4343f + (17.62f * temperature) / (243.12f + temperature);
+    *dewpoint = 243.12f * H / (17.62f - H);
+    
+    return ESP_OK;
 }
 
 /**
@@ -307,9 +349,6 @@ static inline esp_err_t ahtxx_i2c_get_status_register(ahtxx_device_t *device, ah
 
     /* attempt i2c write/read transaction */
     ESP_RETURN_ON_ERROR( ahtxx_i2c_read_from(device, AHTXX_CMD_STATUS, &reg->reg, BIT8_UINT8_BUFFER_SIZE), TAG, "read status register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -483,7 +522,7 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
     ahtxx_device_t* device      = (ahtxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( device && (temperature || humidity) );
+    ESP_ARG_CHECK( device && temperature && humidity );
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT24_UINT8_BUFFER_SIZE ), TAG, "write measurement trigger command for get measurement failed" );
@@ -501,12 +540,15 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
         /* set data is ready flag */
         data_is_ready = !status_reg.bits.busy;
 
-        /* delay task before next i2c transaction */
-        vTaskDelay(pdMS_TO_TICKS(AHTXX_DATA_READY_DELAY_MS));
-
         /* validate timeout condition */
-        if (ESP_TIMEOUT_CHECK(start_time, (AHTXX_DATA_POLL_TIMEOUT_MS * 1000)))
+        if (ESP_TIMEOUT_CHECK(start_time, (AHTXX_DATA_POLL_TIMEOUT_MS * 1000))) {
             return ESP_ERR_TIMEOUT;
+        }
+
+        /* delay task before next poll if data is not ready */
+        if (!data_is_ready) {
+            vTaskDelay(pdMS_TO_TICKS(AHTXX_DATA_READY_DELAY_MS));
+        }
     } while (data_is_ready == false);
 
     /* handle aht sensor read by type */
@@ -521,23 +563,21 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
         /* attempt i2c read transaction for aht20, aht21, aht25, and aht30 sensor types */
         ESP_RETURN_ON_ERROR( ahtxx_i2c_read(device, rx, BIT56_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
 
-        /* validate crc ? */
+        /* validate CRC if available (AHT20/21/25/30) */
+        ESP_RETURN_ON_ERROR( ahtxx_validate_crc(rx, BIT56_UINT8_BUFFER_SIZE), TAG, "CRC validation failed for measurement data" );
     }
 
     /* concat humidity signal */
-    const uint32_t humidity_sig = ((uint32_t)rx[1] << 12) | ((uint32_t)rx[2] << 4) | (rx[3] >> 4);
+    const uint32_t humidity_sig = ((uint32_t)rx[1] << 12) | ((uint32_t)rx[2] << 4) | ((uint32_t)rx[3] >> 4);
 
     /* concat temperature signal */
-    const uint32_t temperature_sig = ((uint32_t)(rx[3] & 0x0f) << 16) | ((uint32_t)rx[4] << 8) | rx[5];
+    const uint32_t temperature_sig = ((uint32_t)(rx[3] & 0x0f) << 16) | ((uint32_t)rx[4] << 8) | (uint32_t)rx[5];
 
     /* compute and set temperature */
     *temperature = ahtxx_convert_temperature_signal(temperature_sig);
 
     /* compute and set humidity */
     *humidity = ahtxx_convert_humidity_signal(humidity_sig);
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
     
     return ESP_OK;
 
@@ -553,7 +593,7 @@ esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature
     ESP_RETURN_ON_ERROR( ahtxx_get_measurement(handle, temperature, humidity), TAG, "read measurement for get measurements failed" );
 
     /* compute dew-point from temperature and humidity */
-    *dewpoint = ahtxx_calculate_dewpoint(*temperature, *humidity);
+    ESP_RETURN_ON_ERROR( ahtxx_calculate_dewpoint(*temperature, *humidity, dewpoint), TAG, "calculate dew-point for get measurements failed" );
 
     return ESP_OK;
 }
@@ -620,55 +660,6 @@ esp_err_t ahtxx_reset(ahtxx_handle_t handle) {
 
     /* attempt to check sensor calibration */
     ESP_RETURN_ON_ERROR( ahtxx_i2c_calibrate(device), TAG, "calibration for reset failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
-    
-    return ESP_OK;
-}
-
-esp_err_t ahtxx_reset__(ahtxx_handle_t handle) {
-    const bit8_uint8_buffer_t tx = { AHTXX_CMD_RESET };
-    ahtxx_status_register_t status_reg = { 0 };
-    ahtxx_device_t* device = (ahtxx_device_t*)handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( device );
-
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "write reset command for reset failed" );
-
-    /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_RESET_DELAY_MS));
-
-    /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for reset failed" );
-
-    /* handle sensor setup by sensor type */
-    if(device->config.sensor_type == AHTXX_AHT10 || device->config.sensor_type == AHTXX_AHT20) {
-        /* validate calibration status */
-        if(status_reg.bits.calibrated == false) {
-            /* attempt to write init command */
-            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for reset failed" );
-        }
-    } else {
-        /* validate register status */
-        if(status_reg.reg != AHTXX_STATUS_WORD) {
-            /* attempt to reset initialization registers */
-            ESP_RETURN_ON_ERROR( ahtxx_i2c_setup(device), TAG, "setup sensor for reset failed" );
-        }
-    }
-
-    /* attempt to read status register */
-    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), TAG, "read status register for reset failed" );
-
-    /* validate calibration status */
-    if(status_reg.bits.calibrated == false) {
-        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_STATE, TAG, "setup and initialize sensor for reset failed" );
-    }
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(AHTXX_CMD_DELAY_MS));
     
     return ESP_OK;
 }
@@ -679,8 +670,18 @@ esp_err_t ahtxx_remove(ahtxx_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t ahtxx_delete(ahtxx_handle_t handle) {
@@ -688,14 +689,12 @@ esp_err_t ahtxx_delete(ahtxx_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( ahtxx_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = ahtxx_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* ahtxx_get_fw_version(void) {

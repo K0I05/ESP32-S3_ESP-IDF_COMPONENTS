@@ -58,6 +58,12 @@ void i2c0_hmc5883l_task( void *pvParameters ) {
     for ( ;; ) {
         ESP_LOGI(APP_TAG, "######################## HMC5883L - START #########################");
         //
+        esp_err_t result = hmc5883l_calibrate(dev_hdl);
+        if(result != ESP_OK) {
+            ESP_LOGE(APP_TAG, "hmc5883l device calibrate failed (%s)", esp_err_to_name(result));
+        }
+        //
+        /*
         // handle sensor
         hmc5883l_magnetic_axes_data_t magnetic_axes;
         esp_err_t result = hmc5883l_get_magnetic_axes(dev_hdl, &magnetic_axes);
@@ -69,12 +75,14 @@ void i2c0_hmc5883l_task( void *pvParameters ) {
             ESP_LOGI(APP_TAG, "Compass Z-Axis:  %f mG", magnetic_axes.z_axis);
             ESP_LOGI(APP_TAG, "Compass Heading: %f °", magnetic_axes.heading);
         }
+        */
         //
         ESP_LOGI(APP_TAG, "######################## HMC5883L - END ###########################");
         //
         //
         // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE / 2 );
+        //vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        vTaskDelaySecUntil( &last_wake_time, 20 );
     }
     //
     // free resources

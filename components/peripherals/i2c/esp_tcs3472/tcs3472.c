@@ -644,6 +644,18 @@ static inline float tcs3472_convert_steps_to_time(const uint8_t steps, const boo
  */
 static inline float tcs3472_get_total_wait_time(tcs3472_device_t *const device) {
     const float init_time = 2.4f;
+
+    /* validate arguments */
+    if (!device) return init_time;
+
+    /* calculate integration time in milliseconds */
+    return init_time + device->config.integration_time + device->config.wait_time;
+}
+
+
+
+ static inline float tcs3472_get_total_wait_time____(tcs3472_device_t *const device) {
+    const float init_time = 2.4f;
     uint8_t atime_step = { 0 };
     uint8_t wtime_step = { 0 };
     tcs3472_config_register_t config = { 0 };
@@ -669,12 +681,12 @@ static inline float tcs3472_get_total_wait_time(tcs3472_device_t *const device) 
 }
 
 /**
- * @brief TCS3472 I2C HAL to setup and configuration.
+ * @brief TCS3472 I2C HAL to setup registers.
  * 
  * @param device TCS3472 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t tcs3472_i2c_setup(tcs3472_device_t *const device) {
+static inline esp_err_t tcs3472_i2c_setup_registers(tcs3472_device_t *const device) {
     tcs3472_enable_register_t       enable  = { 0 };
     tcs3472_config_register_t       config  = { 0 };
     tcs3472_persistence_register_t  persist = { 0 };
@@ -732,6 +744,9 @@ static inline esp_err_t tcs3472_i2c_setup(tcs3472_device_t *const device) {
     if(device->config.set_irq_thresholds) {
         ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_hi_register(device, device->config.irq_high_threshold), TAG, "write high irq threshold failed" );
         ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_lo_register(device, device->config.irq_low_threshold), TAG, "write low irq threshold failed" );
+    } else {
+        ESP_RETURN_ON_ERROR( tcs3472_i2c_get_threshold_hi_register(device, &device->config.irq_high_threshold), TAG, "read high irq threshold failed" );
+        ESP_RETURN_ON_ERROR( tcs3472_i2c_get_threshold_lo_register(device, &device->config.irq_low_threshold), TAG, "read low irq threshold failed" );
     }
 
     return ESP_OK;
@@ -749,10 +764,7 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     esp_err_t ret            = ESP_OK;
     uint64_t  start_time     = esp_timer_get_time();
     bool      data_is_ready  = false;
-    //uint8_t   hi_reg;
     uint8_t   lo_reg;
-    //bit8_uint8_buffer_t rx_hi_byte;
-    //bit8_uint8_buffer_t rx_lo_byte;
     uint16_t  rx_count;
 
     /* validate arguments */
@@ -764,19 +776,15 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
     /* set high and low data registers by RGBC channel type */
     switch(channel) {
         case TCS3472_CHANNEL_RED:
-            //hi_reg = TCS3472_REG_RDATAH_R;
             lo_reg = TCS3472_REG_RDATAL_R;
             break;
         case TCS3472_CHANNEL_GREEN:
-            //hi_reg = TCS3472_REG_GDATAH_R;
             lo_reg = TCS3472_REG_GDATAL_R;
             break;
         case TCS3472_CHANNEL_BLUE:
-            //hi_reg = TCS3472_REG_BDATAH_R;
             lo_reg = TCS3472_REG_BDATAL_R;  
             break;
         case TCS3472_CHANNEL_CLEAR:
-            //hi_reg = TCS3472_REG_CDATAH_R;
             lo_reg = TCS3472_REG_CDATAL_R;
             break;
         default:
@@ -800,13 +808,6 @@ static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device
         if (ESP_TIMEOUT_CHECK(start_time, wait_time * 1000))
             return ESP_ERR_TIMEOUT;
     } while (data_is_ready == false);
-
-    // attempt to read low channel byte from device.
-    //ESP_GOTO_ON_ERROR( tcs3472_i2c_read_byte_from(device, lo_reg, &rx_lo_byte), err, TAG, "read RGBC low channel data failed." );
-    // attempt to read high channel byte from device.
-    //ESP_GOTO_ON_ERROR( tcs3472_i2c_read_byte_from(device, hi_reg, &rx_hi_byte), err, TAG, "read RGBC high channel data failed." );
-    /* set output parameter */
-    //*count = (uint16_t)rx_lo_byte[0] | ((uint16_t)rx_hi_byte[0] << 8);
 
     // attempt to read low and high channels from device.
     ESP_GOTO_ON_ERROR( tcs3472_i2c_read_word_from(device, lo_reg, &rx_count), err, TAG, "read RGBC low and high data channels failed." );
@@ -854,7 +855,7 @@ esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_conf
     vTaskDelay(pdMS_TO_TICKS(TCS3472_CMD_DELAY_MS));
 
     /* attempt to reset the device and initialize registers */
-    ESP_GOTO_ON_ERROR(tcs3472_i2c_setup(device), err_handle, TAG, "setup registers for init failed");
+    ESP_GOTO_ON_ERROR(tcs3472_i2c_setup_registers(device), err_handle, TAG, "setup registers for init failed");
 
     /* set output parameter */
     *tcs3472_handle = (tcs3472_handle_t)device;
@@ -1028,9 +1029,8 @@ esp_err_t tcs3472_get_irq_thresholds(tcs3472_handle_t handle, uint16_t *const hi
     /* validate arguments */
     ESP_ARG_CHECK( device && high_threshold && low_threshold );
 
-    /* attempt to read high and low irq thresholds */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_threshold_hi_register(device, high_threshold), TAG, "read high irq threshold failed" );
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_threshold_lo_register(device, low_threshold), TAG, "read low irq threshold failed" );
+    *high_threshold = device->config.irq_high_threshold;
+    *low_threshold  = device->config.irq_low_threshold;
 
     return ESP_OK;
 }
@@ -1045,21 +1045,22 @@ esp_err_t tcs3472_set_irq_thresholds(tcs3472_handle_t handle, const uint16_t hig
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_hi_register(device, high_threshold), TAG, "write high irq threshold failed" );
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_threshold_lo_register(device, low_threshold), TAG, "write low irq threshold failed" );
 
+    /* set device configuration parameter */
+    device->config.irq_high_threshold = high_threshold;
+    device->config.irq_low_threshold  = low_threshold;
+    device->config.set_irq_thresholds = true;
+
     return ESP_OK;
 }
 
 esp_err_t tcs3472_get_gain_control(tcs3472_handle_t handle, tcs3472_gain_controls_t *const gain) {
-    tcs3472_control_register_t control = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read control register */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_control_register(device, &control), TAG, "read control register failed" );
-
     /* set output parameter */
-    *gain = control.bits.gain;
+    *gain = device->config.gain_control;
 
     return ESP_OK;
 }
@@ -1077,21 +1078,20 @@ esp_err_t tcs3472_set_gain_control(tcs3472_handle_t handle, const tcs3472_gain_c
     /* attempt to write control register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_control_register(device, control), TAG, "write control register failed" );
 
+    /* set device configuration parameter */
+    device->config.gain_control = gain;
+
     return ESP_OK;
 }
 
 esp_err_t tcs3472_get_integration_time(tcs3472_handle_t handle, float *const time) {
-    uint8_t atime = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read atime register */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_atime_register(device, &atime), TAG, "read atime register failed" );
-
     /* set output parameter */
-    *time = tcs3472_convert_steps_to_time(atime, false);
+    *time = device->config.integration_time;
 
     return ESP_OK;
 }
@@ -1108,45 +1108,38 @@ esp_err_t tcs3472_set_integration_time(tcs3472_handle_t handle, const float time
     /* attempt to write atime register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_atime_register(device, atime), TAG, "write atime register failed" );
 
+    /* set device configuration parameter */
+    device->config.integration_time = time;
+
     return ESP_OK;
 }
 
-
 esp_err_t tcs3472_get_wait_time(tcs3472_handle_t handle, float *const time) {
-    tcs3472_config_register_t config = { 0 };
-    uint8_t wtime = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_config_register(device, &config), TAG, "read configuration register failed" );
-
-    /* attempt to read wtime register */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_wtime_register(device, &wtime), TAG, "read wtime register failed" );
-
     /* set output parameter */
-    *time = tcs3472_convert_steps_to_time(wtime, config.bits.long_wait_enabled);
+    *time = device->config.wait_time;
 
     return ESP_OK;
 }
 
 esp_err_t tcs3472_set_wait_time(tcs3472_handle_t handle, const float time) {
-    tcs3472_config_register_t config = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_config_register(device, &config), TAG, "read configuration register failed" );
-
     /* convert time (ms) to steps */
-    const uint8_t wtime = tcs3472_convert_time_to_steps(time, config.bits.long_wait_enabled);
+    const uint8_t wtime = tcs3472_convert_time_to_steps(time, device->config.long_wait_enabled);
 
     /* attempt to write wtime register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_wtime_register(device, wtime), TAG, "write wtime register failed" );
+
+    /* set device configuration parameter */
+    device->config.wait_time = time;
 
     return ESP_OK;
 }
@@ -1200,6 +1193,50 @@ esp_err_t tcs3472_get_status(tcs3472_handle_t handle, bool *const data_ready, bo
     return ESP_OK;
 }
 
+esp_err_t tcs3472_enable_wait_time(tcs3472_handle_t handle) {
+    tcs3472_enable_register_t enable = { 0 };
+    tcs3472_device_t* device = (tcs3472_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read config register */
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_enable_register(device, &enable), TAG, "read enable register for enable wait time failed" );
+
+    /* initialize config register */
+    enable.bits.wait_enabled = true;
+
+    /* attempt to write config register */
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for enable wait time failed" );
+
+    /* set device configuration parameter */
+    device->config.wait_time_enabled = true;
+
+    return ESP_OK;
+}
+
+esp_err_t tcs3472_disable_wait_time(tcs3472_handle_t handle) {
+    tcs3472_enable_register_t enable = { 0 };
+    tcs3472_device_t* device = (tcs3472_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to read config register */
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_get_enable_register(device, &enable), TAG, "read enable register for disable wait time failed" );
+
+    /* initialize config register */
+    enable.bits.wait_enabled = false;
+
+    /* attempt to write config register */
+    ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for disable wait time failed" );
+
+    /* set device configuration parameter */
+    device->config.wait_time_enabled = false;
+
+    return ESP_OK;
+}
+
 esp_err_t tcs3472_enable_long_wait_time(tcs3472_handle_t handle) {
     tcs3472_config_register_t config = { 0 };
     tcs3472_device_t* device = (tcs3472_device_t*)handle;
@@ -1215,6 +1252,9 @@ esp_err_t tcs3472_enable_long_wait_time(tcs3472_handle_t handle) {
 
     /* attempt to write config register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_config_register(device, config), TAG, "write config register for enable long wait time failed" );
+
+    /* set device configuration parameter */
+    device->config.long_wait_enabled = true;
 
     return ESP_OK;
 }
@@ -1235,6 +1275,9 @@ esp_err_t tcs3472_disable_long_wait_time(tcs3472_handle_t handle) {
     /* attempt to write config register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_config_register(device, config), TAG, "write config register for disable long wait time failed" );
 
+    /* set device configuration parameter */
+    device->config.long_wait_enabled = false;
+
     return ESP_OK;
 }
 
@@ -1253,6 +1296,9 @@ esp_err_t tcs3472_enable_adc(tcs3472_handle_t handle) {
 
     /* attempt to write enable register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for enable RGBC ADC failed" );
+
+    /* set device configuration parameter */
+    device->config.adc_enabled = true;
 
     return ESP_OK;
 }
@@ -1273,6 +1319,9 @@ esp_err_t tcs3472_disable_adc(tcs3472_handle_t handle) {
     /* attempt to write enable register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for disable RGBC ADC failed" );
 
+    /* set device configuration parameter */
+    device->config.adc_enabled = false;
+
     return ESP_OK;
 }
 
@@ -1291,6 +1340,9 @@ esp_err_t tcs3472_enable_power(tcs3472_handle_t handle) {
 
     /* attempt to write enable register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for enable power failed" );
+
+    /* set device configuration parameter */
+    device->config.power_enabled = true;
 
     return ESP_OK;
 }
@@ -1311,6 +1363,9 @@ esp_err_t tcs3472_disable_power(tcs3472_handle_t handle) {
     /* attempt to write enable register */
     ESP_RETURN_ON_ERROR( tcs3472_i2c_set_enable_register(device, enable), TAG, "write enable register for disable power failed" );
 
+    /* set device configuration parameter */
+    device->config.power_enabled = false;
+
     return ESP_OK;
 }
 
@@ -1320,7 +1375,18 @@ esp_err_t tcs3472_remove(tcs3472_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t tcs3472_delete(tcs3472_handle_t handle) {
@@ -1328,14 +1394,12 @@ esp_err_t tcs3472_delete(tcs3472_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( tcs3472_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = tcs3472_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* tcs3472_get_fw_version(void) {

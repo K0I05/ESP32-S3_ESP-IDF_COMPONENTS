@@ -49,17 +49,17 @@ extern "C" {
 
 #define INA226_COMPONENT_NAME              "esp_ina226"
 /** Version release date  */
-#define INA226_FW_VERSION_DATE             "2025-06-07"
+#define INA226_FW_VERSION_DATE             "2025-10-12"
 /** Major version number (X.x.x) */
 #define INA226_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
 #define INA226_FW_VERSION_MINOR            2
 /** Patch version number (x.x.X) */
-#define INA226_FW_VERSION_PATCH            7
+#define INA226_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define INA226_FW_SEMANTIC_VERSION         "1.2.7-4"
+#define INA226_FW_SEMANTIC_VERSION         "1.2.8-71"
 /** Git version hash */
-#define INA226_FW_GIT_SHORT_SHA            "f32c566"
+#define INA226_FW_GIT_SHORT_SHA            "c5f4ea3"
 
 
 /**

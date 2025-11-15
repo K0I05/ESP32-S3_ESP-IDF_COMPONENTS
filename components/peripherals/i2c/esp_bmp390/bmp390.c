@@ -961,17 +961,13 @@ esp_err_t bmp390_get_data_status(bmp390_handle_t handle, bool *const temperature
 }
 
 esp_err_t bmp390_get_power_mode(bmp390_handle_t handle, bmp390_power_modes_t *const power_mode) {
-    bmp390_power_control_register_t pwrc = { 0 };
     bmp390_device_t* device = (bmp390_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read power control register */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_get_power_control_register(device, &pwrc), TAG, "read power control register for get power mode failed" );
-
     /* set output parameter */
-    *power_mode = pwrc.bits.power_mode;
+    *power_mode = device->config.power_mode;
 
     return ESP_OK;
 }
@@ -999,17 +995,13 @@ esp_err_t bmp390_set_power_mode(bmp390_handle_t handle, const bmp390_power_modes
 }
 
 esp_err_t bmp390_get_pressure_oversampling(bmp390_handle_t handle, bmp390_pressure_oversampling_t *const oversampling) {
-    bmp390_oversampling_register_t osmp = { 0 };
     bmp390_device_t* device = (bmp390_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_get_oversampling_register(device, &osmp), TAG, "read oversampling register for get pressure oversampling failed" );
-
     /* set output parameter */
-    *oversampling = osmp.bits.pressure_oversampling;
+    *oversampling = device->config.pressure_oversampling;
 
     return ESP_OK;
 }
@@ -1037,17 +1029,13 @@ esp_err_t bmp390_set_pressure_oversampling(bmp390_handle_t handle, const bmp390_
 }
 
 esp_err_t bmp390_get_temperature_oversampling(bmp390_handle_t handle, bmp390_temperature_oversampling_t *const oversampling) {
-    bmp390_oversampling_register_t osmp = { 0 };
     bmp390_device_t* device = (bmp390_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read oversampling register */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_get_oversampling_register(device, &osmp), TAG, "read oversampling register for get temperature oversampling failed" );
-
     /* set output parameter */
-    *oversampling = osmp.bits.temperature_oversampling;
+    *oversampling = device->config.temperature_oversampling;
 
     return ESP_OK;
 }
@@ -1075,17 +1063,13 @@ esp_err_t bmp390_set_temperature_oversampling(bmp390_handle_t handle, const bmp3
 }
 
 esp_err_t bmp280_get_output_data_rate(bmp390_handle_t handle, bmp390_output_data_rates_t *const output_data_rate) {
-    bmp390_output_data_rate_register_t odr = { 0 };
     bmp390_device_t* device = (bmp390_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_get_output_data_rate_register(device, &odr), TAG, "read output data rate register for get standby time failed" );
-
     /* set output parameter */
-    *output_data_rate = odr.bits.output_data_rate;
+    *output_data_rate = device->config.output_data_rate;
 
     return ESP_OK;
 }
@@ -1113,17 +1097,13 @@ esp_err_t bmp280_set_output_data_rate(bmp390_handle_t handle, const bmp390_outpu
 }
 
 esp_err_t bmp390_get_iir_filter(bmp390_handle_t handle, bmp390_iir_filters_t *const iir_filter) {
-    bmp390_config_register_t config = { 0 };
     bmp390_device_t* device = (bmp390_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp390_i2c_get_config_register(device, &config), TAG, "read configuration register for get IIR filter failed" );
-
     /* set output parameter */
-    *iir_filter = config.bits.iir_filter;
+    *iir_filter = device->config.iir_filter;
 
     return ESP_OK;
 }
@@ -1171,7 +1151,18 @@ esp_err_t bmp390_remove(bmp390_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t bmp390_delete(bmp390_handle_t handle) {
@@ -1181,16 +1172,15 @@ esp_err_t bmp390_delete(bmp390_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( bmp390_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = bmp390_remove(handle);
 
     /* validate handle instance and free handles */
-    if(handle) {
+    if(device->cal_factors) {
         free(device->cal_factors);
-        //free(dev->conv_cal_factors);
-        free(handle);
     }
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* bmp390_get_fw_version(void) {

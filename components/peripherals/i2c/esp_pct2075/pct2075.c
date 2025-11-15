@@ -570,36 +570,45 @@ static inline esp_err_t pct2075_i2c_setup_registers(pct2075_device_t *const devi
         /* set overtemperature shutdown and hysteresis temperatures */
         ESP_RETURN_ON_ERROR( pct2075_i2c_set_ots_temperature_register(device, ots), TAG, "setting overtemperature set-point temperature register failed" );
         ESP_RETURN_ON_ERROR( pct2075_i2c_set_hys_temperature_register(device, hys), TAG, "setting hysteresis set-point temperature register failed" );
+    } else {
+        int16_t ots = { 0 };
+        int16_t hys = { 0 };
+
+        /* get overtemperature shutdown and hysteresis temperatures */
+        ESP_RETURN_ON_ERROR( pct2075_i2c_get_ots_temperature_register(device, &ots), TAG, "getting overtemperature set-point temperature register failed" );
+        ESP_RETURN_ON_ERROR( pct2075_i2c_get_hys_temperature_register(device, &hys), TAG, "getting hysteresis set-point temperature register failed" );
+
+        /* set device configuration parameters */
+        device->config.ots_temperature = pct2075_convert_int16_signal_to_temperature(ots);
+        device->config.hys_temperature = pct2075_convert_int16_signal_to_temperature(hys);
     }
 
     /* configure sampling interval */
     if(device->config.configure_sampling == true) {
         smp_reg.bits.tidle = pct2075_convert_sampling_period_to_steps(device->config.sampling_period);
         ESP_RETURN_ON_ERROR( pct2075_i2c_set_sampling_period_register(device, smp_reg), TAG, "setting sampling period register failed" );
+    } else {
+        /* get sampling interval */
+        ESP_RETURN_ON_ERROR( pct2075_i2c_get_sampling_period_register(device, &smp_reg), TAG, "getting sampling period register failed" );
+
+        /* set device configuration parameters */
+        device->config.sampling_period = pct2075_convert_steps_to_sampling_period(smp_reg.bits.tidle);
     }
 
     /* read configuration register */
     ESP_RETURN_ON_ERROR( pct2075_i2c_get_config_register(device, &cfg_reg), TAG, "read configuration register failed" );
 
     /* configure operation mode */
-    if(device->config.operation_mode != PCT2075_OS_OP_MODE_COMPARATOR) {
-        cfg_reg.bits.operation_mode = PCT2075_OS_OP_MODE_INTERRUPT; // set operation mode to interrupt
-    }
+    cfg_reg.bits.operation_mode = device->config.operation_mode; // set operation mode to interrupt
 
     /* configure polarity */
-    if(device->config.polarity != PCT2075_OS_POL_ACTIVE_LOW) {
-        cfg_reg.bits.polarity = PCT2075_OS_POL_ACTIVE_HIGH; // set polarity to high
-    }
+    cfg_reg.bits.polarity = device->config.polarity; // set polarity
 
     /* configure fault queue */
-    if(device->config.fault_queue != PCT2075_OS_FAULT_QUEUE_1) {
-        cfg_reg.bits.fault_queue = device->config.fault_queue; // set fault queue
-    }
+    cfg_reg.bits.fault_queue = device->config.fault_queue; // set fault queue
 
     /* enable or disable (i.e. shutdown) pct2075 */
-    if(device->config.shutdown_enabled == true) {
-        cfg_reg.bits.shutdown_enabled = true; // shutdown enabled
-    }
+    cfg_reg.bits.shutdown_enabled = device->config.shutdown_enabled; // shutdown enabled
 
     /* write configuration register */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_config_register(device, cfg_reg), TAG, "write configuration register failed" );
@@ -677,17 +686,13 @@ esp_err_t pct2075_get_temperature(pct2075_handle_t handle, float *const temperat
 }
 
 esp_err_t pct2075_get_ots_temperature(pct2075_handle_t handle, float *const temperature) {
-    int16_t ots = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature );
 
-    /* attempt i2c read transaction */
-     ESP_RETURN_ON_ERROR( pct2075_i2c_get_ots_temperature_register(device, &ots), TAG, "read overtemperature shutdown register failed" );
-
     /* set output parameter */
-    *temperature = pct2075_convert_int16_signal_to_temperature(ots);
+    *temperature = device->config.ots_temperature;
 
     return ESP_OK;
 }
@@ -704,21 +709,21 @@ esp_err_t pct2075_set_ots_temperature(pct2075_handle_t handle, const float tempe
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_ots_temperature_register(device, ots_temperature), TAG, "write overtemperature shutdown temperature register failed" );
 
+    /* set device configuration parameter */
+    device->config.ots_temperature     = temperature;
+    device->config.configure_setpoints = true;
+
     return ESP_OK;
 }
 
 esp_err_t pct2075_get_hys_temperature(pct2075_handle_t handle, float *const temperature) {
-    int16_t hys = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_get_hys_temperature_register(device, &hys), TAG, "read hysteresis temperature register failed" );
-
     /* set output parameter */
-    *temperature = pct2075_convert_int16_signal_to_temperature(hys);
+    *temperature = device->config.hys_temperature;
 
     return ESP_OK;
 }
@@ -735,21 +740,21 @@ esp_err_t pct2075_set_hys_temperature(pct2075_handle_t handle, const float tempe
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_hys_temperature_register(device, hys_temperature), TAG, "write hysteresis temperature register failed" );
 
+    /* set device configuration parameter */
+    device->config.hys_temperature     = temperature;
+    device->config.configure_setpoints = true;
+
     return ESP_OK;
 }
 
 esp_err_t pct2075_get_sampling_period(pct2075_handle_t handle, uint16_t *const period) {
-    pct2075_sampling_period_register_t reg = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && period );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_get_sampling_period_register(device, &reg), TAG, "read sampling period register failed" );
-
-    /* convert time steps to sampling period */
-    *period = pct2075_convert_steps_to_sampling_period(reg.bits.tidle);
+    /* set output parameter */
+    *period = device->config.sampling_period;
 
     return ESP_OK;
 }
@@ -767,23 +772,21 @@ esp_err_t pct2075_set_sampling_period(pct2075_handle_t handle, const uint16_t pe
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_sampling_period_register(device, reg), TAG, "write sampling period register failed" );
 
+    /* set device configuration parameter */
+    device->config.sampling_period    = period;
+    device->config.configure_sampling = true;
+
     return ESP_OK;
 }
 
 esp_err_t pct2075_get_operation_mode(pct2075_handle_t handle, pct2075_os_operation_modes_t *const operation_mode) {
-    pct2075_config_register_t cfg_reg = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && operation_mode );
 
-    /* read configuration register */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_get_config_register(device, &cfg_reg), TAG, "read configuration register failed" );
-
     /* set operation mode */
-    *operation_mode = (cfg_reg.bits.operation_mode == PCT2075_OS_OP_MODE_COMPARATOR)
-        ? PCT2075_OS_OP_MODE_COMPARATOR     // true - set operation mode to comparator
-        : PCT2075_OS_OP_MODE_INTERRUPT;     // false - set operation mode to interrupt
+    *operation_mode = device->config.operation_mode;
 
     return ESP_OK;
 }
@@ -806,23 +809,20 @@ esp_err_t pct2075_set_operation_mode(pct2075_handle_t handle, const pct2075_os_o
     /* write configuration register */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_config_register(device, cfg_reg), TAG, "write configuration register failed" );
 
+    /* set device configuration parameter */
+    device->config.operation_mode = operation_mode;
+
     return ESP_OK;
 }
 
 esp_err_t pct2075_get_polarity(pct2075_handle_t handle, pct2075_os_polarities_t *const polarity) {
-    pct2075_config_register_t cfg_reg = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && polarity );
 
-    /* read configuration register */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_get_config_register(device, &cfg_reg), TAG, "read configuration register failed" );
-
     /* set polarity */
-    *polarity = (cfg_reg.bits.polarity == PCT2075_OS_POL_ACTIVE_LOW)
-        ? PCT2075_OS_POL_ACTIVE_LOW     // true - set polarity to active low
-        : PCT2075_OS_POL_ACTIVE_HIGH;   // false - set polarity to active high
+    *polarity = device->config.polarity;
 
     return ESP_OK;
 }
@@ -845,29 +845,20 @@ esp_err_t pct2075_set_polarity(pct2075_handle_t handle, const pct2075_os_polarit
     /* write configuration register */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_config_register(device, cfg_reg), TAG, "write configuration register failed" );
 
+    /* set device configuration parameter */
+    device->config.polarity = polarity;
+
     return ESP_OK;
 }
 
 esp_err_t pct2075_get_fault_queue(pct2075_handle_t handle, pct2075_os_fault_queues_t *const fault_queue) {
-    pct2075_config_register_t cfg_reg = { 0 };
     pct2075_device_t* device = (pct2075_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && fault_queue );
 
-    /* read configuration register */
-    ESP_RETURN_ON_ERROR( pct2075_i2c_get_config_register(device, &cfg_reg), TAG, "read configuration register failed" );
-
     /* set fault queue */
-    if(cfg_reg.bits.fault_queue == PCT2075_OS_FAULT_QUEUE_1) {
-        *fault_queue = PCT2075_OS_FAULT_QUEUE_1; // set fault queue to 1
-    } else if(cfg_reg.bits.fault_queue == PCT2075_OS_FAULT_QUEUE_2) {
-        *fault_queue = PCT2075_OS_FAULT_QUEUE_2; // set fault queue to 2
-    } else if(cfg_reg.bits.fault_queue == PCT2075_OS_FAULT_QUEUE_4) {
-        *fault_queue = PCT2075_OS_FAULT_QUEUE_4; // set fault queue to 4
-    } else {
-        *fault_queue = PCT2075_OS_FAULT_QUEUE_6; // set fault queue to 6
-    }
+    *fault_queue = device->config.fault_queue;
 
     return ESP_OK;
 }
@@ -895,6 +886,9 @@ esp_err_t pct2075_set_fault_queue(pct2075_handle_t handle, const pct2075_os_faul
 
     /* write configuration register */
     ESP_RETURN_ON_ERROR( pct2075_i2c_set_config_register(device, cfg_reg), TAG, "write configuration register failed" );
+
+    /* set device configuration parameter */
+    device->config.fault_queue = fault_queue;
 
     return ESP_OK;
 }
@@ -943,8 +937,18 @@ esp_err_t pct2075_remove(pct2075_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* remove device from i2c master bus */
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t pct2075_delete(pct2075_handle_t handle) {
@@ -952,14 +956,12 @@ esp_err_t pct2075_delete(pct2075_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( pct2075_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret = pct2075_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* pct2075_get_fw_version(void) {

@@ -69,7 +69,8 @@ void i2c0_sht4x_task( void *pvParameters ) {
         //
         //
         // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        //vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        vTaskDelaySecUntil( &last_wake_time, 1 );
     }
     //
     // free resources

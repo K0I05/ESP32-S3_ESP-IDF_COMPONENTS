@@ -35,7 +35,7 @@
  * MIT Licensed as described in the file LICENSE
  */
 
-#include "kalman_motion.h"
+#include "include/kalman_motion.h"
 #include <string.h>
 #include <stdio.h>
 #include <esp_check.h>

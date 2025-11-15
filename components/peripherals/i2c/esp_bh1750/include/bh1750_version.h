@@ -49,17 +49,17 @@ extern "C" {
 
 #define BH1750_COMPONENT_NAME              "esp_bh1750"
 /** Version release date  */
-#define BH1750_FW_VERSION_DATE             "2025-06-07"
+#define BH1750_FW_VERSION_DATE             "2025-10-12"
 /** Major version number (X.x.x) */
 #define BH1750_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
 #define BH1750_FW_VERSION_MINOR            2
 /** Patch version number (x.x.X) */
-#define BH1750_FW_VERSION_PATCH            7
+#define BH1750_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define BH1750_FW_SEMANTIC_VERSION         "1.2.7-4"
+#define BH1750_FW_SEMANTIC_VERSION         "1.2.8-71"
 /** Git version hash */
-#define BH1750_FW_GIT_SHORT_SHA            "f32c566"
+#define BH1750_FW_GIT_SHORT_SHA            "c5f4ea3"
 
 
 /**

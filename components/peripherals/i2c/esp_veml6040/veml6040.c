@@ -200,7 +200,7 @@ static inline esp_err_t veml6040_i2c_get_signal(veml6040_device_t *const device,
     ESP_ARG_CHECK( device );
 
     /* get integration time from map i.e. time to wait for measurement */
-    float it_ms = veml6040_integration_time_map[device->config.integration_time][VEML6040_IT_OPT_IT_INDEX];
+    const float it_ms = veml6040_integration_time_map[device->config.integration_time][VEML6040_IT_OPT_IT_INDEX];
 
     /* wait for measurement */
     vTaskDelay(pdMS_TO_TICKS( it_ms ));
@@ -249,9 +249,6 @@ static inline esp_err_t veml6040_i2c_get_configuration_register(veml6040_device_
     /* set output parameter */
     reg->reg = config;
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(VEML6040_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -276,9 +273,6 @@ static inline esp_err_t veml6040_i2c_set_configuration_register(veml6040_device_
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( veml6040_i2c_write_word_to(device, VEML6040_CMD_CONF, config.reg), TAG, "write configuration register for set configuration register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(VEML6040_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -586,7 +580,18 @@ esp_err_t veml6040_remove(veml6040_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    return i2c_master_bus_rm_device(device->i2c_handle);
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
+    return ESP_OK;
 }
 
 esp_err_t veml6040_delete(veml6040_handle_t handle) {
@@ -594,14 +599,12 @@ esp_err_t veml6040_delete(veml6040_handle_t handle) {
     ESP_ARG_CHECK( handle );
 
     /* remove device from master bus */
-    ESP_RETURN_ON_ERROR( veml6040_remove(handle), TAG, "unable to remove device from i2c master bus, delete handle failed" );
+    esp_err_t ret =  veml6040_remove(handle);
 
-    /* validate handle instance and free handles */
-    if(handle) {
-        free(handle);
-    }
+    /* free handles */
+    free(handle);
 
-    return ESP_OK;
+    return ret;
 }
 
 const char* veml6040_get_fw_version(void) {

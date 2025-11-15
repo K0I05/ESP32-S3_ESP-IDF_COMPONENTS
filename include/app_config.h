@@ -55,7 +55,7 @@ extern "C" {
 #define I2C0_MASTER_SCL_IO             GPIO_NUM_48 // yellow
 //
 #define I2C0_TASK_SAMPLING_RATE        (10) // seconds
-#define I2C0_TASK_STACK_SIZE           (TSK_MINIMAL_STACK_SIZE * 8)
+#define I2C0_TASK_STACK_SIZE           (TSK_MINIMAL_STACK_SIZE * 10)
 #define I2C0_TASK_PRIORITY             (tskIDLE_PRIORITY + 2)
 
 #define OWB0_MASTER_DEVICE_MAX         (8)

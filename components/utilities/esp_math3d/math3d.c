@@ -33,7 +33,7 @@
  * MIT Licensed as described in the file LICENSE
  */
 
-#include "math3d.h"
+#include "include/math3d.h"
 #include <string.h>
 #include <stdio.h>
 
