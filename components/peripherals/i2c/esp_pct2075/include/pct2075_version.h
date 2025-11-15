@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@
  */
 
 /**
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * MIT Licensed as described in the file LICENSE
  */
@@ -49,7 +49,7 @@ extern "C" {
 
 #define PCT2075_COMPONENT_NAME              "esp_pct2075"
 /** Version release date  */
-#define PCT2075_FW_VERSION_DATE             "2025-10-12"
+#define PCT2075_FW_VERSION_DATE             "2025-11-15"
 /** Major version number (X.x.x) */
 #define PCT2075_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define PCT2075_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define PCT2075_FW_SEMANTIC_VERSION         "1.2.8-71"
+#define PCT2075_FW_SEMANTIC_VERSION         "1.2.8-77"
 /** Git version hash */
-#define PCT2075_FW_GIT_SHORT_SHA            "c5f4ea3"
+#define PCT2075_FW_GIT_SHORT_SHA            "74b1c2c"
 
 
 /**

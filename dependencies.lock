@@ -16,7 +16,10 @@ dependencies:
     source:
       path: C:\Users\lavco\OneDrive\Documents\PlatformIO\Projects\ESP32-S3_ESP-IDF_COMPONENTS\components\schedule\esp_time_into_interval
       type: local
-    version: 1.2.7
+    targets:
+    - esp32
+    - esp32s3
+    version: 1.2.8
   k0i05/esp_type_utils:
     dependencies: []
     source:
@@ -28,6 +31,6 @@ direct_dependencies:
 - idf
 - k0i05/esp_time_into_interval
 - k0i05/esp_type_utils
-manifest_hash: 1b96e1e57ecf589654e0dbab15bc2c5aee9908b9b6c911f55912f559681483d3
+manifest_hash: a661849b3ad6e21e1bbc1c6a8a0f1d120c1668396aa98982eb1d5bdd78a0bbac
 target: esp32s3
 version: 2.0.0
