@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define LTR390UV_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define LTR390UV_FW_SEMANTIC_VERSION         "1.2.8-77"
+#define LTR390UV_FW_SEMANTIC_VERSION         "1.2.8-83"
 /** Git version hash */
-#define LTR390UV_FW_GIT_SHORT_SHA            "74b1c2c"
+#define LTR390UV_FW_GIT_SHORT_SHA            "17bd4e2"
 
 
 /**

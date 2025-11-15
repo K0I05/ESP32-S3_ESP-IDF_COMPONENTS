@@ -352,9 +352,6 @@ static inline esp_err_t hdc1080_i2c_get_serial_number_register(hdc1080_device_t 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* delay task before next i2c transaction */
-    vTaskDelay( pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS) );
-
     return ESP_ERR_NOT_SUPPORTED;
 }
 
@@ -372,9 +369,6 @@ static inline esp_err_t hdc1080_i2c_get_manufacturer_id_register(hdc1080_device_
     /* attempt to read manufacturer identifier */
     ESP_RETURN_ON_ERROR( hdc1080_i2c_read_word_from(device, HDC1080_REG_MANUFACTURER_ID, reg), TAG, "read manufacturer identifier failed" );
 
-    /* delay task before next i2c transaction */
-    vTaskDelay( pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS) );
-
     return ESP_OK;
 }
 
@@ -391,9 +385,6 @@ static inline esp_err_t hdc1080_i2c_get_device_id_register(hdc1080_device_t *con
 
     /* attempt to read device identifier */
     ESP_RETURN_ON_ERROR( hdc1080_i2c_read_word_from(device, HDC1080_REG_DEVICE_ID, reg), TAG, "read device identifier failed" );
-
-    /* delay task before next i2c transaction */
-    vTaskDelay( pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS) );
 
     return ESP_OK;
 }
@@ -415,9 +406,6 @@ static inline esp_err_t hdc1080_i2c_get_config_register(hdc1080_device_t *const 
 
     /* set output parameter */
     reg->reg = config;
-
-    /* delay task before next i2c transaction */
-    vTaskDelay( pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS) );
 
     return ESP_OK;
 }
@@ -442,9 +430,6 @@ static inline esp_err_t hdc1080_i2c_set_config_register(hdc1080_device_t *const 
 
     /* attempt to write configuration register */
     ESP_RETURN_ON_ERROR( hdc1080_i2c_write_word_to(device, HDC1080_REG_CONFIGURATION, config.reg), TAG, "write configuration register failed" );
-
-    /* delay task before next i2c transaction */
-    vTaskDelay( pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS) );
 
     return ESP_OK;
 }
@@ -593,7 +578,7 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
     ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, read temperature failed" );
 
     /* concat temperature bytes */
-    const uint16_t t_raw = ((uint16_t)rx[0] << 8) | rx[1];
+    const uint16_t t_raw = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
 
     /* convert temperature and set output parameter */
     *temperature = hdc1080_convert_temperature_signal(t_raw);
@@ -618,7 +603,7 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
     ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, read humidity failed" );
 
     /* concat humidity bytes */
-    const uint16_t h_raw = ((uint16_t)rx[0] << 8) | rx[1];
+    const uint16_t h_raw = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
 
     /* convert humidity and set output parameter */
     *humidity = hdc1080_convert_humidity_signal(h_raw);

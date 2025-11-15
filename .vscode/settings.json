@@ -22,5 +22,8 @@
     "uart",
     "UART"
   ],
-  "svg.preview.background": "black"
+  "svg.preview.background": "black",
+  "files.associations": {
+    "format": "c"
+  }
 }

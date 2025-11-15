@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define PCT2075_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define PCT2075_FW_SEMANTIC_VERSION         "1.2.8-77"
+#define PCT2075_FW_SEMANTIC_VERSION         "1.2.8-83"
 /** Git version hash */
-#define PCT2075_FW_GIT_SHORT_SHA            "74b1c2c"
+#define PCT2075_FW_GIT_SHORT_SHA            "17bd4e2"
 
 
 /**

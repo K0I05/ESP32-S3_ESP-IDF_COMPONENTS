@@ -42,38 +42,6 @@ Once a driver instance is instantiated the sensor is ready for usage as shown in
 ```c
 #include <bme680.h>
 
-
-static inline void print_registers(bme680_handle_t handle) {
-    /* configuration registers */
-    bme680_control_measurement_register_t ctrl_meas_reg;
-    bme680_control_humidity_register_t    ctrl_humi_reg;
-    bme680_config_register_t              config_reg;
-    bme680_control_gas0_register_t        ctrl_gas0_reg;
-    bme680_control_gas1_register_t        ctrl_gas1_reg;
-
-    /* attempt to read control humidity register */
-    bme680_get_control_humidity_register(handle, &ctrl_humi_reg);
-
-    /* attempt to read control measurement register */
-    bme680_get_control_measurement_register(handle, &ctrl_meas_reg);
-
-    /* attempt to read configuration register */
-    bme680_get_configuration_register(handle, &config_reg);
-
-    /* attempt to read control gas 0 register */
-    bme680_get_control_gas0_register(handle, &ctrl_gas0_reg);
-
-    /* attempt to read control gas 1 register */
-    bme680_get_control_gas1_register(handle, &ctrl_gas1_reg);
-
-    ESP_LOGI(APP_TAG, "Variant Id          (0x%02x): %s", handle->variant_id,uint8_to_binary(handle->variant_id));
-    ESP_LOGI(APP_TAG, "Configuration       (0x%02x): %s", config_reg.reg,    uint8_to_binary(config_reg.reg));
-    ESP_LOGI(APP_TAG, "Control Measurement (0x%02x): %s", ctrl_meas_reg.reg, uint8_to_binary(ctrl_meas_reg.reg));
-    ESP_LOGI(APP_TAG, "Control Humidity    (0x%02x): %s", ctrl_humi_reg.reg, uint8_to_binary(ctrl_humi_reg.reg));
-    ESP_LOGI(APP_TAG, "Control Gas 0       (0x%02x): %s", ctrl_gas0_reg.reg, uint8_to_binary(ctrl_gas0_reg.reg));
-    ESP_LOGI(APP_TAG, "Control Gas 1       (0x%02x): %s", ctrl_gas1_reg.reg, uint8_to_binary(ctrl_gas1_reg.reg));
-}
-
 void i2c0_bme680_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
     TickType_t          last_wake_time  = xTaskGetTickCount ();
@@ -124,4 +92,4 @@ void i2c0_bme680_task( void *pvParameters ) {
 }
 ```
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

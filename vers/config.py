@@ -32,6 +32,8 @@ component_list = [
                   Component(name="esp_type_utils", header_name="type_utils", relative_path="utilities\\esp_type_utils"),
                   # uuid
                   Component(name="esp_uuid", header_name="uuid", relative_path="utilities\\esp_uuid"),
+                  # cla
+                  Component(name="esp_cla", header_name="cla", relative_path="utilities\\esp_cla"),
                   
                   ### Peripherals ###
                   # adc peripherals 

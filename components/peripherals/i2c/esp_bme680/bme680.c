@@ -226,17 +226,30 @@ static inline esp_err_t bme680_i2c_write_byte_to(bme680_device_t *const device, 
 /**
  * @brief Calculates dew-point temperature from air temperature and relative humidity.
  *
- * @param[in] temperature air temperature in degrees Celsius.
- * @param[in] humidity relative humidity in percent.
- * @return float calculated dew-point temperature in degrees Celsius.
+ * @param[in] temperature Air temperature in degrees Celsius (valid range: -40 to 80°C).
+ * @param[in] humidity Relative humidity in percent (valid range: 0 to 100%).
+ * @param[out] dewpoint Calculated dew-point temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if parameters are out of range.
  */
-static inline float bme680_calculate_dewpoint(const float temperature, const float humidity) {
-    // validate parameters
-    if(temperature > 80.0f || temperature < -40.0f) return ESP_ERR_INVALID_ARG;
-    if(humidity > 100.0f || humidity < 0.0f) return ESP_ERR_INVALID_ARG;
-    // calculate dew-point temperature
-    float H = (log10f(humidity)-2.0f)/0.4343f + (17.62f*temperature)/(243.12f+temperature);
-    return 243.12f*H/(17.62f-H);
+static inline esp_err_t bme680_calculate_dewpoint(const float temperature, const float humidity, float *dewpoint) {
+    /* validate parameters */
+    ESP_ARG_CHECK( dewpoint );
+    
+    if(temperature > 80.0f || temperature < -40.0f) {
+        ESP_LOGE(TAG, "Temperature %.2f°C out of valid range (-40 to 80°C)", temperature);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    if(humidity > 100.0f || humidity < 0.0f) {
+        ESP_LOGE(TAG, "Humidity %.2f%% out of valid range (0 to 100%%)", humidity);
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    /* calculate dew-point temperature using Magnus formula */
+    float H = (log10f(humidity) - 2.0f) / 0.4343f + (17.62f * temperature) / (243.12f + temperature);
+    *dewpoint = 243.12f * H / (17.62f - H);
+    
+    return ESP_OK;
 }
 
 /**
@@ -332,6 +345,13 @@ static inline float bme680_compensate_gas_resistance(bme680_device_t *const devi
     return var1 * lookup_k2_range[gas_range] / (adc_gas_res - 512.0f + var1);
 }
 
+/**
+ * @brief Calculates the heater resistance setting for a given temperature.
+ * 
+ * @param device BME680 device descriptor.
+ * @param temperature Desired heater temperature in degrees Celsius.
+ * @return uint8_t Heater resistance setting.
+ */
 static inline uint8_t bme680_compensate_heater_resistance(bme680_device_t *const device, uint16_t temperature) {
     /* Cap temperature */
     if (temperature > 400) {
@@ -428,12 +448,12 @@ static inline uint32_t bme680_get_measurement_duration(bme680_device_t *const de
 }
 
 /**
- * @brief Gets the calibration factors onboard the bme680.  see datasheet for details.
+ * @brief BME680 I2C HAL read the calibration factors.  See datasheet for details.
  *
  * @param[in] device BME680 device descriptor..
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bme680_get_cal_factors(bme680_device_t *const device) {
+static inline esp_err_t bme680_i2c_get_cal_factors(bme680_device_t *const device) {
     bit16_uint8_buffer_t rx;
 
     /* validate arguments */
@@ -493,20 +513,17 @@ static inline esp_err_t bme680_get_cal_factors(bme680_device_t *const device) {
     ESP_LOGD(TAG, "par_P9=%d", handle->dev_cal_factors->par_P9);
     ESP_LOGD(TAG, "par_P10=%d", handle->dev_cal_factors->par_P10);
     */
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
     
     return ESP_OK;
 }
 
 /**
- * @brief Setup and configuration of BME680 gas and heater profile registers.
+ * @brief BME680 I2C HAL setup and configure gas and heater profile registers.
  * 
  * @param device BME680 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bme680_setup_heater_profiles(bme680_device_t *const device, bme680_heater_setpoints_t *const heater_setpoint) {
+static inline esp_err_t bme680_i2c_setup_heater_profiles(bme680_device_t *const device, bme680_heater_setpoints_t *const heater_setpoint) {
     uint8_t i;
     uint8_t shared_dur;
     uint8_t write_len = 0;
@@ -593,109 +610,8 @@ static inline esp_err_t bme680_setup_heater_profiles(bme680_device_t *const devi
         ESP_RETURN_ON_ERROR(bme680_i2c_write_byte_to(device, rh_reg_addr[i], rh_reg_data[i]), TAG, "unable to write resistance heater profile, setup heater setpoints failed");
         ESP_RETURN_ON_ERROR(bme680_i2c_write_byte_to(device, gw_reg_addr[i], gw_reg_data[i]), TAG, "unable to write gas wait profile, setup heater setpoints failed");
 
-        ESP_LOGI(TAG, "bme680_setup_heater_profiles: rh_reg_data %d | gw_reg_data %d", rh_reg_data[i], gw_reg_data[i]);
+        ESP_LOGI(TAG, "bme680_i2c_setup_heater_profiles: rh_reg_data %d | gw_reg_data %d", rh_reg_data[i], gw_reg_data[i]);
     }
-
-    return ESP_OK;
-}
-
-/**
- * @brief Setup and configuration of BME680 gas and heater registers.
- * 
- * @param device BME680 device descriptor.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t bme680_setup_heater(bme680_device_t *const device) {
-    /* validate arguments */
-    ESP_ARG_CHECK( device );
-
-    bme680_heater_setpoints_t      heater_setpoint;
-    bme680_control_gas0_register_t ctrl_gas0_reg;
-    bme680_control_gas1_register_t ctrl_gas1_reg;
-
-    ESP_RETURN_ON_ERROR(bme680_setup_heater_profiles(device, &heater_setpoint), TAG, "setup heater profiles for setup heater failed");
-
-    /* attempt to read control gas 0 register */
-    ESP_RETURN_ON_ERROR(bme680_get_control_gas0_register((bme680_handle_t)device, &ctrl_gas0_reg), TAG, "read control gas 0 register for setup heater failed");
-
-    /* attempt to read control gas 1 register */
-    ESP_RETURN_ON_ERROR(bme680_get_control_gas1_register((bme680_handle_t)device, &ctrl_gas1_reg), TAG, "read control gas 1 register for setup heater failed");
-
-    /* initialize control gas 0 and 1 from configuration params */
-    if(device->config.gas_enabled) {
-        ctrl_gas0_reg.bits.heater_disabled        = false;
-        ctrl_gas1_reg.bits.gas_conversion_enabled = true;
-        ctrl_gas1_reg.bits.heater_setpoint        = heater_setpoint;
-    } else {
-        ctrl_gas1_reg.bits.gas_conversion_enabled = false;
-        ctrl_gas0_reg.bits.heater_disabled        = true;
-    }
-
-    /* attempt to write control gas 0 register */
-    ESP_RETURN_ON_ERROR(bme680_set_control_gas0_register((bme680_handle_t)device, ctrl_gas0_reg), TAG, "write control gas 0 register for setup heater failed");
-
-    /* attempt to write control gas 1 register */
-    ESP_RETURN_ON_ERROR(bme680_set_control_gas1_register((bme680_handle_t)device, ctrl_gas1_reg), TAG, "write control gas 1 register for setup heater failed");
-
-    return ESP_OK;
-}
-
-/**
- * @brief Setup and configuration of BME680 context and registers.
- * 
- * @param device BME680 device descriptor..
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t bme680_setup(bme680_device_t *const device) {
-    /* validate arguments */
-    ESP_ARG_CHECK( device );
-
-    bme680_control_measurement_register_t ctrl_meas_reg;
-    bme680_control_humidity_register_t    ctrl_humi_reg;
-    bme680_config_register_t              config_reg;
-
-    /* set ambient temperature of sensor to default value (25 degree C) */
-    device->ambient_temperature = 25;
-
-    /* attempt to read calibration factors from device */
-    ESP_RETURN_ON_ERROR(bme680_get_cal_factors(device), TAG, "read calibration factors for setup failed" );
-
-    /* attempt to read variant identifier register from device */
-    ESP_RETURN_ON_ERROR(bme680_get_variant_id_register((bme680_handle_t)device, &device->variant_id), TAG, "read variant identifier register for setup failed" );
-
-    /* attempt to read control humidity register */
-    ESP_RETURN_ON_ERROR(bme680_get_control_humidity_register((bme680_handle_t)device, &ctrl_humi_reg), TAG, "read control humidity register for setup failed");
-
-    /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR(bme680_get_control_measurement_register((bme680_handle_t)device, &ctrl_meas_reg), TAG, "read control measurement register for setup failed");
-
-    /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(bme680_get_configuration_register((bme680_handle_t)device, &config_reg), TAG, "read configuration register for setup failed");
-
-    /* initialize configuration register from configuration params */
-    config_reg.bits.iir_filter                  = device->config.iir_filter;
-    config_reg.bits.spi_enabled                 = false;
-
-    /* initialize control measurement register from configuration params */
-    ctrl_meas_reg.bits.power_mode               = device->config.power_mode;
-    ctrl_meas_reg.bits.temperature_oversampling = device->config.temperature_oversampling;
-    ctrl_meas_reg.bits.pressure_oversampling    = device->config.pressure_oversampling;
-
-    /* initialize control humidity register from configuration params */
-    ctrl_humi_reg.bits.humidity_oversampling    = device->config.humidity_oversampling;
-    ctrl_humi_reg.bits.spi_irq_enabled          = false;
-
-    /* attempt to write control humidity register */
-    ESP_RETURN_ON_ERROR(bme680_set_control_humidity_register((bme680_handle_t)device, ctrl_humi_reg), TAG, "write control humidity register for setup failed");
-
-    /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR(bme680_set_control_measurement_register((bme680_handle_t)device, ctrl_meas_reg), TAG, "write control measurement register for setup failed");
-
-    /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR(bme680_set_configuration_register((bme680_handle_t)device, config_reg), TAG, "write configuration register for setup failed");
-
-    /* attempt to write stand-by time */
-    ESP_RETURN_ON_ERROR(bme680_set_standby_time((bme680_handle_t)device, device->config.standby_time), TAG, "write stand-by time for setup failed");
 
     return ESP_OK;
 }
@@ -748,232 +664,265 @@ static inline void bme680_compute_iaq(bme680_data_t *const data) {
     data->iaq_score = data->humidity_score + data->temperature_score + data->gas_score;
 }
 
-esp_err_t bme680_get_chip_id_register(bme680_handle_t handle, uint8_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read chip identification register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg BME680 chip identifier.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_chip_id_register(bme680_device_t *const device, uint8_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_ID, reg), TAG, "read chip identifier register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_ID, reg), TAG, "read chip identifier register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_variant_id_register(bme680_handle_t handle, uint8_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read variant identification register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg BME680 variant identifier.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_variant_id_register(bme680_device_t *const device, uint8_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_VARIANT_ID, reg), TAG, "read variant identifier register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_VARIANT_ID, reg), TAG, "read variant identifier register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_status0_register(bme680_handle_t handle, bme680_status0_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read status register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Status 0 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_status0_register(bme680_device_t *const device, bme680_status0_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_STATUS0, &reg->reg), TAG, "read status register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_STATUS0, &reg->reg), TAG, "read status register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_gas_lsb_register(bme680_handle_t handle, bme680_gas_lsb_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read gas resistance LSB register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Gas LSB register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_gas_lsb_register(bme680_device_t *const device, bme680_gas_lsb_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_GAS_R_LSB, &reg->reg), TAG, "read gas lsb register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_GAS_R_LSB, &reg->reg), TAG, "read gas lsb register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_gas_lsb_register(bme680_handle_t handle, const bme680_gas_lsb_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write gas resistance LSB register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Gas LSB register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_gas_lsb_register(bme680_device_t *const device, const bme680_gas_lsb_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_GAS_R_LSB, reg.reg), TAG, "write control measurement register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_GAS_R_LSB, reg.reg), TAG, "write control measurement register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_control_measurement_register(bme680_handle_t handle, bme680_control_measurement_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read control measurement register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Control measurement register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_control_measurement_register(bme680_device_t *const device, bme680_control_measurement_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_CTRL_MEAS, &reg->reg), TAG, "read control measurement register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_CTRL_MEAS, &reg->reg), TAG, "read control measurement register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_control_measurement_register(bme680_handle_t handle, const bme680_control_measurement_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write control measurement register. 
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Control measurement register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_control_measurement_register(bme680_device_t *const device, const bme680_control_measurement_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_CTRL_MEAS, reg.reg), TAG, "write control measurement register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_CTRL_MEAS, reg.reg), TAG, "write control measurement register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_control_humidity_register(bme680_handle_t handle, bme680_control_humidity_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read control humidity register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Control humidity register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_control_humidity_register(bme680_device_t *const device, bme680_control_humidity_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_CTRL_HUMI, &reg->reg), TAG, "read control humidity register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_CTRL_HUMI, &reg->reg), TAG, "read control humidity register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_control_humidity_register(bme680_handle_t handle, const bme680_control_humidity_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write control humidity register. 
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Control humidity register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_control_humidity_register(bme680_device_t *const device, const bme680_control_humidity_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     bme680_control_humidity_register_t ctrl_hum = { .reg = reg.reg };
     ctrl_hum.bits.reserved1 = 0;
     ctrl_hum.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_CTRL_HUMI, ctrl_hum.reg), TAG, "write control humidity register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_CTRL_HUMI, ctrl_hum.reg), TAG, "write control humidity register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_control_gas0_register(bme680_handle_t handle, bme680_control_gas0_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read control gas 0 register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Control gas 0 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_control_gas0_register(bme680_device_t *const device, bme680_control_gas0_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_CTRL_GAS0, &reg->reg), TAG, "read control gas 0 register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_CTRL_GAS0, &reg->reg), TAG, "read control gas 0 register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_control_gas0_register(bme680_handle_t handle, const bme680_control_gas0_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write control gas 0 register. 
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Control gas 0 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_control_gas0_register(bme680_device_t *const device, const bme680_control_gas0_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     bme680_control_gas0_register_t gas0 = { .reg = reg.reg };
     gas0.bits.reserved1 = 0;
     gas0.bits.reserved2 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_CTRL_GAS0, gas0.reg), TAG, "write control gas 0 register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_CTRL_GAS0, gas0.reg), TAG, "write control gas 0 register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_control_gas1_register(bme680_handle_t handle, bme680_control_gas1_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read control gas 1 register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Control gas 1 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_control_gas1_register(bme680_device_t *const device, bme680_control_gas1_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_CTRL_GAS1, &reg->reg), TAG, "read control gas 1 register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_CTRL_GAS1, &reg->reg), TAG, "read control gas 1 register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_control_gas1_register(bme680_handle_t handle, const bme680_control_gas1_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write control gas 1 register. 
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Control gas 1 register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_control_gas1_register(bme680_device_t *const device, const bme680_control_gas1_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     bme680_control_gas1_register_t gas1 = { .reg = reg.reg };
     gas1.bits.reserved = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_CTRL_GAS1, gas1.reg), TAG, "write control gas 1 register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_CTRL_GAS1, gas1.reg), TAG, "write control gas 1 register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_get_configuration_register(bme680_handle_t handle, bme680_config_register_t *const reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL read configuration register.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[out] reg Configuration register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_get_configuration_register(bme680_device_t *const device, bme680_config_register_t *const reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(dev, BME680_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    ESP_RETURN_ON_ERROR( bme680_i2c_read_byte_from(device, BME680_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
 
     return ESP_OK;
 }
 
-esp_err_t bme680_set_configuration_register(bme680_handle_t handle, const bme680_config_register_t reg) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
-
+/**
+ * @brief BME680 I2C HAL write configuration register. 
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] reg Configuration register.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_set_configuration_register(bme680_device_t *const device, const bme680_config_register_t reg) {
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* copy register */
     bme680_config_register_t config = { .reg = reg.reg };
@@ -982,10 +931,116 @@ esp_err_t bme680_set_configuration_register(bme680_handle_t handle, const bme680
     config.bits.reserved1 = 0;
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
+    return ESP_OK;
+}
+
+/**
+ * @brief BME680 I2C HAL setup and configure gas and heater registers.
+ * 
+ * @param device BME680 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_setup_heater(bme680_device_t *const device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    bme680_heater_setpoints_t      heater_setpoint;
+    bme680_control_gas0_register_t ctrl_gas0_reg;
+    bme680_control_gas1_register_t ctrl_gas1_reg;
+
+    ESP_RETURN_ON_ERROR(bme680_i2c_setup_heater_profiles(device, &heater_setpoint), TAG, "setup heater profiles for setup heater failed");
+
+    /* attempt to read control gas 0 register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_control_gas0_register(device, &ctrl_gas0_reg), TAG, "read control gas 0 register for setup heater failed");
+
+    /* attempt to read control gas 1 register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_control_gas1_register(device, &ctrl_gas1_reg), TAG, "read control gas 1 register for setup heater failed");
+
+    /* initialize control gas 0 and 1 from configuration params */
+    if(device->config.gas_enabled) {
+        ctrl_gas0_reg.bits.heater_disabled        = false;
+        ctrl_gas1_reg.bits.gas_conversion_enabled = true;
+        ctrl_gas1_reg.bits.heater_setpoint        = heater_setpoint;
+    } else {
+        ctrl_gas1_reg.bits.gas_conversion_enabled = false;
+        ctrl_gas0_reg.bits.heater_disabled        = true;
+    }
+
+    /* attempt to write control gas 0 register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_control_gas0_register(device, ctrl_gas0_reg), TAG, "write control gas 0 register for setup heater failed");
+
+    /* attempt to write control gas 1 register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_control_gas1_register(device, ctrl_gas1_reg), TAG, "write control gas 1 register for setup heater failed");
+
+    return ESP_OK;
+}
+
+/**
+ * @brief BME680 I2C HAL setup and configure context and registers.
+ * 
+ * @param device BME680 device descriptor..
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t bme680_i2c_setup(bme680_device_t *const device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    bme680_control_measurement_register_t ctrl_meas_reg;
+    bme680_control_humidity_register_t    ctrl_humi_reg;
+    bme680_config_register_t              config_reg;
+    bme680_control_gas1_register_t        gas1_reg;
+
+    /* set ambient temperature of sensor to default value (25 degree C) */
+    device->ambient_temperature = 25;
+
+    /* attempt to read calibration factors from device */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_cal_factors(device), TAG, "read calibration factors for setup failed" );
+
+    /* attempt to read variant identifier register from device */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_variant_id_register(device, &device->variant_id), TAG, "read variant identifier register for setup failed" );
+
+    /* attempt to read control humidity register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_control_humidity_register(device, &ctrl_humi_reg), TAG, "read control humidity register for setup failed");
+
+    /* attempt to read control measurement register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for setup failed");
+
+    /* attempt to read configuration register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for setup failed");
+
+    /* attempt to read gas 1 register */
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_gas1_register(device, &gas1_reg), TAG, "read control gas 1 register for setup failed" );
+
+    /* initialize configuration register from configuration params */
+    config_reg.bits.iir_filter                  = device->config.iir_filter;
+    config_reg.bits.spi_enabled                 = false;
+
+    /* set standby time */
+    gas1_reg.bits.standby_period_msb            = device->config.standby_time>>3 & 1;
+    config_reg.bits.standby_period_lsb          = device->config.standby_time & 0b111;
+
+    /* initialize control measurement register from configuration params */
+    ctrl_meas_reg.bits.power_mode               = device->config.power_mode;
+    ctrl_meas_reg.bits.temperature_oversampling = device->config.temperature_oversampling;
+    ctrl_meas_reg.bits.pressure_oversampling    = device->config.pressure_oversampling;
+
+    /* initialize control humidity register from configuration params */
+    ctrl_humi_reg.bits.humidity_oversampling    = device->config.humidity_oversampling;
+    ctrl_humi_reg.bits.spi_irq_enabled          = false;
+
+    /* attempt to write control humidity register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_control_humidity_register(device, ctrl_humi_reg), TAG, "write control humidity register for setup failed");
+
+    /* attempt to write control measurement register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for setup failed");
+
+    /* attempt to write configuration register */
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for setup failed");
+
+    /* attempt to write gas 1 register */
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_gas1_register(device, gas1_reg), TAG, "write control gas 1 register for setup failed" );
 
     return ESP_OK;
 }
@@ -1002,42 +1057,42 @@ esp_err_t bme680_init(i2c_master_bus_handle_t master_handle, const bme680_config
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, bme680 device handle initialization failed", bme680_config->i2c_address);
 
     /* validate memory availability for handle */
-    bme680_device_t* dev = (bme680_device_t*)calloc(1, sizeof(bme680_device_t));
-    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c0 bme680 device for init");
+    bme680_device_t* device = (bme680_device_t*)calloc(1, sizeof(bme680_device_t));
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c0 bme680 device for init");
 
     /* validate memory availability for handle calibration factors */
-    dev->cal_factors = (bme680_cal_factors_t*)calloc(1, sizeof(bme680_cal_factors_t));
-    ESP_GOTO_ON_FALSE(dev->cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bme680 device calibration factors for init");
+    device->cal_factors = (bme680_cal_factors_t*)calloc(1, sizeof(bme680_cal_factors_t));
+    ESP_GOTO_ON_FALSE(device->cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bme680 device calibration factors for init");
 
     /* copy configuration */
-    dev->config = *bme680_config;
+    device->config = *bme680_config;
 
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = dev->config.i2c_address,
-        .scl_speed_hz       = dev->config.i2c_clock_speed,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (dev->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c0 new bus failed for init");
+    if (device->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "i2c0 new bus failed for init");
     }
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
 
     /* read and validate device type */
-    ESP_GOTO_ON_ERROR(bme680_get_chip_id_register((bme680_handle_t)dev, &dev->chip_id), err_handle, TAG, "read chip identifier for init failed");
-    if(dev->chip_id != BME680_CHIP_ID) {
-        ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", dev->chip_id);
+    ESP_GOTO_ON_ERROR(bme680_i2c_get_chip_id_register(device, &device->chip_id), err_handle, TAG, "read chip identifier for init failed");
+    if(device->chip_id != BME680_CHIP_ID) {
+        ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", device->chip_id);
     }
 
     /* attempt to reset the device and initialize registers */
-    ESP_GOTO_ON_ERROR(bme680_reset((bme680_handle_t)dev), err_handle, TAG, "soft-reset and initialize registers for init failed");
+    ESP_GOTO_ON_ERROR(bme680_reset((bme680_handle_t)device), err_handle, TAG, "soft-reset and initialize registers for init failed");
 
     /* copy configuration */
-    *bme680_handle = (bme680_handle_t)dev;
+    *bme680_handle = (bme680_handle_t)device;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BME680_APPSTART_DELAY_MS));
@@ -1045,10 +1100,10 @@ esp_err_t bme680_init(i2c_master_bus_handle_t master_handle, const bme680_config
     return ESP_OK;
 
     err_handle:
-        if (dev && dev->i2c_handle) {
-            i2c_master_bus_rm_device(dev->i2c_handle);
+        if (device && device->i2c_handle) {
+            i2c_master_bus_rm_device(device->i2c_handle);
         }
-        free(dev);
+        free(device);
     err:
         return ret;
 }
@@ -1072,24 +1127,23 @@ esp_err_t bme680_get_adc_signals(bme680_handle_t handle, bme680_adc_data_t *cons
     uint32_t        adc_temp;
     bit104_uint8_buffer_t rx;
     bme680_status0_register_t status0_reg;
-    bme680_device_t* dev = (bme680_device_t*)handle;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && data );
+    ESP_ARG_CHECK( device && data );
 
     /* trigger measurement when in forced mode */
-    if(dev->config.power_mode == BME680_POWER_MODE_FORCED) {
-        bme680_set_power_mode(handle, dev->config.power_mode);
+    if(device->config.power_mode == BME680_POWER_MODE_FORCED) {
+        bme680_set_power_mode(handle, device->config.power_mode);
     }
 
     /* set start time for timeout monitoring */
-    uint64_t start_time = esp_timer_get_time();
+    const uint64_t start_time = esp_timer_get_time();
 
     /* attempt to poll until data is available or timeout */
     do {
         /* attempt to check if data is ready */
-        //ESP_GOTO_ON_ERROR( bme680_get_data_status(handle, &data_is_ready), err, TAG, "data ready for get adc signals failed." );
-        ESP_GOTO_ON_ERROR( bme680_get_status0_register(handle, &status0_reg), err, TAG, "status 0 register for get adc signals failed." );
+        ESP_GOTO_ON_ERROR( bme680_i2c_get_status0_register(device, &status0_reg), err, TAG, "status 0 register for get adc signals failed." );
 
         data_is_ready = status0_reg.bits.new_data;
         gas_index = status0_reg.bits.gas_measurement_index;
@@ -1103,7 +1157,7 @@ esp_err_t bme680_get_adc_signals(bme680_handle_t handle, bme680_adc_data_t *cons
     } while (data_is_ready == false);
 
     // need to read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( bme680_i2c_read_from(dev, BME680_REG_PRESS, rx, BIT104_UINT8_BUFFER_SIZE), err, TAG, "read adc data failed" );
+    ESP_GOTO_ON_ERROR( bme680_i2c_read_from(device, BME680_REG_PRESS, rx, BIT104_UINT8_BUFFER_SIZE), err, TAG, "read adc data failed" );
 
     /* instantiate gas lsb register */
     bme680_gas_lsb_register_t gas_lsb_reg = { .reg = rx[12] };
@@ -1130,9 +1184,6 @@ esp_err_t bme680_get_adc_signals(bme680_handle_t handle, bme680_adc_data_t *cons
     data->heater_stable  = gas_lsb_reg.bits.heater_stable;
     data->gas_valid      = gas_lsb_reg.bits.gas_valid;
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
-
     return ESP_OK;
 
     err:
@@ -1150,36 +1201,36 @@ esp_err_t bme680_get_adc_signals_by_heater_profile(bme680_handle_t handle, uint8
     bit104_uint8_buffer_t rx;
     bme680_status0_register_t status0_reg;
     bme680_control_gas1_register_t ctrl_gas1_reg;
-    bme680_device_t* dev = (bme680_device_t*)handle;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && data );
+    ESP_ARG_CHECK( device && data );
 
-    if ((dev->config.heater_profile_size == 0) || (dev->config.heater_profile_size > 10)) {
+    if ((device->config.heater_profile_size == 0) || (device->config.heater_profile_size > 10)) {
         ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "heater duration or temperature profile are empty and cannot be larger than 10, get adc signals by heater profile failed");
     }
 
     /* trigger measurement when in forced mode */
-    if(dev->config.power_mode == BME680_POWER_MODE_FORCED) {
-        bme680_set_power_mode(handle, dev->config.power_mode);
+    if(device->config.power_mode == BME680_POWER_MODE_FORCED) {
+        bme680_set_power_mode(handle, device->config.power_mode);
     }
 
     /* attempt to read control gas 1 register */
-    ESP_RETURN_ON_ERROR(bme680_get_control_gas1_register(handle, &ctrl_gas1_reg), TAG, "read control gas 1 register for setup heater failed");
+    ESP_RETURN_ON_ERROR(bme680_i2c_get_control_gas1_register(device, &ctrl_gas1_reg), TAG, "read control gas 1 register for setup heater failed");
 
     ctrl_gas1_reg.bits.heater_setpoint = (bme680_heater_setpoints_t)profile_index;
 
     /* attempt to write control gas 1 register */
-    ESP_RETURN_ON_ERROR(bme680_set_control_gas1_register(handle, ctrl_gas1_reg), TAG, "write control gas 1 register for setup heater failed");
+    ESP_RETURN_ON_ERROR(bme680_i2c_set_control_gas1_register(device, ctrl_gas1_reg), TAG, "write control gas 1 register for setup heater failed");
 
     /* set start time for timeout monitoring */
-    uint64_t start_time = esp_timer_get_time();
+    const uint64_t start_time = esp_timer_get_time();
 
     /* attempt to poll until data is available or timeout */
     do {
         /* attempt to check if data is ready */
         //ESP_GOTO_ON_ERROR( bme680_get_data_status(handle, &data_is_ready), err, TAG, "data ready for get adc signals failed." );
-        ESP_GOTO_ON_ERROR( bme680_get_status0_register(handle, &status0_reg), err, TAG, "status 0 register for get adc signals failed." );
+        ESP_GOTO_ON_ERROR( bme680_i2c_get_status0_register(device, &status0_reg), err, TAG, "status 0 register for get adc signals failed." );
 
         data_is_ready = status0_reg.bits.new_data;
         gas_index = status0_reg.bits.gas_measurement_index;
@@ -1193,7 +1244,7 @@ esp_err_t bme680_get_adc_signals_by_heater_profile(bme680_handle_t handle, uint8
     } while (data_is_ready == false);
 
     // need to read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( bme680_i2c_read_from(dev, BME680_REG_PRESS, rx, BIT104_UINT8_BUFFER_SIZE), err, TAG, "read adc data failed" );
+    ESP_GOTO_ON_ERROR( bme680_i2c_read_from(device, BME680_REG_PRESS, rx, BIT104_UINT8_BUFFER_SIZE), err, TAG, "read adc data failed" );
 
     /* instantiate gas lsb register */
     bme680_gas_lsb_register_t gas_lsb_reg = { .reg = rx[12] };
@@ -1220,32 +1271,28 @@ esp_err_t bme680_get_adc_signals_by_heater_profile(bme680_handle_t handle, uint8
     data->heater_stable  = gas_lsb_reg.bits.heater_stable;
     data->gas_valid      = gas_lsb_reg.bits.gas_valid;
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
-
     return ESP_OK;
 
     err:
         return ret;
 }
 
-
 esp_err_t bme680_get_data(bme680_handle_t handle, bme680_data_t *const data) {
     bme680_adc_data_t adc_data;
-    bme680_device_t* dev = (bme680_device_t*)handle;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && data );
+    ESP_ARG_CHECK( device && data );
 
     /* attempt to read adc signals */
     ESP_RETURN_ON_ERROR( bme680_get_adc_signals(handle, &adc_data), TAG, "read adc signals failed" );
 
     /* initialize data structure */
-    data->air_temperature       = bme680_compensate_temperature(dev, adc_data.temperature);
-    data->relative_humidity     = bme680_compensate_humidity(dev, adc_data.humidity);
-    data->dewpoint_temperature  = bme680_calculate_dewpoint(data->air_temperature, data->relative_humidity);
-    data->barometric_pressure   = bme680_compensate_pressure(dev, adc_data.pressure);
-    data->gas_resistance        = bme680_compensate_gas_resistance(dev, adc_data.gas, adc_data.gas_range);
+    data->air_temperature       = bme680_compensate_temperature(device, adc_data.temperature);
+    data->relative_humidity     = bme680_compensate_humidity(device, adc_data.humidity);
+    bme680_calculate_dewpoint(data->air_temperature, data->relative_humidity, &data->dewpoint_temperature);
+    data->barometric_pressure   = bme680_compensate_pressure(device, adc_data.pressure);
+    data->gas_resistance        = bme680_compensate_gas_resistance(device, adc_data.gas, adc_data.gas_range);
     data->gas_range             = adc_data.gas_range;
     data->heater_stable         = adc_data.heater_stable;
     data->gas_valid             = adc_data.gas_valid;
@@ -1254,20 +1301,17 @@ esp_err_t bme680_get_data(bme680_handle_t handle, bme680_data_t *const data) {
     /* compute scores */
     bme680_compute_iaq(data);
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
 esp_err_t bme680_get_data_by_heater_profile(bme680_handle_t handle, const uint8_t profile_index, bme680_data_t *const data) {
     bme680_adc_data_t adc_data;
-    bme680_device_t* dev = (bme680_device_t*)handle;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && data );
+    ESP_ARG_CHECK( device && data );
 
-    if ((dev->config.heater_profile_size == 0) || (dev->config.heater_profile_size > 10)) {
+    if ((device->config.heater_profile_size == 0) || (device->config.heater_profile_size > 10)) {
         ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "heater duration or temperature profile are empty and cannot be larger than 10, get data by heater profile failed");
     }
 
@@ -1275,11 +1319,11 @@ esp_err_t bme680_get_data_by_heater_profile(bme680_handle_t handle, const uint8_
     ESP_RETURN_ON_ERROR( bme680_get_adc_signals_by_heater_profile(handle, profile_index, &adc_data), TAG, "read adc signals failed" );
 
     /* initialize data structure */
-    data->air_temperature       = bme680_compensate_temperature(dev, adc_data.temperature);
-    data->relative_humidity     = bme680_compensate_humidity(dev, adc_data.humidity);
-    data->dewpoint_temperature  = bme680_calculate_dewpoint(data->air_temperature, data->relative_humidity);
-    data->barometric_pressure   = bme680_compensate_pressure(dev, adc_data.pressure);
-    data->gas_resistance        = bme680_compensate_gas_resistance(dev, adc_data.gas, adc_data.gas_range);
+    data->air_temperature       = bme680_compensate_temperature(device, adc_data.temperature);
+    data->relative_humidity     = bme680_compensate_humidity(device, adc_data.humidity);
+    bme680_calculate_dewpoint(data->air_temperature, data->relative_humidity, &data->dewpoint_temperature);
+    data->barometric_pressure   = bme680_compensate_pressure(device, adc_data.pressure);
+    data->gas_resistance        = bme680_compensate_gas_resistance(device, adc_data.gas, adc_data.gas_range);
     data->gas_range             = adc_data.gas_range;
     data->heater_stable         = adc_data.heater_stable;
     data->gas_valid             = adc_data.gas_valid;
@@ -1288,20 +1332,18 @@ esp_err_t bme680_get_data_by_heater_profile(bme680_handle_t handle, const uint8_
     /* compute scores */
     bme680_compute_iaq(data);
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BME680_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
 esp_err_t bme680_get_data_status(bme680_handle_t handle, bool *const ready) {
     bme680_status0_register_t   status0_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read device status register */
-    ESP_RETURN_ON_ERROR( bme680_get_status0_register(handle, &status0_reg), TAG, "read status register (data ready state) failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_status0_register(device, &status0_reg), TAG, "read status register (data ready state) failed" );
 
     /* set ready state */
     *ready = status0_reg.bits.new_data;
@@ -1311,12 +1353,13 @@ esp_err_t bme680_get_data_status(bme680_handle_t handle, bool *const ready) {
 
 esp_err_t bme680_get_gas_measurement_index(bme680_handle_t handle, uint8_t *const index) {
     bme680_status0_register_t   status0_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read device status register */
-    ESP_RETURN_ON_ERROR( bme680_get_status0_register(handle, &status0_reg), TAG, "read status register (gas measurement index) failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_status0_register(device, &status0_reg), TAG, "read status register (gas measurement index) failed" );
 
     /* set gas measurement index */
     *index = status0_reg.bits.gas_measurement_index;
@@ -1326,12 +1369,13 @@ esp_err_t bme680_get_gas_measurement_index(bme680_handle_t handle, uint8_t *cons
 
 esp_err_t bme680_get_power_mode(bme680_handle_t handle, bme680_power_modes_t *const power_mode) {
     bme680_control_measurement_register_t ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
 
     /* set power mode */
     *power_mode = ctrl_meas_reg.bits.power_mode;
@@ -1341,30 +1385,32 @@ esp_err_t bme680_get_power_mode(bme680_handle_t handle, bme680_power_modes_t *co
 
 esp_err_t bme680_set_power_mode(bme680_handle_t handle, const bme680_power_modes_t power_mode) {
     bme680_control_measurement_register_t   ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.power_mode = power_mode;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_set_control_measurement_register(handle, ctrl_meas_reg), TAG, "write control measurement register for set power mode failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set power mode failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bme680_get_pressure_oversampling(bme680_handle_t handle, bme680_pressure_oversampling_t *const oversampling) {
     bme680_control_measurement_register_t   ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
 
     /* set oversampling */
     *oversampling = ctrl_meas_reg.bits.pressure_oversampling;
@@ -1374,30 +1420,32 @@ esp_err_t bme680_get_pressure_oversampling(bme680_handle_t handle, bme680_pressu
 
 esp_err_t bme680_set_pressure_oversampling(bme680_handle_t handle, const bme680_pressure_oversampling_t oversampling) {
     bme680_control_measurement_register_t   ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.pressure_oversampling = oversampling;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_set_control_measurement_register(handle, ctrl_meas_reg), TAG, "write control measurement register for set pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set pressure oversampling failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bme680_get_temperature_oversampling(bme680_handle_t handle, bme680_temperature_oversampling_t *const oversampling) {
     bme680_control_measurement_register_t   ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
 
     /* set oversampling */
     *oversampling = ctrl_meas_reg.bits.temperature_oversampling;
@@ -1407,30 +1455,32 @@ esp_err_t bme680_get_temperature_oversampling(bme680_handle_t handle, bme680_tem
 
 esp_err_t bme680_set_temperature_oversampling(bme680_handle_t handle, const bme680_temperature_oversampling_t oversampling) {
     bme680_control_measurement_register_t   ctrl_meas_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_measurement_register(handle, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.temperature_oversampling = oversampling;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bme680_set_control_measurement_register(handle, ctrl_meas_reg), TAG, "write control measurement register for set temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set temperature oversampling failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bme680_get_humidity_oversampling(bme680_handle_t handle, bme680_humidity_oversampling_t *const oversampling) {
     bme680_control_humidity_register_t   ctrl_humi_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control humidity register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_humidity_register(handle, &ctrl_humi_reg), TAG, "read control humidity register for get humidity oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_humidity_register(device, &ctrl_humi_reg), TAG, "read control humidity register for get humidity oversampling failed" );
 
     /* set oversampling */
     *oversampling = ctrl_humi_reg.bits.humidity_oversampling;
@@ -1440,30 +1490,32 @@ esp_err_t bme680_get_humidity_oversampling(bme680_handle_t handle, bme680_humidi
 
 esp_err_t bme680_set_humidity_oversampling(bme680_handle_t handle, const bme680_humidity_oversampling_t oversampling) {
     bme680_control_humidity_register_t   ctrl_humi_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read control humidity register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_humidity_register(handle, &ctrl_humi_reg), TAG, "read control humidity register for get humidity oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_humidity_register(device, &ctrl_humi_reg), TAG, "read control humidity register for get humidity oversampling failed" );
 
     /* set oversampling */
     ctrl_humi_reg.bits.humidity_oversampling = oversampling;
 
     /* attempt to write control humidity register */
-    ESP_RETURN_ON_ERROR( bme680_set_control_humidity_register(handle, ctrl_humi_reg), TAG, "write control humidity register for get humidity oversampling failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_humidity_register(device, ctrl_humi_reg), TAG, "write control humidity register for get humidity oversampling failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bme680_get_iir_filter(bme680_handle_t handle, bme680_iir_filters_t *const iir_filter) {
     bme680_config_register_t   config_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bme680_get_configuration_register(handle, &config_reg), TAG, "read configuration register for get IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
 
     /* set standby time */
     *iir_filter = config_reg.bits.iir_filter;
@@ -1473,18 +1525,19 @@ esp_err_t bme680_get_iir_filter(bme680_handle_t handle, bme680_iir_filters_t *co
 
 esp_err_t bme680_set_iir_filter(bme680_handle_t handle, const bme680_iir_filters_t iir_filter) {
     bme680_config_register_t   config_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bme680_get_configuration_register(handle, &config_reg), TAG, "read configuration register for get IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
 
     /* initialize configuration register */
     config_reg.bits.iir_filter = iir_filter;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bme680_set_configuration_register(handle, config_reg), TAG, "write configuration register for set IIR filter failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for set IIR filter failed" );
 
     return ESP_OK;
 }
@@ -1492,15 +1545,16 @@ esp_err_t bme680_set_iir_filter(bme680_handle_t handle, const bme680_iir_filters
 esp_err_t bme680_get_standby_time(bme680_handle_t handle, bme680_standby_times_t *const standby_time) {
     bme680_config_register_t   config_reg;
     bme680_control_gas1_register_t gas1_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bme680_get_configuration_register(handle, &config_reg), TAG, "read configuration register for get stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for get stand-by time failed" );
 
     /* attempt to read gas 1 register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_gas1_register(handle, &gas1_reg), TAG, "read control gas 1 register for get stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_gas1_register(device, &gas1_reg), TAG, "read control gas 1 register for get stand-by time failed" );
 
     /* set standby time */
     *standby_time = (bme680_standby_times_t)(gas1_reg.bits.standby_period_msb<<3 | config_reg.bits.standby_period_lsb);
@@ -1511,47 +1565,48 @@ esp_err_t bme680_get_standby_time(bme680_handle_t handle, bme680_standby_times_t
 esp_err_t bme680_set_standby_time(bme680_handle_t handle, const bme680_standby_times_t standby_time) {
     bme680_config_register_t   config_reg;
     bme680_control_gas1_register_t gas1_reg;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bme680_get_configuration_register(handle, &config_reg), TAG, "read configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_configuration_register(device, &config_reg), TAG, "read configuration register for set stand-by time failed" );
 
     /* attempt to read gas 1 register */
-    ESP_RETURN_ON_ERROR( bme680_get_control_gas1_register(handle, &gas1_reg), TAG, "read control gas 1 register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_get_control_gas1_register(device, &gas1_reg), TAG, "read control gas 1 register for set stand-by time failed" );
 
     /* set standby time */
     gas1_reg.bits.standby_period_msb = standby_time>>3 & 1;
     config_reg.bits.standby_period_lsb = standby_time & 0b111;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bme680_set_configuration_register(handle, config_reg), TAG, "write configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_configuration_register(device, config_reg), TAG, "write configuration register for set stand-by time failed" );
 
     /* attempt to write gas 1 register */
-    ESP_RETURN_ON_ERROR( bme680_set_control_gas1_register(handle, gas1_reg), TAG, "write control gas 1 register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_set_control_gas1_register(device, gas1_reg), TAG, "write control gas 1 register for set stand-by time failed" );
 
     return ESP_OK;
 }
 
 esp_err_t bme680_reset(bme680_handle_t handle) {
-    bme680_device_t* dev = (bme680_device_t*)handle;
+    bme680_device_t* device = (bme680_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt i2c transaction */
-    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(dev, BME680_REG_RESET, BME680_RESET_VALUE), TAG, "write reset register for reset failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_write_byte_to(device, BME680_REG_RESET, BME680_RESET_VALUE), TAG, "write reset register for reset failed" );
 
     /* wait until finished copying NVP data */
     // forced delay before next transaction - see datasheet for details
     vTaskDelay(pdMS_TO_TICKS(BME680_RESET_DELAY_MS)); // check is busy in timeout loop...
 
     /* attempt to setup device */
-    ESP_RETURN_ON_ERROR( bme680_setup(dev), TAG, "setup device for reset failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_setup(device), TAG, "setup device for reset failed" );
 
     /* attempt to setup device heaters */
-    ESP_RETURN_ON_ERROR( bme680_setup_heater(dev), TAG, "setup device heaters for reset failed" );
+    ESP_RETURN_ON_ERROR( bme680_i2c_setup_heater(device), TAG, "setup device heaters for reset failed" );
 
     return ESP_OK;
 }

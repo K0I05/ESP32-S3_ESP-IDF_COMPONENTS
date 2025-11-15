@@ -416,141 +416,6 @@ typedef void* bme680_handle_t;
 
 
 /**
- * @brief Reads chip identification register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg BME680 chip identifier.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_chip_id_register(bme680_handle_t handle, uint8_t *const reg);
-
-/**
- * @brief Reads variant identification register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg BME680 variant identifier.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_variant_id_register(bme680_handle_t handle, uint8_t *const reg);
-
-/**
- * @brief Reads status register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Status 0 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_status0_register(bme680_handle_t handle, bme680_status0_register_t *const reg);
-
-/**
- * @brief Reads gas resistance LSB register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Gas LSB register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_gas_lsb_register(bme680_handle_t handle, bme680_gas_lsb_register_t *const reg);
-
-/**
- * @brief Writes gas resistance LSB register to BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Gas LSB register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_gas_lsb_register(bme680_handle_t handle, const bme680_gas_lsb_register_t reg);
-
-/**
- * @brief Reads control measurement register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Control measurement register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_control_measurement_register(bme680_handle_t handle, bme680_control_measurement_register_t *const reg);
-
-/**
- * @brief Writes control measurement register to BME680. 
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Control measurement register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_control_measurement_register(bme680_handle_t handle, const bme680_control_measurement_register_t reg);
-
-/**
- * @brief Reads control humidity register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Control humidity register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_control_humidity_register(bme680_handle_t handle, bme680_control_humidity_register_t *const reg);
-
-/**
- * @brief Writes control humidity register to BME680. 
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Control humidity register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_control_humidity_register(bme680_handle_t handle, const bme680_control_humidity_register_t reg);
-
-/**
- * @brief Reads control gas 0 register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Control gas 0 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_control_gas0_register(bme680_handle_t handle, bme680_control_gas0_register_t *const reg);
-
-/**
- * @brief Writes control gas 0 register to BME680. 
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Control gas 0 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_control_gas0_register(bme680_handle_t handle, const bme680_control_gas0_register_t reg);
-
-/**
- * @brief Reads control gas 1 register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Control gas 1 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_control_gas1_register(bme680_handle_t handle, bme680_control_gas1_register_t *const reg);
-
-/**
- * @brief Writes control gas 1 register to BME680. 
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Control gas 1 register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_control_gas1_register(bme680_handle_t handle, const bme680_control_gas1_register_t reg);
-
-/**
- * @brief Reads configuration register from BME680.
- * 
- * @param[in] handle BME680 device handle.
- * @param[out] reg Configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_get_configuration_register(bme680_handle_t handle, bme680_config_register_t *const reg);
-
-/**
- * @brief Writes configuration register to BME680. 
- * 
- * @param[in] handle BME680 device handle.
- * @param[in] reg Configuration register.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t bme680_set_configuration_register(bme680_handle_t handle, const bme680_config_register_t reg);
-
-/**
  * @brief Initializes an BME680 device onto the master bus.
  *
  * @param[in] master_handle I2C master bus handle.
@@ -569,6 +434,15 @@ esp_err_t bme680_init(i2c_master_bus_handle_t master_handle, const bme680_config
  */
 esp_err_t bme680_get_adc_signals(bme680_handle_t handle, bme680_adc_data_t *const data);
 
+/**
+ * @brief Reads humidity, temperature, pressure, and gas ADC signals from BME680
+ * using a specific heater profile.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] profile_index Heater profile index (0..9).
+ * @param[out] data BME680 ADC data structure.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t bme680_get_adc_signals_by_heater_profile(bme680_handle_t handle, uint8_t profile_index, bme680_adc_data_t *const data);
 
 /**
@@ -580,6 +454,15 @@ esp_err_t bme680_get_adc_signals_by_heater_profile(bme680_handle_t handle, uint8
  */
 esp_err_t bme680_get_data(bme680_handle_t handle, bme680_data_t *const data);
 
+/**
+ * @brief Reads humidity, temperature, pressure, and gas measurements from BME680
+ * using a specific heater profile.
+ * 
+ * @param[in] handle BME680 device handle.
+ * @param[in] profile_index Heater profile index (0..9).
+ * @param[out] data BME680 data structure.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t bme680_get_data_by_heater_profile(bme680_handle_t handle, const uint8_t profile_index, bme680_data_t *const data);
 
 /**

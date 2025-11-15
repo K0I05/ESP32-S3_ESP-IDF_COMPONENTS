@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define MPU6050_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define MPU6050_FW_SEMANTIC_VERSION         "1.2.8-77"
+#define MPU6050_FW_SEMANTIC_VERSION         "1.2.8-83"
 /** Git version hash */
-#define MPU6050_FW_GIT_SHORT_SHA            "74b1c2c"
+#define MPU6050_FW_GIT_SHORT_SHA            "17bd4e2"
 
 
 /**
