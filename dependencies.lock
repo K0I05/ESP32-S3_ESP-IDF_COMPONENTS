@@ -8,7 +8,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.0
+    version: 5.5.1
   k0i05/esp_time_into_interval:
     dependencies:
     - name: idf
