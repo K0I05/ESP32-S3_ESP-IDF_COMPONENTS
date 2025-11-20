@@ -49,7 +49,7 @@ extern "C" {
 
 #define SCALAR_TREND_COMPONENT_NAME              "esp_scalar_trend"
 /** Version release date  */
-#define SCALAR_TREND_FW_VERSION_DATE             "2025-11-19"
+#define SCALAR_TREND_FW_VERSION_DATE             "2025-11-20"
 /** Major version number (X.x.x) */
 #define SCALAR_TREND_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define SCALAR_TREND_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define SCALAR_TREND_FW_SEMANTIC_VERSION         "1.2.8-85"
+#define SCALAR_TREND_FW_SEMANTIC_VERSION         "1.2.8-88"
 /** Git version hash */
-#define SCALAR_TREND_FW_GIT_SHORT_SHA            "7c2a1a9"
+#define SCALAR_TREND_FW_GIT_SHORT_SHA            "01566e9"
 
 
 /**

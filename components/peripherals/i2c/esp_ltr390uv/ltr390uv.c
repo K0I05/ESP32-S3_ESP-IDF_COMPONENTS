@@ -404,8 +404,8 @@ static inline esp_err_t ltr390uv_calculate_uv_sensitivity(ltr390uv_device_t *con
     ESP_RETURN_ON_ERROR( ltr390uv_get_resolution_it(device, &resolution_it), TAG, "read resolution integration time for get uv sensitivity failed" );
 
     /* set sensitivity by linearly scaling against known value in the datasheet */
-    float gain_scale = gain_multiplier / LTR390UV_GAIN_MAX;
-    float intg_scale = (resolution_it * 100.0f) / LTR390UV_INTEGRATION_TIME_MAX;
+    const float gain_scale = gain_multiplier / LTR390UV_GAIN_MAX;
+    const float intg_scale = (resolution_it * 100.0f) / LTR390UV_INTEGRATION_TIME_MAX;
     *uv_sensitivity  = LTR390UV_SENSITIVITY_MAX * gain_scale * intg_scale;
 
     return ESP_OK;
@@ -481,9 +481,6 @@ static inline esp_err_t ltr390uv_i2c_get_control_register(ltr390uv_device_t *con
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ltr390uv_i2c_read_byte_from(device, LTR390UV_REG_MAIN_CTRL_RW, &reg->reg), TAG, "read control register failed" );
-
-    /* delay before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(LTR390UV_CMD_DELAY_MS));
 
     return ESP_OK;
 }

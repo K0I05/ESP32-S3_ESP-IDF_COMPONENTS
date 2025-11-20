@@ -439,6 +439,30 @@ esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_
     return ESP_OK;
 }
 
+esp_err_t bh1750_get_clearness_index(bh1750_handle_t handle, float *const index) {
+    float ambient_light = 0.0f;
+    bh1750_device_t* device = (bh1750_device_t*)handle;
+
+    /*
+    $K_t > 0.75$: Clear Sky (Sunny)
+    $0.25 < K_t < 0.75$: Partly Cloudy
+    $K_t < 0.25$: Overcast
+    
+    To use this, a system needs to know your exact latitude, longitude, and time of day to calculate where the sun is and how bright it "should" be.
+     */
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt to get ambient light */
+    ESP_RETURN_ON_ERROR( bh1750_get_ambient_light(handle, &ambient_light), TAG, "unable to get ambient light, get clearness index failed" );
+
+    /* calculate clearness index */
+    *index = ambient_light / 120000.0f;
+
+    return ESP_OK;
+}
+
 esp_err_t bh1750_set_measurement_mode(bh1750_handle_t handle, const bh1750_measurement_modes_t mode) {
     bh1750_device_t* device = (bh1750_device_t*)handle;
 

@@ -363,9 +363,6 @@ static inline esp_err_t ens160_i2c_get_command(ens160_device_t *const device, en
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_read_byte_from(device, ENS160_REG_COMMAND_RW, (uint8_t*)command), TAG, "read command register failed" );
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -382,9 +379,6 @@ static inline esp_err_t ens160_i2c_set_command(ens160_device_t *const device, co
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_write_byte_to(device, ENS160_REG_COMMAND_RW, command), TAG, "write command register failed" );
-
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -441,9 +435,6 @@ static inline esp_err_t ens160_i2c_get_interrupt_config_register(ens160_device_t
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_read_byte_from(device, ENS160_REG_INT_CONFIG_RW, &reg->reg), TAG, "read interrupt configuration register failed" );
-    
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -468,9 +459,6 @@ static inline esp_err_t ens160_i2c_set_interrupt_config_register(ens160_device_t
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_write_byte_to(device, ENS160_REG_INT_CONFIG_RW, irq_config.reg), TAG, "write interrupt configuration register failed" );
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
-
     return ESP_OK; 
 }
 
@@ -487,9 +475,6 @@ static inline esp_err_t ens160_i2c_get_status_register(ens160_device_t *const de
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_read_byte_from(device, ENS160_REG_DEVICE_STATUS_R, &reg->reg), TAG, "read device status register failed" );
-    
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
 
     return ESP_OK;
 }
@@ -541,9 +526,6 @@ static inline esp_err_t ens160_i2c_get_compensation_registers(ens160_device_t *c
     *temperature = ens160_decode_temperature(t);
     *humidity    = ens160_decode_humidity(h);
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -577,9 +559,6 @@ static inline esp_err_t ens160_i2c_set_compensation_registers(ens160_device_t *c
     ESP_RETURN_ON_ERROR( ens160_i2c_write_word_to(device, ENS160_REG_TEMP_IN_RW, t), TAG, "write temperature compensation register failed" );
     ESP_RETURN_ON_ERROR( ens160_i2c_write_word_to(device, ENS160_REG_RH_IN_RW, h), TAG, "write humidity compensation register failed" );
 
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
-
     return ESP_OK;
 }
 
@@ -596,9 +575,6 @@ static inline esp_err_t ens160_i2c_get_part_id_register(ens160_device_t *const d
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( ens160_i2c_read_word_from(device, ENS160_REG_PART_ID_R, reg), TAG, "read part identifier register failed" );
-    
-    /* delay before next i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(ENS160_CMD_DELAY_MS));
 
     return ESP_OK;
 }

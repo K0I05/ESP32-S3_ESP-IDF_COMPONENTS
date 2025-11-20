@@ -94,9 +94,9 @@ typedef union __attribute__((packed)) mlx90614_config_register_u {
         mlx90614_temperature_sensors_t          t_sensors:2;            /*!< temperature sensor configuration 	(bit:4-5) */
         mlx90614_sensor_ir_types_t              ir_type:1;              /*!< ir sensor type 					(bit:6) */
         mlx90614_k_signs_t                      k_sign:1;               /*!< positive or negative signs of k 	(bit:7) */
-        mlx90614_fir_values_t                   fir:3;                  /*!< fir setting 						(bit:8-10) */
-        ml90614_gains_t                         gain:3;                 /*!< gain setting 						(bit:11-13) */
-        mlx90614_nk2_signs_t                    kt2_sign:1;             /*!< positive or negative signs of kt2 	(bit:14) */
+        mlx90614_sensor_firs_t                  fir:3;                  /*!< fir setting 						(bit:8-10) */
+        mlx90614_sensor_gains_t                 gain:3;                 /*!< gain setting 						(bit:11-13) */
+        mlx90614_k2_signs_t                     k2_sign:1;             /*!< positive or negative signs of kt2 	(bit:14) */
         mlx90614_sensor_test_states_t           test_state:1;           /*!< sensor test state 					(bit:15) */
     } bit;                          /*!< represents the 16-bit config register parts in bits. */
     uint16_t reg;                   /*!< represents the 16-bit config register as `uint16_t` */
@@ -744,6 +744,96 @@ esp_err_t mlx90614_set_address(mlx90614_handle_t handle, const uint8_t address) 
 	raw_data |= address; // add the new address
 
     ESP_ERROR_CHECK( mlx90614_i2c_write_eeprom_to(device, MLX90614_CMD_EEPROM_RDWR_SMBADDR, raw_data) );
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_get_iir(mlx90614_handle_t handle, mlx90614_sensor_iirs_t *const iir) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    *iir = reg.bit.iir;
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_set_iir(mlx90614_handle_t handle, const mlx90614_sensor_iirs_t iir) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    reg.bit.iir = iir;
+
+    ESP_ERROR_CHECK( mlx90614_i2c_set_config_register(device, reg) );
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_get_fir(mlx90614_handle_t handle, mlx90614_sensor_firs_t *const fir) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    *fir = reg.bit.fir;
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_set_fir(mlx90614_handle_t handle, const mlx90614_sensor_firs_t fir) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    reg.bit.fir = fir;
+
+    ESP_ERROR_CHECK( mlx90614_i2c_set_config_register(device, reg) );
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_get_gain(mlx90614_handle_t handle, mlx90614_sensor_gains_t *const gain) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    *gain = reg.bit.gain;
+
+    return ESP_OK;
+}
+
+esp_err_t mlx90614_set_gain(mlx90614_handle_t handle, const mlx90614_sensor_gains_t gain) {
+    mlx90614_device_t* device = (mlx90614_device_t*)handle;
+    mlx90614_config_register_t reg = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    ESP_ERROR_CHECK( mlx90614_i2c_get_config_register(device, &reg) );
+
+    reg.bit.gain = gain;
+
+    ESP_ERROR_CHECK( mlx90614_i2c_set_config_register(device, reg) );
 
     return ESP_OK;
 }

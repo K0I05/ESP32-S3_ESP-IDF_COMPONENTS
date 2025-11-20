@@ -26,7 +26,9 @@
  * @defgroup drivers mlx90614
  * @{
  *
- * ESP-IDF driver for mlx90614 sensor
+ * ESP-IDF driver for mlx90614 ir temperature sensor
+ * 
+ * wavelength of 5.5µm to 14µm
  * 
  * https://github.com/melexis/mlx90614-library
  *
@@ -100,34 +102,33 @@ typedef enum mlx90614_k_signs_e {
     MLX90614_K_SIGN_NEGATIVE = 1
 } mlx90614_k_signs_t;
 
-typedef enum mlx90614_fir_values_e {
-    MLX90614_FIR_128    = (0b100),
-    MLX90614_FIR_256    = (0b101),
-    MLX90614_FIR_512    = (0b110),
-    MLX90614_FIR_1024   = (0b111)
-} mlx90614_fir_values_t;
+typedef enum mlx90614_sensor_firs_e {
+    MLX90614_SENSOR_FIR_128    = (0b100),
+    MLX90614_SENSOR_FIR_256    = (0b101),
+    MLX90614_SENSOR_FIR_512    = (0b110),
+    MLX90614_SENSOR_FIR_1024   = (0b111)
+} mlx90614_sensor_firs_t;
 
-typedef enum ml90614_gains_e {
-    MLX90614_GAIN_1     = (0b000),
-    MLX90614_GAIN_3     = (0b001),
-    MLX90614_GAIN_6     = (0b010),
-    MLX90614_GAIN_12_5  = (0b011),
-    MLX90614_GAIN_25    = (0b100),
-    MLX90614_GAIN_50    = (0b101),
-    MLX90614_GAIN_100A  = (0b110),
-    MLX90614_GAIN_100B  = (0b111)
-} ml90614_gains_t;
+typedef enum mlx90614_sensor_gains_e {
+    MLX90614_SENSOR_GAIN_1     = (0b000),
+    MLX90614_SENSOR_GAIN_3     = (0b001),
+    MLX90614_SENSOR_GAIN_6     = (0b010),
+    MLX90614_SENSOR_GAIN_12_5  = (0b011),
+    MLX90614_SENSOR_GAIN_25    = (0b100),
+    MLX90614_SENSOR_GAIN_50    = (0b101),
+    MLX90614_SENSOR_GAIN_100A  = (0b110),
+    MLX90614_SENSOR_GAIN_100B  = (0b111)
+} mlx90614_sensor_gains_t;
 
-typedef enum mlx90614_nk2_signs_e {
-    MLX90614_KT2_SIGN_POSITIVE = 0,
-    MLX90614_KT2_SIGN_NEGATIVE = 1
-} mlx90614_nk2_signs_t;
+typedef enum mlx90614_k2_signs_e {
+    MLX90614_K2_SIGN_POSITIVE = 0,
+    MLX90614_K2_SIGN_NEGATIVE = 1
+} mlx90614_k2_signs_t;
 
 typedef enum mlx90614_sensor_test_states_e {
     MLX90614_SENSOR_TEST_ENABLED  = 0,
     MLX90614_SENSOR_TEST_DISABLED = 1
 } mlx90614_sensor_test_states_t;
-
 
 typedef enum mlx90614_pwm_modes_e {
     MLX90614_PWM_MODE_EXTENDED = 0,
@@ -155,6 +156,9 @@ typedef enum mlx90614_thermal_modes_e {
 typedef struct mlx90614_config_s {
     uint16_t                    i2c_address;        /*!< mlx90614 i2c device address */
     uint32_t                    i2c_clock_speed;    /*!< mlx90614 i2c device scl clock speed in hz */
+    mlx90614_sensor_iirs_t      iir;                /*!< mlx90614 sensor iir setting */
+    mlx90614_sensor_firs_t      fir;                /*!< mlx90614 sensor fir setting */
+    mlx90614_sensor_gains_t     gain;               /*!< mlx90614 sensor gain setting */
 } mlx90614_config_t;
 
 /**
@@ -313,6 +317,186 @@ esp_err_t mlx90614_get_address(mlx90614_handle_t handle, uint8_t *const address)
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t mlx90614_set_address(mlx90614_handle_t handle, const uint8_t address);
+
+/**
+ * @brief Reads IIR setting from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param iir MLX90614 IIR setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_iir(mlx90614_handle_t handle, mlx90614_sensor_iirs_t *const iir);
+
+/**
+ * @brief Writes IIR setting to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param iir MLX90614 IIR setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_iir(mlx90614_handle_t handle, const mlx90614_sensor_iirs_t iir);
+
+/**
+ * @brief Reads FIR setting from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param fir MLX90614 FIR setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_fir(mlx90614_handle_t handle, mlx90614_sensor_firs_t *const fir);
+
+/**
+ * @brief Writes FIR setting to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param fir MLX90614 FIR setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_fir(mlx90614_handle_t handle, const mlx90614_sensor_firs_t fir);
+
+/**
+ * @brief Reads gain setting from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param gain MLX90614 gain setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_gain(mlx90614_handle_t handle, mlx90614_sensor_gains_t *const gain);
+
+/**
+ * @brief Writes gain setting to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param gain MLX90614 gain setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_gain(mlx90614_handle_t handle, const mlx90614_sensor_gains_t gain);
+
+/**
+ * @brief Reads sensor configuration from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param config MLX90614 temperature sensor configuration.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_sensor_configuration(mlx90614_handle_t handle, mlx90614_temperature_sensors_t *const config);
+
+/**
+ * @brief Reads IR sensor type from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param type MLX90614 IR sensor type.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_sensor_ir_type(mlx90614_handle_t handle, mlx90614_sensor_ir_types_t *const type);
+
+/**
+ * @brief Reads k-sign from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param k_sign MLX90614 k-sign setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_k_sign(mlx90614_handle_t handle, mlx90614_k_signs_t *const k_sign);
+
+/**
+ * @brief Reads k2 sign from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param k2_sign MLX90614 k2-sign setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_k2_sign(mlx90614_handle_t handle, mlx90614_k2_signs_t *const k2_sign);
+
+/**
+ * @brief Reads sensor test repeat state from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param test_repeat_state MLX90614 sensor test repeat state setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_sensor_test_repeat_state(mlx90614_handle_t handle, mlx90614_sensor_test_repeat_states_t *const test_repeat_state);
+
+/**
+ * @brief Reads sensor test state from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param test_state MLX90614 sensor test state setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_sensor_test_state(mlx90614_handle_t handle, mlx90614_sensor_test_states_t *const test_state);
+
+/**
+ * @brief Reads PWM mode from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param pwm_mode MLX90614 PWM mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_pwm_mode(mlx90614_handle_t handle, mlx90614_pwm_modes_t *const pwm_mode);
+
+/**
+ * @brief Writes PWM mode to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param pwm_mode MLX90614 PWM mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_pwm_mode(mlx90614_handle_t handle, const mlx90614_pwm_modes_t pwm_mode);
+
+/**
+ * @brief Reads PWM mode state from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param pwm_mode_state MLX90614 PWM mode state setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_pwm_mode_state(mlx90614_handle_t handle, mlx90614_pwm_mode_states_t *const pwm_mode_state);
+
+/**
+ * @brief Writes PWM mode state to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param pwm_mode_state MLX90614 PWM mode state setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_pwm_mode_state(mlx90614_handle_t handle, const mlx90614_pwm_mode_states_t pwm_mode_state);
+
+/**
+ * @brief Reads SDA pin mode from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param sda_pin_mode MLX90614 SDA pin mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_sda_pin_mode(mlx90614_handle_t handle, mlx90614_sda_pin_modes_t *const sda_pin_mode);
+
+/**
+ * @brief Writes SDA pin mode to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param sda_pin_mode MLX90614 SDA pin mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_sda_pin_mode(mlx90614_handle_t handle, const mlx90614_sda_pin_modes_t sda_pin_mode);
+
+/**
+ * @brief Reads thermal mode from MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param thermal_mode MLX90614 thermal mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_get_thermal_mode(mlx90614_handle_t handle, mlx90614_thermal_modes_t *const thermal_mode);
+
+/**
+ * @brief Writes thermal mode to MLX90614.
+ * 
+ * @param handle MLX90614 device handle.
+ * @param thermal_mode MLX90614 thermal mode setting.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t mlx90614_set_thermal_mode(mlx90614_handle_t handle, const mlx90614_thermal_modes_t thermal_mode);
 
 /**
  * @brief Puts the MLX90614 into sleep mode.

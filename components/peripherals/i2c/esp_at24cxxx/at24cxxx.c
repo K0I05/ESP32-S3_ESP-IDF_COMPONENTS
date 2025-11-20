@@ -207,13 +207,13 @@ static inline esp_err_t at24cxxx_i2c_write_byte_to(at24cxxx_device_t *const devi
 }
 
 esp_err_t at24cxxx_get_memory_map(at24cxxx_handle_t handle, at24cxxx_memory_mapping_t *const memory_map) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev && memory_map );
+    ESP_ARG_CHECK( device && memory_map );
 
     /* copy memory map */
-    *memory_map = dev->memory_map;
+    *memory_map = device->memory_map;
 
     return ESP_OK;
 }
@@ -230,31 +230,31 @@ esp_err_t at24cxxx_init(const i2c_master_bus_handle_t master_handle, const at24c
     ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, at24cxxx device handle initialization failed", at24cxxx_config->i2c_address);
 
     /* validate memory availability for handle */
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)calloc(1, sizeof(at24cxxx_device_t));
-    ESP_GOTO_ON_FALSE(dev, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c at24cxxx device, init failed");
+    at24cxxx_device_t* device = (at24cxxx_device_t*)calloc(1, sizeof(at24cxxx_device_t));
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c at24cxxx device, init failed");
 
     /* copy configuration */
-    dev->config     = *at24cxxx_config;
-    dev->memory_map = at24cxxx_memory_maps[dev->config.eeprom_type];
+    device->config     = *at24cxxx_config;
+    device->memory_map = at24cxxx_memory_maps[device->config.eeprom_type];
 
     /* validate memory availability for device buffer */
-    dev->buffer = (uint8_t*)calloc(1, dev->memory_map.page_size_bytes + 2);
-    ESP_GOTO_ON_FALSE(dev->buffer, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c at24cxxx device buffer, init failed");
-
+    device->buffer = (uint8_t*)calloc(1, device->memory_map.page_size_bytes + 2);
+    ESP_GOTO_ON_FALSE(device->buffer, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c at24cxxx device buffer, init failed");
+    
     /* set i2c device configuration */
     const i2c_device_config_t i2c_dev_conf = {
         .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = dev->config.i2c_address,
-        .scl_speed_hz       = dev->config.i2c_clock_speed,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed,
     };
 
     /* validate device handle */
-    if (dev->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &dev->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
+    if (device->i2c_handle == NULL) {
+        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "i2c new bus for init failed");
     }
 
     /* set device handle */
-    *at24cxxx_handle = (at24cxxx_handle_t)dev;
+    *at24cxxx_handle = (at24cxxx_handle_t)device;
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(AT24CXXX_APPSTART_DELAY_MS));
@@ -263,112 +263,112 @@ esp_err_t at24cxxx_init(const i2c_master_bus_handle_t master_handle, const at24c
 
     err_handle:
         /* clean up handle instance */
-        if (dev && dev->i2c_handle) {
-            i2c_master_bus_rm_device(dev->i2c_handle);
+        if (device && device->i2c_handle) {
+            i2c_master_bus_rm_device(device->i2c_handle);
         }
-        free(dev);
+        free(device);
     err:
         return ret;
 }
 
 esp_err_t at24cxxx_read_current_address(at24cxxx_handle_t handle, uint8_t *const data) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt read i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read(dev, data, 1), TAG, "i2c read current address failed" );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read(device, data, 1), TAG, "i2c read current address failed" );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_read_random_byte(at24cxxx_handle_t handle, const uint16_t data_addr, uint8_t *const data) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_FALSE((data_addr <= dev->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
+    ESP_RETURN_ON_FALSE((data_addr <= device->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
 
     /* attempt read i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read_byte_from(dev, data_addr, data), TAG, "i2c read from word address 0x%04x failed", data_addr );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read_byte_from(device, data_addr, data), TAG, "i2c read from word address 0x%04x failed", data_addr );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_read_sequential_bytes(at24cxxx_handle_t handle, uint8_t *data, const uint16_t size) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt read i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read(dev, data, size), TAG, "i2c sequential read failed" );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read(device, data, size), TAG, "i2c sequential read failed" );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_read_page(at24cxxx_handle_t handle, const uint16_t data_addr, uint8_t *data, uint16_t *const size) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* attempt read i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read_from(dev, data_addr, data, size), TAG, "i2c page read failed" );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_read_from(device, data_addr, data, size), TAG, "i2c page read failed" );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_write_byte(at24cxxx_handle_t handle, const uint16_t data_addr, const uint8_t data) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_FALSE((data_addr <= dev->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
+    ESP_RETURN_ON_FALSE((data_addr <= device->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
 
     /* attempt write i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_write_byte_to(dev, data_addr, data), TAG, "i2c write to word address 0x%04x failed", data_addr );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_write_byte_to(device, data_addr, data), TAG, "i2c write to word address 0x%04x failed", data_addr );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_write_page(at24cxxx_handle_t handle, const uint16_t data_addr, const uint8_t *data, const uint16_t size) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
-    ESP_RETURN_ON_FALSE((data_addr <= dev->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
-    ESP_RETURN_ON_FALSE((data_addr+size <= dev->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range for page size", data_addr);
-    ESP_RETURN_ON_FALSE((size <= dev->memory_map.page_size_bytes), ESP_ERR_INVALID_ARG, TAG, "page size is out of range");
+    ESP_RETURN_ON_FALSE((data_addr <= device->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range", data_addr);
+    ESP_RETURN_ON_FALSE((data_addr+size <= device->memory_map.max_data_address), ESP_ERR_INVALID_ARG, TAG, "data address 0x%04x is out of range for page size", data_addr);
+    ESP_RETURN_ON_FALSE((size <= device->memory_map.page_size_bytes), ESP_ERR_INVALID_ARG, TAG, "page size is out of range");
 
     /* attempt write i2c transaction */
-    ESP_RETURN_ON_ERROR( at24cxxx_i2c_write_to(dev, data_addr, data, size), TAG, "i2c write to page address 0x%04x failed", data_addr );
+    ESP_RETURN_ON_ERROR( at24cxxx_i2c_write_to(device, data_addr, data, size), TAG, "i2c write to page address 0x%04x failed", data_addr );
 
     return ESP_OK;
 }
 
 esp_err_t at24cxxx_erase(at24cxxx_handle_t handle) {
-    at24cxxx_device_t* dev = (at24cxxx_device_t*)handle;
+    at24cxxx_device_t* device = (at24cxxx_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( dev );
+    ESP_ARG_CHECK( device );
 
     /* iterate through each page */
-    for(uint16_t i = 0; i < dev->memory_map.number_of_pages; i++) {
-        uint8_t buffer[dev->memory_map.page_size_bytes];
-
+    for(uint16_t i = 0; i < device->memory_map.number_of_pages; i++) {
+        uint8_t buffer[device->memory_map.page_size_bytes];
+        
         /* set data address */
-        uint16_t data_addr = (i * dev->memory_map.page_size_bytes);
+        uint16_t data_addr = (i * device->memory_map.page_size_bytes);
 
         /* copy 0xff to page bytes */
-        memset(buffer, 0xff, dev->memory_map.page_size_bytes);
+        memset(buffer, 0xff, device->memory_map.page_size_bytes);
 
         /* attempt to write page */
-        ESP_RETURN_ON_ERROR(at24cxxx_i2c_write_to(dev, data_addr, buffer, dev->memory_map.page_size_bytes), TAG, "unable to write page, erase failed");
+        ESP_RETURN_ON_ERROR(at24cxxx_i2c_write_to(device, data_addr, buffer, device->memory_map.page_size_bytes), TAG, "unable to write page, erase failed");
     }
 
     return ESP_OK;

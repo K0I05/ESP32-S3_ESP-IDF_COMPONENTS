@@ -122,6 +122,15 @@ esp_err_t bh1750_init(i2c_master_bus_handle_t master_handle, const bh1750_config
 esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_light);
 
 /**
+ * @brief Calculates the clearness index from BH1750 illuminance measurement.
+ * 
+ * @param[in] handle BH1750 device handle.
+ * @param[out] index Clearness index value.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t bh1750_get_clearness_index(bh1750_handle_t handle, float *const index);
+
+/**
  * @brief Gets the current measurement mode from the BH1750 device.
  * 
  * @param handle BH1750 device handle

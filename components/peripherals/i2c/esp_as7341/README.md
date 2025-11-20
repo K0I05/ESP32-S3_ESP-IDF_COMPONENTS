@@ -11,11 +11,131 @@
 
 This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the OSRAM AS7341 11-channel multi-spectral digital sensor.  Information on features and functionality are documented and can be found in the `as7341.h` header file and in the `documentation` folder.
 
+This document describes the ESP-IDF component that provides a driver for the AMS/TAOS AS7341 multi-channel spectral sensor. It documents the purpose of the component, wiring and hardware notes, basic usage and examples, and references the component's internal readme.md and header/source files (as7341.h / as7341.c) for details.
+
+For component-level installation and general repository layout please also see the component's readme.md:
+
+- ./readme.md (component-level) — refer to the component folder readme.md for wiring pictures, license and any project-specific notes.
+
+> Note: This file documents the API and high-level usage. Always consult as7341.h for exact function prototypes, types, return codes and additional helper functions.
+
 ## Repository
 
 The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_as7341>
 
-## General Usage
+## Contents
+
+- Overview
+- Features
+- Hardware / Wiring
+- Requirements
+- Configuration (as7341_config_t)
+- Integration with ESP-IDF
+- Component Package
+- Basic Usage Examples
+- API Summary (high level — see as7341.h)
+- Troubleshooting & Tips
+- License & Attribution
+
+## Overview
+
+The AS7341 is an RGB + multi-spectral light sensor that measures multiple narrow-band visible channels and some broadband channels. This component implements an I2C driver to configure the device, control integration/gain, and read spectral channel data.  The driver communicates over an I2C master bus that uses the `i2c_master` API (types like `i2c_master_bus_handle_t` and `i2c_device_config_t` are used by the driver).
+
+This component contains at least:
+
+- as7341.h — public API, data structures and constants
+- as7341.c — implementation of the driver (I2C transactions, initialization, read/write helpers)
+
+The driver:
+
+- Initializes the device on an I2C master bus.
+- Configures ATIME/ASTEP (integration time) and the spectral gain.
+- Manages SMUX configurations (low channels / high channels / flicker detection).
+- Reads spectral ADC channel counts (F1..F8, Clear, NIR).
+- Converts spectral counts to "basic counts" (float) using integration time and gain.
+- Performs flicker-detection measurement and returns a detection state.
+- Provides power/SMUX/LED/flicker control helpers.
+
+## Features
+
+- Initialize and configure the AS7341 over I2C
+- Control integration time and gain
+- Enable/disable measurement channels
+- Read spectral channel data (per-channel 16-bit/24-bit values depending on implementation)
+- Interrupt (if supported by hardware wiring) or polling based read
+
+## Hardware / Wiring
+
+Typical wiring between ESP32 (ESP32-S3) and AS7341 breakout:
+
+- VCC -> 3.3V (do NOT use 5V unless the breakout explicitly supports it)
+- GND -> GND
+- SDA -> SDA (I2C data pin on chosen I2C peripheral)
+- SCL -> SCL (I2C clock pin on chosen I2C peripheral)
+- INT (optional) -> GPIO interrupt pin (if you want to use INT pin for data-ready)
+
+Notes:
+
+- Use proper pull-ups on SDA and SCL if not provided by the breakout (typical values 2.2k–10k).
+- Keep I2C wires short to improve reliability.
+- Verify voltage levels: ESP32 I/O is 3.3V.
+
+## Requirements
+
+- ESP-IDF environment
+
+- An I2C master bus implementation exposing:
+  - i2c_master_bus_handle_t
+  - i2c_master_bus_add_device(...)
+  - i2c_master_bus_rm_device(...)
+  - i2c_master_probe(...)
+  - i2c_master_transmit / i2c_master_transmit_receive (the driver calls `i2c_master_transmit` and `i2c_master_transmit_receive` through the `i2c_master` wrapper)
+
+Default I2C settings used by the driver:
+
+- Default I2C address: `I2C_AS7341_DEV_ADDR` (0x39)
+- Default clock speed macro: `I2C_AS7341_DEV_CLK_SPD` (100000 Hz)
+
+## Configuration (as7341_config_t)
+
+as7341_config_t (exact fields)
+
+- uint16_t i2c_address;      // I2C device address
+- uint32_t i2c_clock_speed;  // I2C SCL clock speed (Hz)
+- uint8_t  atime;            // ATIME (integration steps LSB)
+- uint16_t astep;            // ASTEP (integration step size)
+- as7341_spectral_gains_t spectral_gain; // gain enumerator
+- bool     power_enabled;    // if true, power bit is set during setup
+
+Default initializer macro:
+
+- AS7341_CONFIG_DEFAULT expands to:
+  - i2c_address = I2C_AS7341_DEV_ADDR
+  - i2c_clock_speed = I2C_AS7341_DEV_CLK_SPD
+  - spectral_gain = AS7341_SPECTRAL_GAIN_32X
+  - power_enabled = true
+  - atime = 29
+  - astep = 599
+
+## Integration with ESP-IDF
+
+There are two common ways to add the component to an ESP-IDF project:
+
+1. Add the component folder to the `components/` directory of your project (recommended for local development).
+   - Project layout:
+     - components/esp_as7341/{as7341.c, as7341.h, CMakeLists.txt, readme.md}
+
+2. Use the component as a Git submodule or via the project’s component registry (if applicable).
+
+In your app code add:
+
+```c
+#include "as7341.h"
+```
+
+Ensure component's CMakeLists.txt or idf_component_register properly exposes the header to the application.
+
+## Component Package
 
 To get started, simply copy the component to your project's `components` folder and reference the `as7341.h` header file as an include.  The component includes documentation for the peripheral such as the datasheet, application notes, and/or user manual where applicable.
 
@@ -35,7 +155,7 @@ components
     └── as7341.c
 ```
 
-## Basic Example
+## Basic Usage Examples
 
 Once a driver instance is instantiated the sensor is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings and makes a measurement request from the sensor at user defined interval and prints the results.
 
@@ -44,13 +164,13 @@ Once a driver instance is instantiated the sensor is ready for usage as shown in
 
 void i2c0_as7341_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t          last_wake_time   = xTaskGetTickCount ();
+    TickType_t        last_wake_time = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
     as7341_config_t dev_cfg          = I2C_AS7341_CONFIG_DEFAULT;
-    as7341_handle_t dev_hdl;
-    bool                flicker_completed = false;
-    uint8_t             flicker_cycles = 0;
+    as7341_handle_t dev_hdl          = NULL;;
+    bool           flicker_completed = false;
+    uint8_t           flicker_cycles = 0;
     //
     // init device
     as7341_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
@@ -145,4 +265,65 @@ void i2c0_as7341_task( void *pvParameters ) {
 }
 ```
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+## API Summary (high level)
+
+Refer to as7341.h for the definitive API. Typical functions you will find or expect in the header:
+
+Primary initialization function (exact signature):
+
+- esp_err_t as7341_init(i2c_master_bus_handle_t master_handle,
+                        const as7341_config_t *as7341_config,
+                        as7341_handle_t *as7341_handle);
+
+Behavior:
+
+- Probes the I2C address on the provided `master_handle` (`i2c_master_probe`).
+- Allocates `as7341_device_t` and adds an i2c device to the master bus via `i2c_master_bus_add_device`.
+- Configures device registers (ATIME, ASTEP, spectral gain) according to `as7341_config`.
+- Returns `ESP_OK` and a handle (opaque `as7341_handle_t`) on success.
+- On errors returns the appropriate `esp_err_t` (e.g. `ESP_ERR_NO_MEM`, probe failures, I2C errors).
+
+Cleanup:
+
+- esp_err_t as7341_remove(as7341_handle_t handle);
+  - removes the device from its I2C master bus (calls `i2c_master_bus_rm_device`).
+- esp_err_t as7341_delete(as7341_handle_t handle);
+  - calls `as7341_remove()` and frees the handle memory.
+
+Always rely on the header file for exact prototypes and any return codes (esp_err_t values).
+
+## Power Management & Performance
+
+- Integration time and gain settings control sensitivity and dynamic range. Longer integration and higher gain increase sensitivity but also increase measurement time and risk of saturation.
+- The driver may provide blocking read functions and/or interrupt-driven data-ready callbacks. Choose according to your application’s real-time needs.
+
+## Troubleshooting
+
+- No response from device:
+  - Confirm wiring and I2C pull-ups.
+  - Use an I2C scanner to confirm device address.
+  - Check power rails (3.3V) and ground connection.
+- Reading zeros or saturated values:
+  - Reduce gain or shorten integration time.
+- Intermittent communication:
+  - Check cable length, use shielded wiring if needed, and confirm I2C clock frequency (try lowering it).
+
+## Testing
+
+- Use a simple application that prints channel values periodically to validate operation.
+- Compare results against a reference sensor or known light source if available.
+
+## Reference & Attribution
+
+- Component source files: as7341.c and as7341.h (see these files in the component directory for implementation details and full API).
+- Component-level readme: ./readme.md — consult this file for repository/component-specific notes, license, and contribution guidelines.
+
+## License
+
+- See the component readme.md and the header files for license information. Respect the license when reusing or redistributing the code.
+
+## Contributing / Changes
+
+- This file is an additional documentation file for the component and does not change any source files. To improve the documentation, update readme_AS7341.MD or as7341.h/readme.md in the component folder and submit a pull request following the repository contribution guidelines.
+
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)
