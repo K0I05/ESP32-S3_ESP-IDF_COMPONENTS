@@ -108,7 +108,26 @@ void app_main( void ) {
 
 Once these initial steps are done, compile and upload the program, assuming your development board is equivalent to the `esp32s3box`.  Otherwise, you will have to configure the environment for your development board and recompile before uploading the program.
 
+## ESP32 Peripheral Components (ADC, I2C, OWB, SPI, UART)
 
+The ESP32 peripheral components (ADC, I2C, OWB, SPI, UART) accommodate ADC, I2C, OWB, SPI, and UART device interfacing supported by various device manufacturers.  The peripheral components implement a hardware abstraction layer (HAL) to handle device interfacing using supported communication interfaces (i.e. I2C, SPI, UART).  As an example, I2C devices generally implement the followin I2C HAL functions:
+
+```c
+/* BMP280 HAL Example */
+
+/* I2C read and write functions */
+static inline esp_err_t bmp280_i2c_read_from(bmp280_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size);
+static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device, const uint8_t reg_addr, uint16_t *const word);
+static inline esp_err_t bmp280_i2c_read_byte_from(bmp280_device_t *const device, const uint8_t reg_addr, uint8_t *const byte);
+static inline esp_err_t bmp280_i2c_write_byte_to(bmp280_device_t *const device, const uint8_t reg_addr, const uint8_t byte);
+
+/* I2C read and write functions for registers */
+static inline esp_err_t bmp280_i2c_get_status_register(bmp280_device_t *const device, bmp280_status_register_t *const reg);
+static inline esp_err_t bmp280_i2c_get_control_measurement_register(bmp280_device_t *const device, bmp280_control_measurement_register_t *const reg);
+static inline esp_err_t bmp280_i2c_set_control_measurement_register(bmp280_device_t *const device, const bmp280_control_measurement_register_t reg);
+```
+
+HAL functions are hidden from the user and core usage of the component is accessed through the API.  The API implements features and functionality supported by the device in a user friendly manner.
 
 ## Basic Example
 
