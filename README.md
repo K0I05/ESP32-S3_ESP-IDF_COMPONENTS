@@ -127,7 +127,7 @@ static inline esp_err_t bmp280_i2c_get_control_measurement_register(bmp280_devic
 static inline esp_err_t bmp280_i2c_set_control_measurement_register(bmp280_device_t *const device, const bmp280_control_measurement_register_t reg);
 ```
 
-HAL functions are hidden from the user and core usage of the component is accessed through the API.  The API implements features and functionality supported by the device in a user friendly manner.
+HAL functions are hidden from the user and core usage of the component is accessed through an application programmer interface (API).  The API implements features and functionality supported by the device in a user friendly manner.  For API details, review the readme included with each component and the API is documented in the component header file.
 
 ## Basic Example
 
