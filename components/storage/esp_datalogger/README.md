@@ -16,6 +16,14 @@ The ESP data-logger component includes the following common helper components:
 1. **Data-Table**: table based data storage with user-defined columns, scalar and vector data-types, and basic analytics (i.e. average, minimum, and maximum).
 2. **Time Into Interval**: synchronizes a FreeRTOS task with the system clock with user-defined time interval for temporal conditional scenarios.
 
+The ESP data-logger component features:
+
+- Data types supported include float, int16, bool, and vector.  The record identifier and timestamp data types are automatically added to the data-table.
+- Data processing types supported include sample, average, minimum, and maximum.
+- Up to 255 columns and 65535 rows are supported by the data-table.
+- Three (3) data storage types are supported which include ring (first-in-first-out), reset (resets data-table when full), and stop (pauses data storage when data-table is full).
+- JSON data-table export is supported.
+
 The working example included was developed in Visual Studio Code and requires an internet connection to synchronize the system clock using Simple Network Time Protocol (SNTP) over Wi-Fi.  Likewise, you can comment out the Wi-Fi connect and ntp start routines and enable the get and set time routines.  The set time routine provides a user configurable date and time structure to initialize the system clock to a base date-time.  Otherwise, the included example may not run as expected.
 
 > Please keep in mind that this is still under development but if you have any suggestions or would like to contribute please contact me.
@@ -48,7 +56,7 @@ Declare the data-table's handle, data-table configuration, and column indexes fo
 
 ```c
 // data-table variables for the example
-static datatable_handle_t       dt_1min_hdl;          /* example data-table handle */
+static datatable_handle_t       dt_1min_hdl = NULL;   /* example data-table handle */
 static datatable_config_t       dt_1min_cfg = {       /* example data-table configuration */
     .name                       = "1min_tbl",
     .data_storage_type          = DATATABLE_DATA_STORAGE_MEMORY_RING,
@@ -120,6 +128,7 @@ static void dt_1min_smp_task( void *pvParameters ) {
         datatable_push_float_sample(dt_1min_hdl, dt_1min_td_avg_col_index, td_samples[samples_index]);
 
         // process data buffer stack samples (i.e. data-table's configured processing interval)
+        // and store the record
         datatable_process_samples(dt_1min_hdl);
     }
 
@@ -163,7 +172,7 @@ Sample data-table in json format:
 }
 ```
 
-See data-table component and review documentation on features implemented to date.
+See data-table component header file and review documentation on features implemented to date.
 
 ## Time-Into-Interval Example
 

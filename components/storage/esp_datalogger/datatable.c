@@ -399,7 +399,7 @@ static inline esp_err_t datatable_invoke_event(datatable_context_t *const datata
 }
 
 /**
- * @brief Gets the data-table column sample size maximum.  The data-table column sample size maximum is a whole number that
+ * @brief Gets the data-table column sample maximum size.  The data-table column sample maximum size is a whole number that
  * represents the total number of samples that can be pushed onto the stack for analytical processing which is 
  * defined by the process-type setting for each column configured in the data-table.
  * 

@@ -296,6 +296,40 @@ esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_av
 esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const double x, double *const fv);
 
 /**
+ * @brief Calculates the median of an array of double-precision floating-point values using sorting.
+ * 
+ * @param data Input array of double values.
+ * @param n Number of elements in the input array.
+ * @param median Pointer to store the calculated median value.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_get_median_by_sort(const double *data, const uint16_t n, double *const median);
+
+/**
+ * @brief Calculates the median of an array of double-precision floating-point values using the Quickselect algorithm 
+ * that does not modify the input array.
+ * 
+ * @param data Input array of double values.
+ * @param n Number of elements in the input array.
+ * @param median Pointer to store the calculated median value.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_get_median_by_quickselect(const double *data, const uint16_t n, double *const median);
+
+/**
+ * @brief Clamps a double-precision floating-point value within specified minimum and maximum bounds.  A 
+ * value outside the minimum or maximum bounds will be set the respective bound.  If the minimum bound is
+ * not set, there is no lower bound.  If the maximum bound is not set, there is no upper bound.
+ * 
+ * @param min The lower bound of the range.
+ * @param max The upper bound of the range.
+ * @param ignore_out_of_range Ignores values outside the specified range when set to true.
+ * @param value The value to clamp.
+ * @return double Clamped value.
+ */
+double cla_clamp_value(const double min, const double max, const bool ignore_out_of_range, const double value);
+
+/**
  * @brief Converts `cla` firmware version numbers (major, minor, patch) into a string.
  * 
  * @return char* `cla` firmware version as a string that is formatted as X.X.X (e.g. 4.0.0).

@@ -50,6 +50,132 @@ static const char *TAG = "cla";
 
 
 
+/**
+ * @brief Swaps two values.
+ * 
+ * @param val1 The first value to swap with the second value.
+ * @param val2 The second value to swap with the first value.
+ */
+static inline void cla_swap_values(double *const val1, double *const val2) {
+    double temp = *val1;
+    *val1 = *val2;
+    *val2 = temp;
+}
+
+/* ---------- Median by sorting (safe, simple) ----------
+ * This function copies the input buffer (so the caller's array is not modified),
+ * sorts it using qsort, and returns the median.
+ */
+static inline esp_err_t cla_copy_buffer(const void *pa, const void *pb) {
+    double a = *(const double*)pa;
+    double b = *(const double*)pb;
+    if (a < b) return ESP_ERR_INVALID_SIZE;
+    if (a > b) return ESP_ERR_INVALID_SIZE;
+    return ESP_OK;
+}
+
+/* ---------- Quickselect (nth smallest) ----------
+ * In-place selection algorithm (Hoare/ Lomuto style, randomized pivot avoided by median-of-three).
+ * Returns the k-th smallest element (0-based). Requires n > 0 and k < n.
+ */
+static inline uint16_t cla_get_median_of_three_index(double *a, uint16_t left, uint16_t right) {
+    uint16_t mid = left + ((right - left) >> 1);
+    double al = a[left], am = a[mid], ar = a[right];
+    if ((al <= am && am <= ar) || (ar <= am && am <= al)) return mid;
+    if ((am <= al && al <= ar) || (ar <= al && al <= am)) return left;
+    return right;
+}
+
+static inline esp_err_t cla_median_quickselect_kth(double *a, const uint16_t n, const uint16_t k, double *const v) {
+    if (n == 0 || k >= n) return ESP_ERR_INVALID_ARG;
+    uint16_t left = 0, right = n - 1;
+    while (left <= right) {
+        if (left == right) {
+            *v = a[left];
+            return ESP_OK;
+        }
+        /* choose pivot by median-of-three for better pivoting */
+        uint16_t pidx = cla_get_median_of_three_index(a, left, right);
+        double pivot = a[pidx];
+        /* move pivot to end */
+        cla_swap_values(&a[pidx], &a[right]);
+        /* partition: elements < pivot to left, >= pivot to right-1 */
+        uint16_t store = left;
+        for (uint16_t i = left; i < right; ++i) {
+            if (a[i] < pivot) {
+                cla_swap_values(&a[store], &a[i]);
+                store++;
+            }
+        }
+        /* move pivot to its final place */
+        cla_swap_values(&a[store], &a[right]);
+        /* store is pivot final index */
+        if (k == store) {
+            *v = a[store];
+            return ESP_OK;
+        }
+        else if (k < store) {
+            if (store == 0) break;
+            right = store - 1;
+        } else {
+            left = store + 1;
+        }
+    }
+    return ESP_ERR_INVALID_STATE; /* should not reach here for valid input */
+}
+
+esp_err_t cla_get_median_by_sort(const double *data, const uint16_t n, double *const median) {
+    if (n == 0) return ESP_ERR_INVALID_ARG;
+    double *buf = (double*)malloc(n * sizeof(double));
+    if (!buf) return ESP_ERR_NO_MEM;
+    memcpy(buf, data, n * sizeof(double));
+    qsort(buf, n, sizeof(double), cla_copy_buffer);
+    double med;
+    if (n & 1) {
+        med = buf[n/2];
+    } else {
+        med = 0.5 * (buf[n/2 - 1] + buf[n/2]);
+    }
+    free(buf);
+    *median = med;
+    return ESP_OK;
+}
+
+esp_err_t cla_get_median_by_quickselect(const double *data, const uint16_t n, double *const median) {
+    if (n == 0) return ESP_ERR_INVALID_ARG;
+    double *buf = (double*)malloc(n * sizeof(double));
+    if (!buf) return ESP_ERR_NO_MEM;
+    memcpy(buf, data, n * sizeof(double));
+    double med;
+    if (n & 1) {
+        cla_median_quickselect_kth(buf, n, n/2, &med);
+    } else {
+        /* need the two middle values: find lower middle and upper middle */
+        double v1, v2;
+        cla_median_quickselect_kth(buf, n, n/2 - 1, &v1);
+        cla_median_quickselect_kth(buf, n, n/2, &v2);
+        med = 0.5 * (v1 + v2);
+    }
+    free(buf);
+    *median = med;
+    return ESP_OK;
+}
+
+double cla_clamp_value(const double min, const double max, const bool ignore_out_of_range, const double value) {
+    if (ignore_out_of_range) {
+        if (value < min) return NAN;
+        if (value > max) return NAN;
+    }
+    if (!isnan(min) && value < min) {
+        return min;
+    }
+    if (!isnan(max) && value > max) {
+        return max;
+    }
+    return value;
+}
+
+
 esp_err_t cla_matrix_multiply_vector(const cla_matrix_ptr_t m, const cla_vector_ptr_t v, cla_vector_ptr_t *const v_product) {
     ESP_ARG_CHECK(m && v);
     ESP_RETURN_ON_FALSE( (m->num_cols == v->num_cmps), ESP_ERR_INVALID_ARG, TAG, "Invalid matrix and vector dimensions, number of columns in matrix must match number of components in vector" );
