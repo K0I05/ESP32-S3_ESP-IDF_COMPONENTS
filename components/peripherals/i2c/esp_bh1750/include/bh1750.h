@@ -122,6 +122,15 @@ esp_err_t bh1750_init(i2c_master_bus_handle_t master_handle, const bh1750_config
 esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_light);
 
 /**
+ * @brief Gets the current measurement mode from the BH1750 device.
+ * 
+ * @param handle BH1750 device handle
+ * @param mode Pointer to store the current measurement mode
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t bh1750_get_measurement_mode(bh1750_handle_t handle, bh1750_measurement_modes_t *const mode);
+
+/**
  * @brief Writes measurement mode to bh1750.
  *
  * @param[in] handle bh1750 device handle.
@@ -129,6 +138,15 @@ esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_
  * @return ESP_OK on success.
  */
 esp_err_t bh1750_set_measurement_mode(bh1750_handle_t handle, const bh1750_measurement_modes_t mode);
+
+/**
+ * @brief Gets bh1750 sensor measurement time. see datasheet for details.
+ *
+ * @param[in] handle bh1750 device handle
+ * @param[out] timespan bh1750 measurement time duration
+ * @return ESP_OK on success.
+ */
+esp_err_t bh1750_get_measurement_time(bh1750_handle_t handle, uint8_t *const timespan);
 
 /**
  * @brief sets bh1750 sensor measurement time. see datasheet for details.

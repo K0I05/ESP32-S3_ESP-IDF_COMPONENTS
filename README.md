@@ -12,9 +12,9 @@
 
 Thanks for visiting and hope you find something useful.  This repository is a library of peripheral, scheduling, storage, and utility components compatible with the ESP32 espressif IoT development framework (esp-idf).  The code base is maintained as well as one person can manage in their spare time. The development environment is under Visual Studio Code with the PlatformIO (6.1.18) and ESP-IDF (v5.4.0) extensions.  There is always room for improvement to optimize the codebase and open to suggestions.
 
-## ESP32-S3 Components
+## ESP32 Components
 
-PlatformIO components with examples for the ESP32-S3 chipset.  This is a revised release utilizing esp-idf suggested design patterns through `handles` and using `i2c_master.h` for I2C transactions.  The drivers are organized in the components folder within the Visual Studio Code and PlatformIO environment.
+PlatformIO components with examples for the ESP32 chipset and tested with ESP32-S3 development boards.  This is a revised release utilizing esp-idf suggested design patterns through `handles` and using `i2c_master.h` for I2C transactions.  The drivers are organized in the components folder within the Visual Studio Code and PlatformIO environment.
 
 The folder structure for components, and associated example, are outlined as follows:
 
@@ -108,6 +108,8 @@ void app_main( void ) {
 
 Once these initial steps are done, compile and upload the program, assuming your development board is equivalent to the `esp32s3box`.  Otherwise, you will have to configure the environment for your development board and recompile before uploading the program.
 
+
+
 ## Basic Example
 
 All components use the same implementation model and a basic example is provided below.
@@ -148,14 +150,22 @@ To get started, create a new PlatformIO project, and copy the `esp_bmp390` compo
 
 #define APP_TAG                         "ESP-IDF BMP390 COMPONENT [APP]"
 
+// initialize master i2c 0 bus configuration
+i2c_master_bus_config_t  i2c0_bus_cfg = I2C0_MASTER_CONFIG_DEFAULT;
+i2c_master_bus_handle_t  i2c0_bus_hdl = NULL;
+
+static inline void task_delay_sec_until(TickType_t *const previous_wake_time, const uint sec) {
+    const TickType_t f_ticks = ((sec * 1000) / portTICK_PERIOD_MS);
+    vTaskDelayUntil( previous_wake_time, f_ticks );  
+}
 
 void i2c0_bmp390_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
     TickType_t      last_wake_time  = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    bmp390_config_t dev_cfg         = BMP390_CONFIG_DEFAULT;
-    bmp390_handle_t dev_hdl;
+    const bmp390_config_t dev_cfg   = BMP390_CONFIG_DEFAULT;
+    bmp390_handle_t dev_hdl         = NULL;
     //
     // init device
     bmp390_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
@@ -184,7 +194,7 @@ void i2c0_bmp390_task( void *pvParameters ) {
         //
         //
         // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
+        task_delay_sec_until( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
     }
     //
     // free resources
@@ -206,6 +216,12 @@ void app_main( void ) {
 
     /* instantiate i2c master bus 0 */
     ESP_ERROR_CHECK( i2c_new_master_bus(&i2c0_bus_cfg, &i2c0_bus_hdl) );
+
+    /* check i2c master bus handle instance */
+    if (i2c0_bus_hdl == NULL) {
+        ESP_LOGE(APP_TAG, "i2c master bus handle init failed");
+        assert(i2c0_bus_hdl);
+    }
 
     /* create task pinned to the app core */
     xTaskCreatePinnedToCore( 
@@ -290,4 +306,4 @@ Supported components include the following:
 - `Data-Logger`: A user friendly table based data logging component for measurement and control use-cases.  See Data-Logger examples for more details, see readme file in the component folder.
 - `NVS Ext`: A component extension that simplifies the process of reading and writing information to non-volatile storage (NVS).  See readme file in the component folder.
 
-Copyright (c) 2024 Eric Gionet (<gionet.c.eric@gmail.com>)
+Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

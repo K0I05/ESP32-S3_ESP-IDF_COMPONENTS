@@ -59,7 +59,7 @@ typedef struct scalar_trend_context_s {
     double      critical_t;    /*!< scalar trend samples absolute critical t value, state machine variable */
     uint16_t    samples_count; /*!< scalar trend samples count, state machine variable */
     uint16_t    samples_size;  /*!< scalar trend samples size, state machine variable */
-    float*      samples;       /*!< scalar trend samples array, state machine variable */
+    double*     samples;       /*!< scalar trend samples array, state machine variable */
 } scalar_trend_context_t;
 
 /*
@@ -81,8 +81,8 @@ static inline double q_inv(const double x) {
 	double tempo, xp, xa = x;
 	int i;
 	
-	double c[4] = {2.515517, 0.802853, 0.010328, 0.0};
-	double d[4] = {1.0, 1.432788, 0.189269, 0.001308};
+	const double c[4] = {2.515517, 0.802853, 0.010328, 0.0};
+	const double d[4] = {1.0, 1.432788, 0.189269, 0.001308};
 	
 	if(xa<=0.0)
 		xa = 0.0001;
@@ -174,7 +174,7 @@ esp_err_t scalar_trend_init(const uint16_t samples_size, scalar_trend_handle_t *
     ESP_GOTO_ON_FALSE( ctxt, ESP_ERR_NO_MEM, err, TAG, "no memory for scalar trend handle, scalar trend handle initialization failed" );
 
     /* validate memory availability for samples array */
-    ctxt->samples = (float*)calloc(samples_size, sizeof(float));
+    ctxt->samples = (double*)calloc(samples_size, sizeof(double));
     ESP_GOTO_ON_FALSE( ctxt->samples, ESP_ERR_NO_MEM, err_out_handle, TAG, "no memory for scalar trend handle samples, scalar trend handle initialization failed" );
 
     /* calculate absolute critical t value and copy configuration */
@@ -192,10 +192,10 @@ esp_err_t scalar_trend_init(const uint16_t samples_size, scalar_trend_handle_t *
         return ret;
 }
 
-esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle, 
-                                const float sample, 
+esp_err_t scalar_trend_analysis(scalar_trend_handle_t handle, 
+                                const double sample, 
                                 scalar_trend_codes_t *const code) {
-    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK(ctxt);
@@ -230,18 +230,18 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
      *          (least-squares linear regression)
      */
 
-    double sum_x = 0.0;     // ∑(x)
+    double sum_x  = 0.0;     // ∑(x)
     double sum_xx = 0.0;    // ∑(x²)
-    double sum_y = 0.0;     // ∑(y)
+    double sum_y  = 0.0;     // ∑(y)
     double sum_xy = 0.0;    // ∑(xy)
     
     // we need n in lots of places and it's convenient as a double
-    double n = 1.0 * ctxt->samples_size;
+    const double n = 1.0 * ctxt->samples_size;
 
     // iterate to calculate the above values
-    for (size_t i = 0; i < ctxt->samples_size; i++) {
-        double x = 1.0 * i;
-        double y = ctxt->samples[i];
+    for (uint16_t i = 0; i < ctxt->samples_size; i++) {
+        const double x = 1.0 * i;
+        const double y = ctxt->samples[i];
 
         sum_x = sum_x + x;
         sum_xx = sum_xx + x * x;
@@ -250,8 +250,8 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
     }
 
     // calculate the slope and intercept
-    double slope = (sum_x*sum_y - n*sum_xy) / (sum_x*sum_x - n*sum_xx);
-    double intercept = (sum_y -slope*sum_x) / n;
+    const double slope = (sum_x*sum_y - n*sum_xy) / (sum_x*sum_x - n*sum_xx);
+    const double intercept = (sum_y -slope*sum_x) / n;
 
     /*
      * Step 2 : Perform an hypothesis test on the equation of the linear
@@ -319,8 +319,8 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
 
     // iterate
     for (uint16_t i = 0; i < ctxt->samples_size; i++) {
-        double y = ctxt->samples[i];
-        double residual = y - (intercept + slope * i);
+        const double y = ctxt->samples[i];
+        const double residual = y - (intercept + slope * i);
         SSE = SSE + residual * residual;
     }
 
@@ -329,7 +329,7 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
      *          of the fabs() function below to force the result into
      *          the positive domain for comparison with Critical_t_value
      */
-    double tObserved =
+    const double tObserved =
         fabs(
            slope/(sqrt(SSE / (n-2.0)) / sqrt(sum_xx - sum_x*sum_x/n))
         );
@@ -360,8 +360,8 @@ esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle,
     return ESP_OK;
 }
 
-esp_err_t scalar_trend_reset(scalar_trend_handle_t scalar_trend_handle) {
-    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+esp_err_t scalar_trend_reset(scalar_trend_handle_t handle) {
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK(ctxt);
@@ -377,15 +377,23 @@ esp_err_t scalar_trend_reset(scalar_trend_handle_t scalar_trend_handle) {
     return ESP_OK;
 }
 
-esp_err_t scalar_trend_delete(scalar_trend_handle_t scalar_trend_handle) {
-    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)scalar_trend_handle;
+esp_err_t scalar_trend_delete(scalar_trend_handle_t handle) {
+    scalar_trend_context_t* ctxt = (scalar_trend_context_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK(ctxt);
 
     if(ctxt->samples) 
         free(ctxt->samples);
-    free(scalar_trend_handle);
+    free(handle);
     
     return ESP_OK;
+}
+
+const char* scalar_trend_get_fw_version(void) {
+    return (const char*)SCALAR_TREND_FW_VERSION_STR;
+}
+
+int32_t scalar_trend_get_fw_version_number(void) {
+    return (int32_t)SCALAR_TREND_FW_VERSION_INT32;
 }

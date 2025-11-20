@@ -123,14 +123,14 @@ esp_err_t pressure_tendency_init(const uint16_t sampling_interval, pressure_tend
         return ret;
 }
 
-esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendency_handle, 
+esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t handle, 
                                     const float sample, 
                                     pressure_tendency_codes_t *const code,
                                     float *const change) {
-    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK(pressure_tendency_handle);
+    ESP_ARG_CHECK(pressure_tendency_context);
 
     // have we filled the array?
     if (pressure_tendency_context->sampling_count < pressure_tendency_context->sampling_size) {
@@ -200,11 +200,11 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendenc
     return ESP_OK;
 }
 
-esp_err_t pressure_tendency_reset(pressure_tendency_handle_t pressure_tendency_handle) {
-    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+esp_err_t pressure_tendency_reset(pressure_tendency_handle_t handle) {
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK(pressure_tendency_handle);
+    ESP_ARG_CHECK(pressure_tendency_context);
 
     /* purge samples */
     for(uint16_t i = 0; i < pressure_tendency_context->sampling_size; i++) {
@@ -217,15 +217,15 @@ esp_err_t pressure_tendency_reset(pressure_tendency_handle_t pressure_tendency_h
     return ESP_OK;
 }
 
-esp_err_t pressure_tendency_delete(pressure_tendency_handle_t pressure_tendency_handle) {
-    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)pressure_tendency_handle;
+esp_err_t pressure_tendency_delete(pressure_tendency_handle_t handle) {
+    pressure_tendency_context_t* pressure_tendency_context = (pressure_tendency_context_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK(pressure_tendency_context);
 
     if(pressure_tendency_context->sampling_buffer) 
         free(pressure_tendency_context->sampling_buffer);
-    free(pressure_tendency_handle);
+    free(handle);
     
     return ESP_OK;
 }

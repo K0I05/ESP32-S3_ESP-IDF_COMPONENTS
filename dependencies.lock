@@ -8,7 +8,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.1
+    version: 5.5.0
   k0i05/esp_time_into_interval:
     dependencies:
     - name: idf
@@ -31,6 +31,6 @@ direct_dependencies:
 - idf
 - k0i05/esp_time_into_interval
 - k0i05/esp_type_utils
-manifest_hash: a661849b3ad6e21e1bbc1c6a8a0f1d120c1668396aa98982eb1d5bdd78a0bbac
+manifest_hash: d481067f7223c73a06a3ffe59243cff567d54fb2cb279b043f0d57058ca1a836
 target: esp32s3
 version: 2.0.0

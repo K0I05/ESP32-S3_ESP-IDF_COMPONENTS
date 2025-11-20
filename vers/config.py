@@ -26,6 +26,8 @@ pio_owner = "k0i05"
 # instantiate component list to configure which components will be processed.
 component_list = [ 
                   ### Utilities ###
+                  # scalar trend
+                  Component(name="esp_scalar_trend", header_name="scalar_trend", relative_path="utilities\\esp_scalar_trend"),
                   # pressure tendency
                   Component(name="esp_pressure_tendency", header_name="pressure_tendency", relative_path="utilities\\esp_pressure_tendency"),
                   # type utilities

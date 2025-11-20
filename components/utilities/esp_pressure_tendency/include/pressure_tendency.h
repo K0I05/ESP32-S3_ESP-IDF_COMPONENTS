@@ -95,7 +95,7 @@ esp_err_t pressure_tendency_init(const uint16_t sampling_interval,
  * (3) or six (6) hours of operation. The pressure tendency are based the 3-hr or 6-hr variance of 
  * the previous 3-hr or 6-hr history.
  * 
- * @param pressure_tendency_handle Pressure tendency handle.
+ * @param handle Pressure tendency handle.
  * @param sample Air pressure sample, in millibars or hecto-pascal, to push onto the samples stack.
  * @param code Pressure tendency code of three (3) or six (6) hour analysis.  Pressure
  * tendency code `PRESSURE_TENDENCY_UNKNOWN` is reported when the pressure tendency is unknown and 
@@ -103,7 +103,7 @@ esp_err_t pressure_tendency_init(const uint16_t sampling_interval,
  * @param change Pressure tendency variance over the past three (3) or six (6) hours.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendency_handle, 
+esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t handle, 
                                 const float sample, 
                                 pressure_tendency_codes_t *const code,
                                 float *const change);
@@ -111,18 +111,18 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t pressure_tendenc
 /**
  * @brief Purges pressure tendency samples array and resets samples counter.
  * 
- * @param pressure_tendency_handle Pressure tendency handle
+ * @param handle Pressure tendency handle
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t pressure_tendency_reset(pressure_tendency_handle_t pressure_tendency_handle);
+esp_err_t pressure_tendency_reset(pressure_tendency_handle_t handle);
 
 /**
  * @brief Frees pressure tendency handle.
  * 
- * @param pressure_tendency_handle Pressure tendency handle.
+ * @param handle Pressure tendency handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t pressure_tendency_delete(pressure_tendency_handle_t pressure_tendency_handle);
+esp_err_t pressure_tendency_delete(pressure_tendency_handle_t handle);
 
 /**
  * @brief Converts `pressure_tendency` firmware version numbers (major, minor, patch) into a string.

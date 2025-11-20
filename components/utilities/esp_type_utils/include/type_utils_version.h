@@ -49,7 +49,7 @@ extern "C" {
 
 #define TYPE_UTILS_COMPONENT_NAME              "esp_type_utils"
 /** Version release date  */
-#define TYPE_UTILS_FW_VERSION_DATE             "2025-11-15"
+#define TYPE_UTILS_FW_VERSION_DATE             "2025-11-19"
 /** Major version number (X.x.x) */
 #define TYPE_UTILS_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define TYPE_UTILS_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define TYPE_UTILS_FW_SEMANTIC_VERSION         "1.2.8-84"
+#define TYPE_UTILS_FW_SEMANTIC_VERSION         "1.2.8-85"
 /** Git version hash */
-#define TYPE_UTILS_FW_GIT_SHORT_SHA            "c0eb817"
+#define TYPE_UTILS_FW_GIT_SHORT_SHA            "7c2a1a9"
 
 
 /**

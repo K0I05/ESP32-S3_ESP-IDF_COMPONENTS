@@ -234,9 +234,9 @@ static inline esp_err_t hdc1080_i2c_read(hdc1080_device_t *const device, uint8_t
  * @brief Gets HDC1080 millisecond duration from humidity measurement resolution.  See datasheet for details.
  *
  * @param[in] resolution HDC1080 humidity measurement resolution.
- * @return size_t Measurement duration in milliseconds.
+ * @return uint8_t Measurement duration in milliseconds.
  */
-static inline size_t hdc1080_get_humidity_duration(const hdc1080_humidity_resolutions_t resolution) {
+static inline uint8_t hdc1080_get_humidity_duration(const hdc1080_humidity_resolutions_t resolution) {
     switch (resolution) {
         case HDC1080_HUMIDITY_RESOLUTION_14BIT:
             return 7;
@@ -253,10 +253,10 @@ static inline size_t hdc1080_get_humidity_duration(const hdc1080_humidity_resolu
  * @brief Gets HDC1080 tick duration from humidity measurement resolution.
  *
  * @param[in] resolution HDC1080 humidity measurement resolution.
- * @return size_t Measurement duration in ticks.
+ * @return uint16_t Measurement duration in ticks.
  */
-static inline size_t hdc1080_get_humidity_tick_duration(const hdc1080_humidity_resolutions_t resolution) {
-    size_t res = pdMS_TO_TICKS(hdc1080_get_humidity_duration(resolution));
+static inline uint16_t hdc1080_get_humidity_tick_duration(const hdc1080_humidity_resolutions_t resolution) {
+    uint16_t res = pdMS_TO_TICKS(hdc1080_get_humidity_duration(resolution));
     return res == 0 ? 1 : res;
 }
 
@@ -264,9 +264,9 @@ static inline size_t hdc1080_get_humidity_tick_duration(const hdc1080_humidity_r
  * @brief Gets HDC1080 millisecond duration from temperature measurement resolution.  See datasheet for details.
  *
  * @param[in] resolution HDC1080 temperature measurement resolution.
- * @return size_t Measurement duration in milliseconds.
+ * @return uint8_t Measurement duration in milliseconds.
  */
-static inline size_t hdc1080_get_temperature_duration(const hdc1080_temperature_resolutions_t resolution) {
+static inline uint8_t hdc1080_get_temperature_duration(const hdc1080_temperature_resolutions_t resolution) {
     switch (resolution) {
         case HDC1080_TEMPERATURE_RESOLUTION_14BIT:
             return 7;
@@ -281,10 +281,10 @@ static inline size_t hdc1080_get_temperature_duration(const hdc1080_temperature_
  * @brief Gets HDC1080 tick duration from temperature measurement resolution.
  *
  * @param[in] resolution HDC1080 temperature measurement resolution.
- * @return size_t Measurement duration in ticks.
+ * @return uint16_t Measurement duration in ticks.
  */
-static inline size_t hdc1080_get_temperature_tick_duration(const hdc1080_temperature_resolutions_t resolution) {
-    size_t res = pdMS_TO_TICKS(hdc1080_get_temperature_duration(resolution));
+static inline uint16_t hdc1080_get_temperature_tick_duration(const hdc1080_temperature_resolutions_t resolution) {
+    uint16_t res = pdMS_TO_TICKS(hdc1080_get_temperature_duration(resolution));
     return res == 0 ? 1 : res;
 }
 
@@ -331,7 +331,7 @@ static inline esp_err_t hdc1080_calculate_dewpoint(const float temperature, cons
     }
     
     // calculate dew-point temperature
-    double H = (log10(humidity)-2)/0.4343 + (17.62*temperature)/(243.12+temperature);
+    const double H = (log10(humidity)-2)/0.4343 + (17.62*temperature)/(243.12+temperature);
     *dewpoint = 243.12*H/(17.62-H);
     
     return ESP_OK;

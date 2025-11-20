@@ -34,7 +34,7 @@
  * Original source code was modified to support the esp-idf framework and includes the 
  * left-tailed inverse of the studen's t-distribution calculation on handle initialization.
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * MIT Licensed as described in the file LICENSE
  */
@@ -43,6 +43,7 @@
 
 #include <stdio.h>
 #include <esp_check.h>
+#include "scalar_trend_version.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,7 +52,7 @@ extern "C" {
 /**
  * @brief Scalar trend codes enumerator.
  */
-typedef enum scalar_trend_codes_tag {        /*!< 1-hr Change */
+typedef enum scalar_trend_codes_tag {    
     SCALAR_TREND_CODE_UNKNOWN   = 1, /*!< unknown */
     SCALAR_TREND_CODE_RISING    = 2, /*!< rising  */
     SCALAR_TREND_CODE_STEADY    = 3, /*!< steady  */
@@ -72,48 +73,64 @@ typedef void* scalar_trend_handle_t;
 const char* scalar_trend_code_to_string(const scalar_trend_codes_t code);
 
 /**
- * @brief Initializes a scalar trend handle by size of the 1-hr samples 
+ * @brief Initializes a scalar trend handle by size of the samples 
  * to analyze.  The size of the samples is calculated from the sampling rate.  
  * As an example, if the sampling rate is once every minute, the 
- * size of the samples buffer should be 60 e.g., one (1) hour.
+ * size of the samples buffer would be 60 e.g., one (1) hour, to analyze 
+ * trends over the past hour.
  * 
  * @param samples_size Scalar trend samples buffer size. 
  * @param scalar_trend_handle Scalar trend handle.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t scalar_trend_init(const uint16_t samples_size, scalar_trend_handle_t *scalar_trend_handle);
+
 /**
- * @brief Analyzes historical samples and scalar Trend appears after one (1) 
- * hour of operation. The trend codes are a forecast of the 3-hr change based 
- * on the previous 1-hour history.
+ * @brief Analyzes historical samples and scalar trend appears after sample buffer is full. 
+ * The trend codes are a forecast of change based on the previous history.
  * 
- * @param scalar_trend_handle Scalar trend handle.
+ * @param handle Scalar trend handle.
  * @param sample Scalar sample to push onto the samples stack.
- * @param code Scalar trend code of one (1) hour analysis.  Scalar trend code 
+ * @param code Scalar trend code of the analysis.  Scalar trend code 
  * `SCALAR_TREND_UNKNOWN` is reported when there is an insufficient number of 
  * samples to analyze.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t scalar_trend_analysis(scalar_trend_handle_t scalar_trend_handle, 
-                                const float sample, 
+esp_err_t scalar_trend_analysis(scalar_trend_handle_t handle, 
+                                const double sample, 
                                 scalar_trend_codes_t *const code);
 
 /**
  * @brief Purges scalar trend samples array and resets samples counter.
  * 
- * @param scalar_trend_handle Scalar trend handle
+ * @param handle Scalar trend handle
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t scalar_trend_reset(scalar_trend_handle_t scalar_trend_handle);
+esp_err_t scalar_trend_reset(scalar_trend_handle_t handle);
 
 /**
  * @brief Frees scalar trend handle.
  * 
- * @param scalar_trend_handle Scalar trend handle.
+ * @param handle Scalar trend handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t scalar_trend_delete(scalar_trend_handle_t scalar_trend_handle);
+esp_err_t scalar_trend_delete(scalar_trend_handle_t handle);
 
+
+
+/**
+ * @brief Converts `scalar_trend` firmware version numbers (major, minor, patch) into a string.
+ *
+ * @return char* `scalar_trend` firmware version as a string that is formatted as X.X.X (e.g. 4.0.0).
+ */
+const char* scalar_trend_get_fw_version(void);
+
+/**
+ * @brief Converts `scalar_trend` firmware version numbers (major, minor, patch) into an integer value.
+ *
+ * @return int32_t `scalar_trend` firmware version number.
+ */
+int32_t scalar_trend_get_fw_version_number(void);
 
 #ifdef __cplusplus
 }

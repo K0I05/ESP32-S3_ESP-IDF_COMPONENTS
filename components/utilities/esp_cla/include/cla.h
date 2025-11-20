@@ -101,6 +101,22 @@ typedef struct cla_calibration_quality_s {
     uint8_t overall_quality;     // 0-100 score
 } cla_calibration_quality_t;
 
+/* -------------------- First-order IIR low-pass filter -------------------- */
+typedef struct cla_iir_lowpass_filter_s {
+    double alpha;       /* filter coefficient (0..1) */
+    double previous;    /* previous output */
+    bool   initialized; /* flag to initialize previous on first sample */
+} cla_iir_lowpass_filter_t;
+
+/* -------------------- Moving-average (FIR) low-pass filter -------------------- */
+typedef struct cla_fir_lowpass_filter_moving_average_s {
+    double    *buffer;      /* circular buffer */
+    uint32_t   window_len;  /* window length */
+    uint32_t   idx;         /* current insertion index */
+    double     sum;         /* running sum */
+    uint32_t   filled;      /* number of samples filled (<= window_len) */
+} cla_fir_lowpass_filter_moving_average_t;
+
 /**
  * public function & subroutine prototype definitions
  */
@@ -219,6 +235,65 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t cla_calibration_samples_quality_print(const cla_calibration_quality_t quality_report);
+
+/**
+ * @brief Initializes a first-order IIR low-pass filter IIR filter that uses a continuous-time RC 
+ * approximation with specified sampling and cutoff frequencies.
+ * 
+ * @param filter Pointer to the IIR low-pass filter structure to initialize.
+ * @param fs Sampling frequency in Hz.
+ * @param fc Cutoff frequency in Hz.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_iir_lowpass_init_cutoff(cla_iir_lowpass_filter_t *const filter, const double fs, const double fc);
+
+/**
+ * @brief Initializes a first-order IIR low-pass filter that uses a continuous-time RC 
+ * approximation with specified alpha coefficient.
+ * 
+ * @param filter Pointer to the IIR low-pass filter structure to initialize.
+ * @param alpha Filter coefficient (0 < alpha < 1).
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_iir_lowpass_init_alpha(cla_iir_lowpass_filter_t *const filter, const double alpha);
+
+/**
+ * @brief Applies the first-order IIR low-pass filter that uses a continuous-time RC 
+ * approximation to an input sample.
+ * 
+ * @param filter Pointer to the IIR low-pass filter structure.
+ * @param x Input sample to filter.
+ * @param fv Pointer to store the filtered output value.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_iir_lowpass_apply(cla_iir_lowpass_filter_t *const filter, const double x, double *const fv);
+
+/**
+ * @brief Initializes a moving average FIR low-pass filter with a specified window length.
+ * 
+ * @param ma_filter Pointer to the moving average filter structure to initialize.
+ * @param window_len Length of the moving average window.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_fir_lowpass_moving_average_init(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const uint32_t window_len);
+
+/**
+ * @brief Deletes a moving average FIR low-pass filter, freeing allocated resources.
+ * 
+ * @param ma_filter Pointer to the moving average filter structure to delete.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_average_t *const ma_filter);
+
+/**
+ * @brief Applies the moving average FIR low-pass filter to an input sample.
+ * 
+ * @param ma_filter Pointer to the moving average filter structure.
+ * @param x Input sample to filter.
+ * @param fv Pointer to store the filtered output value.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const double x, double *const fv);
 
 /**
  * @brief Converts `cla` firmware version numbers (major, minor, patch) into a string.

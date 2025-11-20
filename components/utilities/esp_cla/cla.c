@@ -444,6 +444,123 @@ esp_err_t cla_calibration_samples_quality_print(const cla_calibration_quality_t 
     return ESP_OK;
 }
 
+esp_err_t cla_iir_lowpass_init_cutoff(cla_iir_lowpass_filter_t *const filter, const double fs, const double fc) {
+    // Validate arguments
+    ESP_ARG_CHECK(filter);
+
+    /* calculate alpha from cutoff frequency and sampling frequency */
+    if (fs <= 0.0 || fc <= 0.0) {
+        /* fallback to identity filter */
+        filter->alpha = 1.0;
+    } else {
+        const double dt = 1.0 / fs;
+        const double tau = 1.0 / (2.0 * M_PI * fc); /* RC time constant equivalent */
+        filter->alpha = dt / (tau + dt);        /* alpha in (0,1) */
+        if (filter->alpha < 0.0) filter->alpha = 0.0;
+        if (filter->alpha > 1.0) filter->alpha = 1.0;
+    }
+
+    filter->previous    = 0.0;
+    filter->initialized = false;
+
+    return ESP_OK;
+}
+
+esp_err_t cla_iir_lowpass_init_alpha(cla_iir_lowpass_filter_t *const filter, const double alpha) {
+    // Validate arguments
+    ESP_ARG_CHECK(filter);
+
+    /* set alpha directly */
+    if (alpha < 0.0) filter->alpha = 0.0;
+    if (alpha > 1.0) filter->alpha = 1.0;
+
+    filter->previous    = 0.0;
+    filter->initialized = false;
+
+    return ESP_OK;
+}
+
+esp_err_t cla_iir_lowpass_apply(cla_iir_lowpass_filter_t *const filter, const double x, double *const fv) {
+    // Validate arguments
+    ESP_ARG_CHECK(filter && fv);
+
+    /* first run, initialize previous output to input value */
+    if (!filter->initialized) {
+        filter->previous = x;
+        filter->initialized = true;
+
+        /* set output parameter */
+        *fv = filter->previous;
+
+        return ESP_OK;
+    }
+
+    /* apply IIR low-pass filter */
+    filter->previous += filter->alpha * (x - filter->previous);
+
+    /* set output parameter */
+    *fv = filter->previous;
+
+    return ESP_OK;
+}
+
+esp_err_t cla_fir_lowpass_moving_average_init(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const uint32_t window_len) {
+    // Validate arguments
+    ESP_ARG_CHECK(ma_filter);
+
+    ESP_RETURN_ON_FALSE( (window_len > 0), ESP_ERR_INVALID_ARG, TAG, "Invalid moving average window length, window length must be greater than 0" );
+
+    ma_filter->buffer = (double *)calloc(window_len, sizeof(double));
+
+    ESP_RETURN_ON_FALSE( (ma_filter->buffer != NULL), ESP_ERR_NO_MEM, TAG, "Unable to allocate memory for moving average buffer" );
+
+    ma_filter->window_len = window_len;
+    ma_filter->idx        = 0;
+    ma_filter->sum        = 0.0;
+    ma_filter->filled     = 0;
+
+    return ESP_OK;
+}
+
+esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_average_t *const ma_filter) {
+    // Validate arguments
+    ESP_ARG_CHECK(ma_filter);
+
+    if (ma_filter->buffer) {
+        free(ma_filter->buffer);
+        ma_filter->buffer = NULL;
+    }
+
+    ma_filter->window_len = 0;
+    ma_filter->idx        = 0;
+    ma_filter->sum        = 0.0;
+    ma_filter->filled     = 0;
+
+    return ESP_OK;
+}
+
+esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const double x, double *const fv) {
+    // Validate arguments
+    ESP_ARG_CHECK(ma_filter && fv);
+    ESP_RETURN_ON_FALSE( (ma_filter->window_len > 0), ESP_ERR_INVALID_ARG, TAG, "Invalid moving average window length, window length must be greater than 0" );
+    ESP_RETURN_ON_FALSE( (ma_filter->buffer != NULL), ESP_ERR_INVALID_ARG, TAG, "Invalid moving average buffer, buffer is NULL, initialize moving average filter" );
+
+    /* subtract oldest, add new */
+    ma_filter->sum -= ma_filter->buffer[ma_filter->idx];
+    ma_filter->buffer[ma_filter->idx] = x;
+    ma_filter->sum += x;
+    ma_filter->idx = (ma_filter->idx + 1) % ma_filter->window_len;
+
+    if (ma_filter->filled < ma_filter->window_len) ma_filter->filled++;
+
+    *fv = ma_filter->sum / (double)ma_filter->filled;
+
+    return ESP_OK;
+}
+
+
+
+
 const char* cla_get_fw_version(void) {
     return (const char*)CLA_FW_VERSION_STR;
 }
