@@ -179,9 +179,9 @@ static inline uint8_t sht4x_calculate_crc8(const uint8_t data[], const uint8_t l
  * @brief Gets SHT4X measurement duration in milliseconds from device handle.  See datasheet for details.
  *
  * @param[in] device SHT4X device descriptor.
- * @return size_t Measurement duration in milliseconds.
+ * @return uint32_t Measurement duration in milliseconds.
  */
-static inline size_t sht4x_get_duration(sht4x_device_t *const device) {
+static inline uint32_t sht4x_get_duration(sht4x_device_t *const device) {
     /* validate arguments */
     if (!device) return 2;
     switch (device->config.heater_mode) {
@@ -209,12 +209,12 @@ static inline size_t sht4x_get_duration(sht4x_device_t *const device) {
  * @brief Gets SHT4X measurement tick duration from device handle.
  *
  * @param[in] device SHT4X device descriptor.
- * @return size_t Measurement duration in ticks.
+ * @return uint32_t Measurement duration in ticks.
  */
-static inline size_t sht4x_get_tick_duration(sht4x_device_t *const device) {
+static inline uint32_t sht4x_get_tick_duration(sht4x_device_t *const device) {
     /* validate arguments */
     if (!device) return 1;
-    size_t res = pdMS_TO_TICKS(sht4x_get_duration(device));
+    uint32_t res = pdMS_TO_TICKS(sht4x_get_duration(device));
     return res == 0 ? 1 : res;
 }
 
@@ -275,10 +275,36 @@ static inline esp_err_t sht4x_calculate_dewpoint(const float temperature, const 
     }
     
     // calculate dew-point temperature
-    float H = (log10f(humidity)-2)/0.4343f + (17.62f*temperature)/(243.12f+temperature);
+    const float H = (log10f(humidity)-2)/0.4343f + (17.62f*temperature)/(243.12f+temperature);
     *dewpoint = 243.12f*H/(17.62f-H);
     
     return ESP_OK;
+}
+
+/**
+ * @brief Calculates wet-bulb temperature from air temperature and relative humidity.
+ *
+ * @param[in] temperature air temperature in degrees Celsius.
+ * @param[in] humidity relative humidity in percent.
+ * @param[out] wetbulb calculated wet-bulb temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t sht4x_calculate_wetbulb(const float temperature, const float humidity, float *const wetbulb) {
+    /* validate arguments */
+    ESP_ARG_CHECK(wetbulb);
+
+    // validate range of temperature parameter
+    if(temperature > SHT4X_TEMPERATURE_MAX || temperature < SHT4X_TEMPERATURE_MIN) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate wet-bulb failed");
+    }
+
+    // validate range of humidity parameter
+    if(humidity > SHT4X_HUMIDITY_MAX || humidity < SHT4X_HUMIDITY_MIN) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate wet-bulb failed");
+    }
+    
+    // calculate wet-bulb temperature
+    return temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
 }
 
 /**
@@ -313,7 +339,7 @@ static inline esp_err_t sht4x_i2c_get_serial_number(sht4x_device_t *const device
     }
 	
     /* set serial number */
-    *serial_number = ((uint32_t)rx[0] << 24) | ((uint32_t)rx[1] << 16) | ((uint32_t)rx[3] << 8) | rx[4];
+    *serial_number = ((uint32_t)rx[0] << 24) | ((uint32_t)rx[1] << 16) | ((uint32_t)rx[3] << 8) | (uint32_t)rx[4];
 
     return ESP_OK;
 }
@@ -327,6 +353,77 @@ static inline esp_err_t sht4x_i2c_set_reset(sht4x_device_t *const device) {
 
     /* delay before next command - soft-reset */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Converts SHT4X raw temperature signal to degrees Celsius.
+ *
+ * @param[in] signal raw temperature signal from SHT4X.
+ * @return float temperature in degrees Celsius.
+ */
+static inline float sht4x_convert_uint16_signal_to_temperature(const uint16_t signal) {
+    return (float)signal * 175.0f / 65535.0f - 45.0f;
+}
+
+/**
+ * @brief Converts SHT4X raw humidity signal to relative humidity percentage.
+ * 
+ * @param signal raw humidity signal from SHT4X.
+ * @return float relative humidity in percent.
+ */
+static inline float sht4x_convert_uint16_signal_to_humidity(const uint16_t signal) {
+    return (float)signal * 125.0f / 65535.0f - 6.0f;
+}
+
+/**
+ * @brief Gets SHT4X raw ADC temperature and humidity signals.
+ *
+ * @param[in] device SHT4X device descriptor.
+ * @param[out] temperature raw temperature signal from SHT4X.
+ * @param[out] humidity raw humidity signal from SHT4X.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t sht4x_i2c_get_adc_signals(sht4x_device_t *const device, uint16_t *const temperature, uint16_t *const humidity) {
+    const uint8_t rx_retry_max  = 5;
+    uint8_t rx_retry_count      = 0;
+    esp_err_t ret               = ESP_OK;
+    bit48_uint8_buffer_t rx     = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && (temperature || humidity) );
+    
+    /* get command and measurement duration from handle settings */
+    const bit8_uint8_buffer_t tx = { sht4x_get_command(device) };
+    const uint32_t delay_ticks   = sht4x_get_tick_duration(device);
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( sht4x_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get measurement failed");
+	
+	/* delay task - allow time for the sensor to process measurement request */
+    if(delay_ticks) vTaskDelay(delay_ticks);
+
+    /* retry needed - unexpected nack indicates that the sensor is still busy */
+    do {
+        /* attempt i2c read transaction */
+        ret = sht4x_i2c_read(device, rx, BIT48_UINT8_BUFFER_SIZE);
+
+        /* delay before next retry attempt */
+        vTaskDelay(pdMS_TO_TICKS(SHT4X_RETRY_DELAY_MS));
+    } while (++rx_retry_count <= rx_retry_max && ret != ESP_OK );
+
+    /* attempt i2c read transaction */
+    ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, get measurement failed" );
+	
+    /* validate crc values */
+    if (rx[2] != sht4x_calculate_crc8(rx, 2) || rx[5] != sht4x_calculate_crc8(rx + 3, 2)) {
+        return ESP_ERR_INVALID_CRC;
+    }
+
+	// convert sht4x results to engineering units of measure (C and %)
+    *temperature = ((uint16_t)rx[0] << 8 | (uint16_t)rx[1]);
+    *humidity    = ((uint16_t)rx[3] << 8 | (uint16_t)rx[4]);
 
     return ESP_OK;
 }
@@ -388,20 +485,36 @@ esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t
 }
 
 esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature, float *const humidity) {
+    uint16_t temp_signal = 0;
+    uint16_t hum_signal  = 0;
+    sht4x_device_t* device = (sht4x_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && temperature && humidity );
+
+    /* attempt to i2c transaction */
+    ESP_RETURN_ON_ERROR( sht4x_i2c_get_adc_signals(device, &temp_signal, &hum_signal), TAG, "unable to read measurement, get measurement failed" );
+
+    /* convert adc signals to engineering units of measure */
+    *temperature = sht4x_convert_uint16_signal_to_temperature(temp_signal);
+    *humidity    = sht4x_convert_uint16_signal_to_humidity(hum_signal);
+
+    return ESP_OK;
+}
+
+esp_err_t sht4x_get_measurement__(sht4x_handle_t handle, float *const temperature, float *const humidity) {
     const uint8_t rx_retry_max  = 5;
     uint8_t rx_retry_count      = 0;
-    size_t delay_ticks 			= 0;
     esp_err_t ret               = ESP_OK;
-    bit8_uint8_buffer_t tx      = { 0 };
     bit48_uint8_buffer_t rx     = { 0 };
     sht4x_device_t* device      = (sht4x_device_t*)handle;
 
     /* validate arguments */
-    ESP_ARG_CHECK( device && (temperature || humidity) );
+    ESP_ARG_CHECK( device && temperature && humidity );
     
     /* get command and measurement duration from handle settings */
-    tx[0]       = sht4x_get_command(device);
-    delay_ticks = sht4x_get_tick_duration(device);
+    const bit8_uint8_buffer_t tx = { sht4x_get_command(device) };
+    const uint32_t delay_ticks   = sht4x_get_tick_duration(device);
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( sht4x_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get measurement failed");
@@ -427,8 +540,8 @@ esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature,
     }
 
 	// convert sht4x results to engineering units of measure (C and %)
-    *temperature = (float)((uint16_t)rx[0] << 8 | rx[1]) * 175.0f / 65535.0f - 45.0f;
-    *humidity    = (float)((uint16_t)rx[3] << 8 | rx[4]) * 125.0f / 65535.0f - 6.0f;
+    *temperature = (float)((uint16_t)rx[0] << 8 | (uint16_t)rx[1]) * 175.0f / 65535.0f - 45.0f;
+    *humidity    = (float)((uint16_t)rx[3] << 8 | (uint16_t)rx[4]) * 125.0f / 65535.0f - 6.0f;
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_CMD_DELAY_MS));
@@ -436,13 +549,16 @@ esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature,
     return ESP_OK;
 }
 
-esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint) {
+esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle && (temperature || humidity || dewpoint) );
+    ESP_ARG_CHECK( handle && temperature && humidity && dewpoint && wetbulb );
 
+    /* attempt to read measurements */
     ESP_RETURN_ON_ERROR( sht4x_get_measurement(handle, temperature, humidity), TAG, "unable to read measurement, read measurements failed" );
 
+    /* calculate dew-point and wet-bulb if requested */
     ESP_RETURN_ON_ERROR( sht4x_calculate_dewpoint(*temperature, *humidity, dewpoint), TAG, "unable to calculate dew-point, read measurements failed" );
+    ESP_RETURN_ON_ERROR( sht4x_calculate_wetbulb(*temperature, *humidity, wetbulb), TAG, "unable to calculate wet-bulb, read measurements failed" );
 
     return ESP_OK;
 }

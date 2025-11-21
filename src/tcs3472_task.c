@@ -37,11 +37,11 @@
 
 void i2c0_tcs3472_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t       last_wake_time   = xTaskGetTickCount ();
+    TickType_t       last_wake_time = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    tcs3472_config_t dev_cfg          = TCS3472_CONFIG_DEFAULT;
-    tcs3472_handle_t dev_hdl;
+    tcs3472_config_t dev_cfg        = TCS3472_CONFIG_DEFAULT;
+    tcs3472_handle_t dev_hdl        = NULL;
     //
     // init device
     tcs3472_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
@@ -67,9 +67,10 @@ void i2c0_tcs3472_task( void *pvParameters ) {
         } else {
             tcs3472_normalize_colours(channels, &colours);
 
-            uint16_t colour_temp = tcs3472_calculate_colour_temperature(channels);
-            uint16_t ir = tcs3472_calculate_ir(channels);
-            float illuminance = tcs3472_calculate_illuminance(channels);
+            uint16_t colour_temp = tcs3472_get_colour_temperature(channels);
+            uint16_t ir = tcs3472_get_ir_light(channels);
+            float illuminance;
+            tcs3472_get_illuminance(dev_hdl, channels, &illuminance);
 
             ESP_LOGI(APP_TAG, "Colour Temp %u K | IR %u | Light %.2f Lux: R[%u|%d] | G[%u|%d] | B[%u|%d] | C[%u]", colour_temp, ir, illuminance,
                 channels.red, (int)colours.red, channels.green, (int)colours.green, channels.blue, (int)colours.blue, channels.clear);

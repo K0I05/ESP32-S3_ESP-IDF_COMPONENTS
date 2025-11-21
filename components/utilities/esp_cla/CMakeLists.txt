@@ -90,6 +90,6 @@ if( EXISTS "$ENV{IDF_PATH}/tools/cmake/JSONParser.cmake"
 endif()
 
 idf_component_register(
-    SRCS "cla.c" "matrix.c" "vector.c"
+    SRCS "cla_common.c" "cla_filter.c" "cla_vector.c" "cla_matrix.c" "cla.c"
     INCLUDE_DIRS "include"
 )

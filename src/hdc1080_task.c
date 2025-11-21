@@ -58,14 +58,15 @@ void i2c0_hdc1080_task( void *pvParameters ) {
         //
         // handle sensor
         
-        float temperature; float humidity; float dewpoint;
-        esp_err_t result = hdc1080_get_measurements(dev_hdl, &temperature, &humidity, &dewpoint);
+        float temperature; float humidity; float dewpoint; float wetbulb;
+        esp_err_t result = hdc1080_get_measurements(dev_hdl, &temperature, &humidity, &dewpoint, &wetbulb);
         if(result != ESP_OK) {
             ESP_LOGE(APP_TAG, "hdc1080 get measurement failed (%s)", esp_err_to_name(result));
         } else {
-            ESP_LOGI(APP_TAG, "Temperature: %f °C", temperature);
-            ESP_LOGI(APP_TAG, "Dewpoint:    %f °C", dewpoint);
-            ESP_LOGI(APP_TAG, "Humidity:    %f %c", humidity, '%');
+            ESP_LOGI(APP_TAG, "Dry-Bulb:   %f °C", temperature);
+            ESP_LOGI(APP_TAG, "Dew-Point:  %f °C", dewpoint);
+            ESP_LOGI(APP_TAG, "Wet-Bulb:   %f °C", wetbulb);
+            ESP_LOGI(APP_TAG, "Humidity:   %f %c", humidity, '%');
         }
         
         //

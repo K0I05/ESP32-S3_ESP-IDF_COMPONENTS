@@ -145,15 +145,16 @@ esp_err_t hdc1080_init(i2c_master_bus_handle_t master_handle, const hdc1080_conf
 esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperature, float *const humidity);
 
 /**
- * @brief Reads temperature, relative humidity, and dew-point from HDC1080.
+ * @brief Reads temperature, relative humidity, dew-point and wet-bulb temperatures from HDC1080.
  * 
  * @param[in] handle HDC1080 device handle.
  * @param[out] temperature Temperature measurement in degrees Celsius.
  * @param[out] humidity Relative humidity measurement in percentage.
  * @param[out] dewpoint Calculated dew-point in degrees Celsius.
+ * @param[out] wetbulb Calculated wet-bulb temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint);
+esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
  * @brief Enables HDC1080 heater.

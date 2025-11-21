@@ -113,12 +113,12 @@ static const char *TAG = "veml6040";
  * Options: integration time (enum), integration time (ms), g-sensitivity, max. detectable lux
  */
 static const float veml6040_integration_time_map[VEML6040_IT_TIMES_COUNT][VEML6040_IT_OPTIONS_COUNT] = {
-    {VEML6040_INTEGRATION_TIME_40MS,   40,   0.25168,  16496 },
-    {VEML6040_INTEGRATION_TIME_80MS,   80,   0.12584,  8248 },
-    {VEML6040_INTEGRATION_TIME_160MS,  160,  0.06292,  4124 },
-    {VEML6040_INTEGRATION_TIME_320MS,  320,  0.03146,  2062 },
-    {VEML6040_INTEGRATION_TIME_640MS,  640,  0.01573,  1031 },
-    {VEML6040_INTEGRATION_TIME_1280MS, 1280, 0.007865, 515.4 }
+    {VEML6040_INTEGRATION_TIME_40MS,   40.0f,   0.25168f,  16496.0f },
+    {VEML6040_INTEGRATION_TIME_80MS,   80.0f,   0.12584f,  8248.0f },
+    {VEML6040_INTEGRATION_TIME_160MS,  160.0f,  0.06292f,  4124.0f },
+    {VEML6040_INTEGRATION_TIME_320MS,  320.0f,  0.03146f,  2062.0f },
+    {VEML6040_INTEGRATION_TIME_640MS,  640.0f,  0.01573f,  1031.0f },
+    {VEML6040_INTEGRATION_TIME_1280MS, 1280.0f, 0.007865f, 515.4f }
 };
 
 
@@ -135,7 +135,7 @@ static inline esp_err_t veml6040_convert_signal(veml6040_device_t *const device,
     ESP_ARG_CHECK( device );
 
     /* get gain sensitivity from map */
-    float g_sensitivity = veml6040_integration_time_map[device->config.integration_time][VEML6040_IT_OPT_SVTY_INDEX];
+    const float g_sensitivity = veml6040_integration_time_map[device->config.integration_time][VEML6040_IT_OPT_SVTY_INDEX];
 
     /* convert signal to lux */
     *lux = (float)signal * g_sensitivity;

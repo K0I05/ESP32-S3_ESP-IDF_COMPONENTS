@@ -37,7 +37,7 @@
 #include <math.h>
 #include <float.h>
 #include <stdint.h>
-#include "include/matrix.h"
+#include "include/cla_matrix.h"
 
 
 #define CLA_MATRIX_MIN_COEF         (0.000000000000001)
@@ -55,18 +55,6 @@
 * static constant declarations
 */
 static const char *TAG = "cla_matrix";
-
-/**
- * @brief Swaps two values.
- * 
- * @param val1 The first value to swap with the second value.
- * @param val2 The second value to swap with the first value.
- */
-static inline void cla_matrix_swap_values(double *const val1, double *const val2) {
-    double temp = *val1;
-    *val1 = *val2;
-    *val2 = temp;
-}
 
 /**
  * @brief Gets the absolute maximum identifier on the column (starting from col_idx -> num_rows).
@@ -341,7 +329,7 @@ esp_err_t cla_matrix_get_inverse(const cla_matrix_ptr_t m, cla_matrix_ptr_t *con
         ESP_RETURN_ON_FALSE( (pivot_row != -1), ESP_ERR_INVALID_ARG, TAG, "Matrix is singular and cannot be inverted" );
         if(pivot_row != i) {
             for(uint16_t j = 0; j < augmented_matrix->num_cols; j++) {
-                cla_matrix_swap_values(&augmented_matrix->data[i][j], &augmented_matrix->data[pivot_row][j]);
+                cla_swap_values(&augmented_matrix->data[i][j], &augmented_matrix->data[pivot_row][j]);
             }
         }
         double pivot_value = augmented_matrix->data[i][i];
@@ -608,7 +596,7 @@ esp_err_t cla_matrix_swap_columns(cla_matrix_ptr_t *const m) {
     uint16_t col_right = (*m)->num_cols - 1;
     for(uint16_t col_left = 0; col_left < col_right; col_left++, col_right--) {
         for(uint16_t row = 0; row < (*m)->num_rows; row++) {
-            cla_matrix_swap_values(*((*m)->data+row)+col_left, *((*m)->data+row)+col_right);
+            cla_swap_values(*((*m)->data+row)+col_left, *((*m)->data+row)+col_right);
         }
         col_right--;
     }

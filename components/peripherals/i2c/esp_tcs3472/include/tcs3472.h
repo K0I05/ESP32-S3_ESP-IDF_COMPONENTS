@@ -31,6 +31,7 @@
  * change exposes API properties specific to the component without exposing hardware 
  * abstraction layer functions related to device interfacing.
  * 
+ * https://api-docs.esphome.io/tcs34725_8cpp_source
  * 
  *
  * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
@@ -124,6 +125,7 @@ typedef struct tcs3472_config_s {
     bool                        set_irq_thresholds; /*!< tcs3472 sets RGBC clear channel high and low thresholds */
     uint16_t                    irq_high_threshold; /*!< tcs3472 RGBC clear channel high threshold */
     uint16_t                    irq_low_threshold;  /*!< tcs3472 RGBC clear channel low threshold */
+    float                       glass_attenuation;  /*!< tcs3472 glass attenuation factor for illuminance calculation (1.0 = no glass) */
 } tcs3472_config_t;
 
 /**
@@ -169,10 +171,10 @@ esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_conf
  * @brief Reads RGBC channels count data from TCS3472.
  * 
  * @param[in] handle TCS3472 device handle.
- * @param[out] data RGBC channels data structure.
+ * @param[out] channels RGBC channels data structure.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t tcs3472_get_channels_count(tcs3472_handle_t handle, tcs3472_channels_data_t *const data);
+esp_err_t tcs3472_get_channels_count(tcs3472_handle_t handle, tcs3472_channels_data_t *const channels);
 
 /**
  * @brief Reads red channel count data from TCS3472.
@@ -214,43 +216,48 @@ esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *con
  * @brief Normalizes RGB (0..255) colours measured from TCS3472.
  * 
  * @param channels RGBC channels data structure.
- * @param data RGB colours data structure.
+ * @param colours RGB colours data structure.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const data);
+esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const colours);
 
 /**
  * @brief Reads normalize RGB (0..255) colours measured from TCS3472.
  * 
  * @param handle TCS3472 device handle.
- * @param data RGB colours data structure.
+ * @param colours RGB colours data structure.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const data);
+esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const colours);
 
 /**
  * @brief Converts RGBC channels count data to colour temperature in degrees Kelvin.
  * .
- * @param data RGBC channels data structure.
+ * @param channels RGBC channels data structure.
  * @return uint16_t Colour temperature in degrees Kelvin.
  */
-uint16_t tcs3472_calculate_colour_temperature(const tcs3472_channels_data_t data);
+uint16_t tcs3472_get_colour_temperature(const tcs3472_channels_data_t channels);
+
+esp_err_t tcs3472_get_colour_temperature_(tcs3472_handle_t handle, const tcs3472_channels_data_t channels, float *const temperature);
 
 /**
  * @brief Converts RGBC channels count data to illuminance.
  * 
- * @param data RGBC channels data structure.
+ * @param channels RGBC channels data structure.
  * @return float Illuminance in lux.
  */
-float tcs3472_calculate_illuminance(const tcs3472_channels_data_t data);
+esp_err_t tcs3472_get_illuminance(tcs3472_handle_t handle, const tcs3472_channels_data_t channels, float *const illuminance);
 
 /**
- * @brief Converts RGBC channels count data to infrared (IR) light.
+ * @brief Converts RGBC channels count data to an estimated infrared (IR) light.
  * 
- * @param data RGBC channels data structure.
+ * @param channels RGBC channels data structure.
  * @return uint16_t Infrared light.
  */
-uint16_t tcs3472_calculate_ir(const tcs3472_channels_data_t data);
+uint16_t tcs3472_get_ir_light(const tcs3472_channels_data_t channels);
+
+esp_err_t tcs3472_get_ir_light__(tcs3472_handle_t handle, const tcs3472_channels_data_t channels, float *const ir_light);
+
 
 /**
  * @brief Reads RGBC interrupt threshold registers from TCS3472.  The values to be used as the high and low trigger 

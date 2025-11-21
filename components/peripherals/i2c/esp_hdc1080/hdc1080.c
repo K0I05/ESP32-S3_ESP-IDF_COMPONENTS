@@ -159,11 +159,11 @@ static inline esp_err_t hdc1080_i2c_write_command(hdc1080_device_t *const device
 }
 
 /**
- * @brief HDC1080 I2C HAL write halfword to register address transaction.
+ * @brief HDC1080 I2C HAL write word to register address transaction.
  * 
  * @param device HDC1080 device descriptor.
  * @param reg_addr HDC1080 register address to write to.
- * @param word HDC1080 write transaction input halfword.
+ * @param word HDC1080 write transaction input word.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t hdc1080_i2c_write_word_to(hdc1080_device_t *const device, const uint8_t reg_addr, const uint16_t word) {
@@ -183,7 +183,7 @@ static inline esp_err_t hdc1080_i2c_write_word_to(hdc1080_device_t *const device
  * 
  * @param device HDC1080 device descriptor.
  * @param reg_addr HDC1080 register address to read from.
- * @param word HDC1080 read transaction return halfword.
+ * @param word HDC1080 read transaction return word.
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t hdc1080_i2c_read_word_from(hdc1080_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
@@ -338,6 +338,32 @@ static inline esp_err_t hdc1080_calculate_dewpoint(const float temperature, cons
 }
 
 /**
+ * @brief Calculates wet-bulb temperature from air temperature and relative humidity.
+ *
+ * @param[in] temperature air temperature in degrees Celsius.
+ * @param[in] humidity relative humidity in percent.
+ * @param[out] wetbulb calculated wet-bulb temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hdc1080_calculate_wetbulb(const float temperature, const float humidity, float *const wetbulb) {
+    /* validate arguments */
+    ESP_ARG_CHECK(wetbulb);
+
+    // validate range of temperature parameter
+    if(temperature > HDC1080_TEMPERATURE_MAX || temperature < HDC1080_TEMPERATURE_MIN) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate wet-bulb failed");
+    }
+
+    // validate range of humidity parameter
+    if(humidity > HDC1080_HUMIDITY_MAX || humidity < HDC1080_HUMIDITY_MIN) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate wet-bulb failed");
+    }
+    
+    // calculate wet-bulb temperature
+    return temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
+}
+
+/**
  * @brief HDC1080 I2C HAL reads unique serial number register.
  * 
  * @param[in] handle HDC1080 device handle.
@@ -487,6 +513,69 @@ static inline esp_err_t hdc1080_i2c_set_reset_register(hdc1080_device_t *const d
     return ESP_OK;
 }
 
+/**
+ * @brief HDC1080 I2C HAL to get raw adc temperature and humidity signals.
+ * 
+ * @param device HDC1080 device descriptor.
+ * @param temperature Raw adc temperature signal.
+ * @param humidity Raw adc humidity signal.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hdc1080_i2c_get_adc_signals(hdc1080_device_t *const device, uint16_t *const temperature, uint16_t *const humidity) {
+    const uint8_t rx_retry_max   = 5;
+    esp_err_t     ret            = ESP_OK;
+    uint8_t       rx_retry_count = 0;
+    bit16_uint8_buffer_t rx      = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( hdc1080_i2c_write_command(device, HDC1080_REG_TEMPERATURE), TAG, "unable to write to i2c device handle, write to trigger temperature measurement failed");
+
+    /* delay before next i2c transaction */
+    vTaskDelay(hdc1080_get_temperature_tick_duration(device->config.temperature_resolution));
+
+    /* retry needed - unexpected nack indicates that the sensor is still busy */
+    do {
+        /* attempt i2c read transaction */
+        ret = hdc1080_i2c_read(device, rx, BIT16_UINT8_BUFFER_SIZE);
+
+        /* delay before next retry attempt */
+        vTaskDelay(pdMS_TO_TICKS(HDC1080_RETRY_DELAY_MS));
+    } while (ret != ESP_OK && ++rx_retry_count <= rx_retry_max);
+
+    /* attempt i2c read transaction */
+    ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, read temperature failed" );
+
+    /* concat temperature bytes */
+    *temperature = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( hdc1080_i2c_write_command(device, HDC1080_REG_HUMIDITY), TAG, "unable to write to i2c device handle, write to trigger humidity measurement failed");
+
+    /* delay before next i2c transaction */
+    vTaskDelay(hdc1080_get_humidity_tick_duration(device->config.humidity_resolution));
+
+    /* retry needed - unexpected nack indicates that the sensor is still busy */
+    rx_retry_count = 0;
+    do {
+        /* attempt i2c read transaction */
+        ret = hdc1080_i2c_read(device, rx, BIT16_UINT8_BUFFER_SIZE);
+
+        /* delay before next retry attempt */
+        vTaskDelay(pdMS_TO_TICKS(HDC1080_RETRY_DELAY_MS));
+    } while (ret != ESP_OK && ++rx_retry_count <= rx_retry_max);
+
+    /* attempt i2c read transaction */
+    ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, read humidity failed" );
+
+    /* concat humidity bytes */
+    *humidity = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
+
+    return ESP_OK;
+}
+
 
 esp_err_t hdc1080_init(i2c_master_bus_handle_t master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle) {
     /* validate arguments */
@@ -549,7 +638,7 @@ esp_err_t hdc1080_init(i2c_master_bus_handle_t master_handle, const hdc1080_conf
         return ret;
 }
 
-esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperature, float *const humidity) {
+esp_err_t hdc1080_get_measurement__(hdc1080_handle_t handle, float *const temperature, float *const humidity) {
     const uint8_t rx_retry_max   = 5;
     esp_err_t     ret            = ESP_OK;
     uint8_t       rx_retry_count = 0;
@@ -611,15 +700,38 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
     return ESP_OK;
 }
 
-esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint) {
+esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperature, float *const humidity) {
+    uint16_t     temp_signal = 0;
+    uint16_t      hum_signal = 0;
+    hdc1080_device_t* device = (hdc1080_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device && temperature && humidity );
+
+    /* attempt i2c read transaction */
+    ESP_RETURN_ON_ERROR( hdc1080_i2c_get_adc_signals(device, &temp_signal, &hum_signal), TAG, "unable to read to i2c device handle, read measurements failed" );
+
+    /* convert temperature and set output parameter */
+    *temperature = hdc1080_convert_temperature_signal(temp_signal);
+
+    /* convert humidity and set output parameter */
+    *humidity = hdc1080_convert_humidity_signal(hum_signal);
+
+    return ESP_OK;
+}
+
+esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb) {
+    /* validate arguments */
+    ESP_ARG_CHECK( handle && temperature && humidity && dewpoint && wetbulb );
 
     /* attempt to read measurements */
     ESP_RETURN_ON_ERROR( hdc1080_get_measurement(handle, temperature, humidity), TAG, "unable to read to i2c device handle, read measurements failed" );
 
     /* calculate dew-point */
     ESP_RETURN_ON_ERROR( hdc1080_calculate_dewpoint(*temperature, *humidity, dewpoint), TAG, "unable to calculate dew-point, read measurements failed");
+
+    /* calculate wet-bulb */
+    ESP_RETURN_ON_ERROR( hdc1080_calculate_wetbulb(*temperature, *humidity, wetbulb), TAG, "unable to calculate wet-bulb, read measurements failed");
 
     return ESP_OK;
 }

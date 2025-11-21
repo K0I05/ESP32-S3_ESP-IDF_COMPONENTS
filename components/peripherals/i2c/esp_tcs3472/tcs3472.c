@@ -88,7 +88,31 @@
 #define TCS3472_TX_RX_DELAY_MS      UINT16_C(10)    /*!< tcs3472 delay after attempting an I2C transmit transaction and attempting an I2C receive transaction */
 
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+#define I2C_XFR_TIMEOUT_MS          (500)          //!< I2C transaction timeout in milliseconds
+
+
+// --- DN40 Constants for TCS3472 ---
+#define TCS3472_DF                  310.0f   // Device Factor (from datasheet/DN40)
+#define TCS3472_R_COEF              0.136f   // Red Coefficient
+#define TCS3472_G_COEF              1.000f   // Green Coefficient
+#define TCS3472_B_COEF              -0.444f  // Blue Coefficient
+
+/* Colour Temperature Calculation Coefficients - McCamy's cubic approximation */
+#define TCS3472_CT_RED_X_COEF       -0.14282f
+#define TCS3472_CT_RED_Y_COEF       -0.32466f
+#define TCS3472_CT_RED_Z_COEF       -0.68202f
+#define TCS3472_CT_GREEN_X_COEF     1.54924f
+#define TCS3472_CT_GREEN_Y_COEF     1.57837f
+#define TCS3472_CT_GREEN_Z_COEF     0.77073f
+#define TCS3472_CT_BLUE_X_COEF      -0.95641f
+#define TCS3472_CT_BLUE_Y_COEF      -0.73191f
+#define TCS3472_CT_BLUE_Z_COEF      0.56332f
+#define TCS3472_CT_XC_COEF          0.3320f
+#define TCS3472_CT_YC_COEF          0.1858f
+#define TCS3472_CT_CCT_A_COEF       449.0f
+#define TCS3472_CT_CCT_B_COEF       3525.0f
+#define TCS3472_CT_CCT_C_COEF       6823.0f
+#define TCS3472_CT_CCT_D_COEF       5520.33f
 
 /*
  * macro definitions
@@ -186,6 +210,21 @@ typedef struct tcs3472_device_s {
 * static constant declarations
 */
 static const char *TAG = "tcs3472";
+
+static inline float tcs3472_get_gain_multiplier(const tcs3472_gain_controls_t gain_control) {
+    switch(gain_control) {
+        case TCS3472_GAIN_CONTROL_1X:
+            return 1.0f;
+        case TCS3472_GAIN_CONTROL_4X:
+            return 4.0f;
+        case TCS3472_GAIN_CONTROL_16X:
+            return 16.0f;
+        case TCS3472_GAIN_CONTROL_60X:
+            return 60.0f;
+        default:
+            return 1.0f;
+    }
+}
 
 /**
  * @brief TCS3472 I2C HAL read from register address transaction.  This is a write and then read process.
@@ -761,11 +800,11 @@ static inline esp_err_t tcs3472_i2c_setup_registers(tcs3472_device_t *const devi
  * @return esp_err_t ESP_OK on success.
  */
 static inline esp_err_t tcs3472_get_channel_count(tcs3472_device_t *const device, const tcs3472_channels_t channel, uint16_t *const count) {
-    esp_err_t ret            = ESP_OK;
-    uint64_t  start_time     = esp_timer_get_time();
-    bool      data_is_ready  = false;
-    uint8_t   lo_reg;
-    uint16_t  rx_count;
+    esp_err_t             ret = ESP_OK;
+    const uint64_t start_time = esp_timer_get_time();
+    bool        data_is_ready = false;
+    uint8_t           lo_reg;
+    uint16_t        rx_count;
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
@@ -874,21 +913,21 @@ esp_err_t tcs3472_init(i2c_master_bus_handle_t master_handle, const tcs3472_conf
         return ret;
 }
 
-esp_err_t tcs3472_get_channels_count(tcs3472_handle_t handle, tcs3472_channels_data_t *const data) {
+esp_err_t tcs3472_get_channels_count(tcs3472_handle_t handle, tcs3472_channels_data_t *const channels) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle && data );
+    ESP_ARG_CHECK( handle && channels );
 
     /* attempt to read red channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &data->red), TAG, "read red channel count for get channels count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &channels->red), TAG, "read red channel count for get channels count failed" );
 
     /* attempt to read green channel count */ 
-    ESP_RETURN_ON_ERROR( tcs3472_get_green_channel_count(handle, &data->green), TAG, "read green channel count for get channels count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_green_channel_count(handle, &channels->green), TAG, "read green channel count for get channels count failed" );
 
     /* attempt to read blue channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_blue_channel_count(handle, &data->blue), TAG, "read blue channel count for get channels count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_blue_channel_count(handle, &channels->blue), TAG, "read blue channel count for get channels count failed" );
 
     /* attempt to read clear channel count */
-    ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &data->clear), TAG, "read clear channel count for get channels count failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &channels->clear), TAG, "read clear channel count for get channels count failed" );
 
     return ESP_OK;
 }
@@ -941,30 +980,30 @@ esp_err_t tcs3472_get_clear_channel_count(tcs3472_handle_t handle, uint16_t *con
     return ESP_OK;
 }
 
-esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const data) {
+esp_err_t tcs3472_normalize_colours(const tcs3472_channels_data_t channels, tcs3472_colours_data_t *const colours) {
     /* validate arguments */
-    ESP_ARG_CHECK( data );
+    ESP_ARG_CHECK( colours );
 
     /* avoid dividing by 0 */
     if(channels.clear == 0) {
-        data->red = data->green = data->blue = 0;
+        colours->red = colours->green = colours->blue = 0;
         return ESP_OK;
     }
 
     const float sum = channels.clear;
 
-    data->red   = (uint8_t)((float)channels.red / sum * 255.0f);
-    data->green = (uint8_t)((float)channels.green / sum * 255.0f);
-    data->blue  = (uint8_t)((float)channels.blue / sum * 255.0f);
+    colours->red   = (uint8_t)((float)channels.red / sum * 255.0f);
+    colours->green = (uint8_t)((float)channels.green / sum * 255.0f);
+    colours->blue  = (uint8_t)((float)channels.blue / sum * 255.0f);
 
     return ESP_OK;
 }
 
-esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const data) {
+esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *const colours) {
     tcs3472_channels_data_t channels = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( handle && data );
+    ESP_ARG_CHECK( handle && colours );
 
     /* attempt to read red channel count */
     ESP_RETURN_ON_ERROR( tcs3472_get_red_channel_count(handle, &channels.red), TAG, "read red channel count for get colours failed" );
@@ -979,48 +1018,82 @@ esp_err_t tcs3472_get_colours(tcs3472_handle_t handle, tcs3472_colours_data_t *c
     ESP_RETURN_ON_ERROR( tcs3472_get_clear_channel_count(handle, &channels.clear), TAG, "read clear channel count for get colours failed" );
 
     /* attempt to normalize channels count data to RGB colours */
-    ESP_RETURN_ON_ERROR( tcs3472_normalize_colours(channels, data), TAG, "normalize colours for get colours failed" );
+    ESP_RETURN_ON_ERROR( tcs3472_normalize_colours(channels, colours), TAG, "normalize colours for get colours failed" );
 
     return ESP_OK;
 }
 
-uint16_t tcs3472_calculate_colour_temperature(const tcs3472_channels_data_t data) {
-    if(data.red == 0 && data.green == 0 && data.blue == 0) {
-        return 0;
-    }
-
+uint16_t tcs3472_get_colour_temperature(const tcs3472_channels_data_t channels) {
     /* 1. Map RGB values to their XYZ counterparts.    */
     /* Based on 6500K fluorescent, 3000K fluorescent   */
     /* and 60W incandescent values for a wide range.   */
     /* Note: Y = Illuminance or lux                    */
-    const float X = (-0.14282f * data.red) + (1.54924f * data.green) + (-0.95641f * data.blue);
-    const float Y = (-0.32466f * data.red) + (1.57837f * data.green) + (-0.73191f * data.blue);
-    const float Z = (-0.68202f * data.red) + (0.77073f * data.green) + (0.56332f * data.blue);
+    const float X = (TCS3472_CT_RED_X_COEF * channels.red) + (TCS3472_CT_GREEN_X_COEF * channels.green) + (TCS3472_CT_BLUE_X_COEF * channels.blue);
+    const float Y = (TCS3472_CT_RED_Y_COEF * channels.red) + (TCS3472_CT_GREEN_Y_COEF * channels.green) + (TCS3472_CT_BLUE_Y_COEF * channels.blue);
+    const float Z = (TCS3472_CT_RED_Z_COEF * channels.red) + (TCS3472_CT_GREEN_Z_COEF * channels.green) + (TCS3472_CT_BLUE_Z_COEF * channels.blue);
 
     /* 2. Calculate the chromaticity co-ordinates      */
-    const float xc = (X) / (X + Y + Z);
-    const float yc = (Y) / (X + Y + Z);
+    const float xyz_sum = X + Y + Z;
+    if (xyz_sum == 0.0f) return 0;
+    const float xc = X / xyz_sum;
+    const float yc = Y / xyz_sum;
+
+    // Safety check to avoid McCamy divide-by-zero or invalid bounds
+    if (yc <= TCS3472_CT_YC_COEF) return 0;
 
     /* 3. Use McCamy's formula to determine the CCT    */
-    const float n = (xc - 0.3320f) / (0.1858f - yc);
-
-    const float cct = (449.0f * powf(n, 3)) + (3525.0f * powf(n, 2)) + (6823.3f * n) + 5520.33f;
+    const float n = (xc - TCS3472_CT_XC_COEF) / (TCS3472_CT_YC_COEF - yc);
+    const float cct = (TCS3472_CT_CCT_A_COEF * powf(n, 3)) + (TCS3472_CT_CCT_B_COEF * powf(n, 2)) + (TCS3472_CT_CCT_C_COEF * n) + TCS3472_CT_CCT_D_COEF;
 
     return (uint16_t)cct;
 }
 
-float tcs3472_calculate_illuminance(const tcs3472_channels_data_t data) {
-    if(data.red == 0 && data.green == 0 && data.blue == 0) {
-        return 0.0f;
+esp_err_t tcs3472_get_illuminance(tcs3472_handle_t handle, const tcs3472_channels_data_t channels, float *const illuminance) {
+    tcs3472_device_t* device = (tcs3472_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && illuminance );
+
+    // 1. Calculate Counts Per Lux (CPL)
+    // Formula: CPL = (ATIME_ms * AGAINx) / (GA * DF)
+    const float gain_multiplier = tcs3472_get_gain_multiplier(device->config.gain_control);
+    const float cpl = (device->config.integration_time * gain_multiplier) / (device->config.glass_attenuation * TCS3472_DF);
+
+    // Safety check to prevent division by zero
+    if (cpl == 0.0f) {
+        *illuminance = 0.0f;
+        return ESP_ERR_INVALID_STATE;
     }
-    return (-0.32466f * data.red) + (1.57837f * data.green) + (-0.73191f * data.blue);
+
+    // 2. Calculate Weighted IR-Corrected RGB
+    // Formula: Lux = (R_Coef * R + G_Coef * G + B_Coef * B) / CPL
+    // Note: The coefficients handle the IR rejection mathematically
+    const float weighted_rgb = (TCS3472_R_COEF * (float)channels.red) + 
+                               (TCS3472_G_COEF * (float)channels.green) + 
+                               (TCS3472_B_COEF * (float)channels.blue);
+
+    // 3. Final Lux Calculation
+    *illuminance = weighted_rgb / cpl;
+
+    // Lux cannot be negative (can happen due to noise or bad coefficients)
+    if (*illuminance < 0.0f) *illuminance = 0.0f;
+
+    return ESP_OK;
 }
 
-uint16_t tcs3472_calculate_ir(const tcs3472_channels_data_t data) {
-    if(data.red == 0 && data.green == 0 && data.blue == 0 && data.clear == 0) {
+uint16_t tcs3472_get_ir_light(const tcs3472_channels_data_t channels) {
+    // Calculate the sum of RGB channels
+    const uint32_t rgb_sum = channels.red + channels.green + channels.blue;
+
+    // If RGB sum > Clear, it suggests spectral overlap or noise 
+    // where the IR filter wasn't needed or effective.
+    if (channels.clear < rgb_sum) {
         return 0;
     }
-    return (data.red + data.green + data.blue + data.clear) / 2;
+
+    // Basic heuristic: The excess energy in Clear is IR + UV.
+    // We divide by 2 to account for the broader bandwidth sensitivity differences.
+    return (uint16_t)((channels.clear - rgb_sum) / 2);
 }
 
 esp_err_t tcs3472_get_irq_thresholds(tcs3472_handle_t handle, uint16_t *const high_threshold, uint16_t *const low_threshold) {

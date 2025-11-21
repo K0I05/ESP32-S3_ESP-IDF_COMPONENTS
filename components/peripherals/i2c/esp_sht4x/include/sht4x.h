@@ -131,6 +131,7 @@ typedef struct sht4x_data_s {
     float temperature;    /*!< temperature in degree Celsius */
     float humidity;       /*!< relative humidity in percentage */
     float dewpoint;       /*!< calculated dew-point temperature in degree Celsius */
+    float wetbulb;        /*!< calculated wet-bulb temperature in degree Celsius */
 } sht4x_data_t;
 
 /**
@@ -166,15 +167,16 @@ esp_err_t sht4x_init(const i2c_master_bus_handle_t master_handle, const sht4x_co
 esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature, float *const humidity);
 
 /**
- * @brief Similar to `i2c_sht4x_read_measurement` but it includes the dew-point temperature in the results.
+ * @brief Similar to `sht4x_get_measurement` but it includes the dew-point and wet-bulb temperatures in the results.
  *
  * @param[in] handle SHT4X device handle.
  * @param[out] temperature Temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
  * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
+ * @param[out] wetbulb Calculated wet-bulb temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint);
+esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
  * @brief Reads measurements from SHT4X into a `sht4x_data_t` structure.  This is a blocking function.

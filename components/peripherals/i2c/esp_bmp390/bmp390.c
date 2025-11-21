@@ -22,7 +22,7 @@
  */
 
 /**
- * @file bmp280.c
+ * @file bmp390.c
  *
  * ESP-IDF driver for BMP390 temperature and pressure sensor
  *
@@ -338,8 +338,8 @@ static inline esp_err_t bmp390_i2c_write_byte_to(bmp390_device_t *const device, 
  * @return Compensated temperature in degrees Celsius.
  */
 static inline double bmp390_compensate_temperature(bmp390_device_t *const device, const uint32_t adc_temperature) {
-    double var1 = (double)(adc_temperature - device->cal_factors->PAR_T1);
-    double var2 = (double)(var1 * device->cal_factors->PAR_T2);
+    const double var1 = (double)(adc_temperature - device->cal_factors->PAR_T1);
+    const double var2 = (double)(var1 * device->cal_factors->PAR_T2);
     //
     device->cal_factors->t_lin = var2 + (var1 * var1) * device->cal_factors->PAR_T3;
 
@@ -357,17 +357,17 @@ static inline double bmp390_compensate_pressure(bmp390_device_t *const device, c
     double dat1 = device->cal_factors->PAR_P6 * device->cal_factors->t_lin;
     double dat2 = device->cal_factors->PAR_P7 * device->cal_factors->t_lin * device->cal_factors->t_lin;
     double dat3 = device->cal_factors->PAR_P8 * device->cal_factors->t_lin * device->cal_factors->t_lin * device->cal_factors->t_lin;
-    double var1 = device->cal_factors->PAR_P5 + dat1 + dat2 + dat3;
+    const double var1 = device->cal_factors->PAR_P5 + dat1 + dat2 + dat3;
     //
     dat1 = device->cal_factors->PAR_P2 * device->cal_factors->t_lin;
     dat2 = device->cal_factors->PAR_P3 * device->cal_factors->t_lin * device->cal_factors->t_lin;
     dat3 = device->cal_factors->PAR_P4 * device->cal_factors->t_lin * device->cal_factors->t_lin * device->cal_factors->t_lin;
-    double var2 = (double)adc_pressure * (device->cal_factors->PAR_P1 + dat1 + dat2 + dat3);
+    const double var2 = (double)adc_pressure * (device->cal_factors->PAR_P1 + dat1 + dat2 + dat3);
     //
     dat1 = (double)adc_pressure * (double)adc_pressure;
     dat2 = device->cal_factors->PAR_P9 + device->cal_factors->PAR_P10 * device->cal_factors->t_lin;
     dat3 = dat1 * dat2;
-    double dat4 = dat3 + (double)adc_pressure * (double)adc_pressure * (double)adc_pressure * device->cal_factors->PAR_P11;
+    const double dat4 = dat3 + (double)adc_pressure * (double)adc_pressure * (double)adc_pressure * device->cal_factors->PAR_P11;
     //
     return var1 + var2 + dat4;
 }
@@ -711,15 +711,23 @@ static inline esp_err_t bmp390_i2c_set_reset_register(bmp390_device_t *const dev
     return ESP_OK;
 }
 
+/**
+ * @brief BMP390 I2C HAL to get raw adc temperature and pressure signals.  This function will trigger a measurement if in forced mode and then poll the status register.
+ * 
+ * @param device BMP390 device descriptor.
+ * @param temperature Raw adc temperature signal.
+ * @param pressure Raw adc pressure signal.
+ * @return esp_err_t ESP_OK on success.
+ */
 static inline esp_err_t bmp390_i2c_get_adc_signals(bmp390_device_t *const device, uint32_t *const temperature, uint32_t *const pressure) {
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature && pressure );
 
     /* initialize local variables */
-    esp_err_t    ret                  = ESP_OK;
-    uint64_t     start_time           = esp_timer_get_time(); /* set start time for timeout monitoring */
-    bool         pressure_is_ready    = false;
-    bool         temperature_is_ready = false;
+    esp_err_t      ret                  = ESP_OK;
+    const uint64_t start_time           = esp_timer_get_time(); /* set start time for timeout monitoring */
+    bool           pressure_is_ready    = false;
+    bool           temperature_is_ready = false;
     bit48_uint8_buffer_t rx           = {};
 
     /* trigger measurement when in forced mode */
@@ -758,16 +766,14 @@ static inline esp_err_t bmp390_i2c_get_adc_signals(bmp390_device_t *const device
     ESP_GOTO_ON_ERROR( bmp390_i2c_read_from(device, BMP390_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
     
     // concat pressure and temperature adc values
-    uint32_t adc_press, adc_temp;
-    uint32_t data_xlsb, data_lsb, data_msb;
-    data_xlsb = (uint32_t)rx[0];
-    data_lsb  = (uint32_t)rx[1] << 8;
-    data_msb  = (uint32_t)rx[2] << 16;
-    adc_press = data_msb | data_lsb | data_xlsb;
-    data_xlsb = (uint32_t)rx[3];
-    data_lsb  = (uint32_t)rx[4] << 8;
-    data_msb  = (uint32_t)rx[5] << 16;
-    adc_temp  = data_msb | data_lsb | data_xlsb;
+    const uint32_t pdata_xlsb = (uint32_t)rx[0];
+    const uint32_t pdata_lsb  = (uint32_t)rx[1] << 8;
+    const uint32_t pdata_msb  = (uint32_t)rx[2] << 16;
+    const uint32_t adc_press = pdata_msb | pdata_lsb | pdata_xlsb;
+    const uint32_t tdata_xlsb = (uint32_t)rx[3];
+    const uint32_t tdata_lsb  = (uint32_t)rx[4] << 8;
+    const uint32_t tdata_msb  = (uint32_t)rx[5] << 16;
+    const uint32_t adc_temp  = tdata_msb | tdata_lsb | tdata_xlsb;
 
     /* set output parameters */
     *temperature = adc_temp;

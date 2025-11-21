@@ -34,7 +34,7 @@
 #include <math.h>
 #include <float.h>
 #include <stdint.h>
-#include "include/vector.h"
+#include "include/cla_vector.h"
 
 #define CLA_VECTOR_CMPS_SIZE_MAX    UINT16_C(INT16_MAX)
 

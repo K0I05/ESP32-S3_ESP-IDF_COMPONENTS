@@ -44,6 +44,7 @@
 #include <esp_err.h>
 #include <esp_check.h>
 
+#include "cla_common.h"
 
 #ifdef __cplusplus
 extern "C" {

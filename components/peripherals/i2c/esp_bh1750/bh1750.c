@@ -394,7 +394,6 @@ esp_err_t bh1750_init(i2c_master_bus_handle_t master_handle, const bh1750_config
 esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_light) {
     const uint8_t rx_retry_max  = 5;
     uint8_t rx_retry_count      = 0;
-    uint32_t delay_ticks        = 0;
     esp_err_t ret               = ESP_OK;
     bh1750_device_t* device     = (bh1750_device_t*)handle;
     bit16_uint8_buffer_t rx     = { 0 };
@@ -405,7 +404,7 @@ esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_
     const bit8_uint8_buffer_t tx = { device->config.mode };
     
     /* set delay */
-    delay_ticks = bh1750_get_tick_duration(device);
+    const uint32_t delay_ticks = bh1750_get_tick_duration(device);
 
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR(bh1750_i2c_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write measurement mode command to device, get measurement failed");
@@ -426,7 +425,7 @@ esp_err_t bh1750_get_ambient_light(bh1750_handle_t handle, float *const ambient_
     ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, get measurement failed" );
 
     /* concat hi and low bytes */
-    uint16_t val = rx[0] << 8 | rx[1];
+    const uint16_t val = rx[0] << 8 | rx[1];
     
     /* convert bh1750 results to engineering units of measure (lux) */
     *ambient_light = (float)(val * 10.0f) / 12.0f;

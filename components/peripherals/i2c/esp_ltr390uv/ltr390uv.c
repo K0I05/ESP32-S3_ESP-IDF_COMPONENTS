@@ -424,7 +424,7 @@ static inline esp_err_t ltr390uv_i2c_get_sensor_counts(ltr390uv_device_t *const 
 
     /* initialize local variables */
     esp_err_t    ret           = ESP_OK;
-    uint64_t     start_time    = esp_timer_get_time(); /* set start time for timeout monitoring */
+    const uint64_t start_time  = esp_timer_get_time(); /* set start time for timeout monitoring */
     bit24_uint8_buffer_t rx    = { 0 };
     bool         data_is_ready = false;
 

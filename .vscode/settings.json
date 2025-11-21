@@ -24,6 +24,7 @@
   ],
   "svg.preview.background": "black",
   "files.associations": {
-    "format": "c"
+    "format": "c",
+    "cstdint": "c"
   }
 }

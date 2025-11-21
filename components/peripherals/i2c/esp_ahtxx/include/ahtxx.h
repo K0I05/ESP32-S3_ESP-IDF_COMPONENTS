@@ -163,15 +163,16 @@ esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_co
 esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature, float *const humidity);
 
 /**
- * @brief Similar to `i2c_aht2x_read_measurement` but it includes dewpoint in the results.
+ * @brief Similar to the `ahtxx_get_measurement` function but it includes dew-point and wet-bulb temperatures in the results.
  *
  * @param[in] handle AHTXX device handle.
  * @param[out] temperature Temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
  * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
+ * @param[out] wetbulb Calculated wet-bulb temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint);
+esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
  * @brief Reads busy status flag from AHTXX.

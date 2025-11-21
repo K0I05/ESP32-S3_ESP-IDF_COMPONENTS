@@ -9,7 +9,7 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_cla.svg)](https://registry.platformio.org/libraries/k0i05/esp_cla)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_cla/badge.svg)](https://components.espressif.com/components/k0i05/esp_cla)
 
-An ESP32 espressif IoT development framework (esp-idf) Compact Linear Algebra (CLA) component.  The CLA component is a library that provides support for complex matrix and vector operations, solving linear systems of equations, and more.  Information on features and functionality are documented and can be found in the `cla.h`, `matrix.h`, and `vector.h` header files.
+An ESP32 espressif IoT development framework (esp-idf) Compact Linear Algebra (CLA) component.  The CLA component is a library that provides support for complex matrix and vector operations, solving linear systems of equations, and more.  Information on features and functionality are documented and can be found in the `cla.h`, `cla_common.h`, `cla_filter.h`, `cla_matrix.h`, and `cla_vector.h` header files.
 
 The library is optimized for embedded systems and has a relatively small footprint.  The matrix and vector structures are instantiated dynamically.  In addition, the matrix and vector structures use `double` precision for values and support a maximum of 32,767 rows, columns, and components.
 
@@ -27,6 +27,11 @@ The CLA component currently supports the following features and functionality:
 * Vector Operations (multiplication, addition, etc.)
   * DOT Product
   * CROSS Product
+* Filter Operations
+  * First-Order IIR Low-Pass Filter
+  * FIR Low-Pass Filter (moving average)
+  * Median Filter
+  * Clamp Filter
 * Common Matrix & Vector Operations
   * Convert Vector to Matrix
   * Convert Matrix to Vector
@@ -63,11 +68,15 @@ components
     ├── include
     │   └── cla_version.h
     │   └── cla.h
-    │   └── matrix.h
-    │   └── vector.h
+    │   └── cla_common.h
+    │   └── cla_filter.h
+    │   └── cla_matrix.h
+    │   └── cla_vector.h
     └── cla.c
-    └── matrix.c
-    └── vector.c
+    └── cla_common.c
+    └── cla_filter.c
+    └── cla_matrix.c
+    └── cla_vector.c
 ```
 
 ## Basic Example

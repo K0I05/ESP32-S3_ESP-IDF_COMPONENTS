@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define HMC5883L_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define HMC5883L_FW_SEMANTIC_VERSION         "1.2.8-88"
+#define HMC5883L_FW_SEMANTIC_VERSION         "1.2.8-90"
 /** Git version hash */
-#define HMC5883L_FW_GIT_SHORT_SHA            "01566e9"
+#define HMC5883L_FW_GIT_SHORT_SHA            "11a6da3"
 
 
 /**

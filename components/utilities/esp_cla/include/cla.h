@@ -42,10 +42,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
+#include <esp_check.h>
 
 #include "cla_version.h"
-#include "matrix.h"
-#include "vector.h"
+#include "cla_common.h"
+#include "cla_matrix.h"
+#include "cla_vector.h"
+#include "cla_filter.h"
 
 
 #ifdef __cplusplus
@@ -101,21 +104,6 @@ typedef struct cla_calibration_quality_s {
     uint8_t overall_quality;     // 0-100 score
 } cla_calibration_quality_t;
 
-/* -------------------- First-order IIR low-pass filter -------------------- */
-typedef struct cla_iir_lowpass_filter_s {
-    double alpha;       /* filter coefficient (0..1) */
-    double previous;    /* previous output */
-    bool   initialized; /* flag to initialize previous on first sample */
-} cla_iir_lowpass_filter_t;
-
-/* -------------------- Moving-average (FIR) low-pass filter -------------------- */
-typedef struct cla_fir_lowpass_filter_moving_average_s {
-    double    *buffer;      /* circular buffer */
-    uint32_t   window_len;  /* window length */
-    uint32_t   idx;         /* current insertion index */
-    double     sum;         /* running sum */
-    uint32_t   filled;      /* number of samples filled (<= window_len) */
-} cla_fir_lowpass_filter_moving_average_t;
 
 /**
  * public function & subroutine prototype definitions
@@ -148,45 +136,6 @@ esp_err_t cla_matrix_to_vector(const cla_matrix_ptr_t m, cla_vector_ptr_t *const
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t cla_vector_to_matrix(const cla_vector_ptr_t v, cla_matrix_ptr_t *const m);
-
-/**
- * @brief Calculates heading in degrees from magnetic x and y components.
- * 
- * @param x_axis X axis magnetic component.
- * @param y_axis Y axis magnetic component.
- * @return float Heading in degrees.
- */
-float cla_get_heading(const float x_axis, const float y_axis);
-
-/**
- * @brief Calculates heading from true north in degrees from magnetic x and y components and magnetic declination.
- * 
- * @param x_axis X axis magnetic component.
- * @param y_axis Y axis magnetic component.
- * @param declination Magnetic declination in degrees (+east / -west).
- * @return float Heading from true north in degrees.
- */
-float cla_get_true_heading(const float x_axis, const float y_axis, const float declination);
-
-/**
- * @brief Calculates the magnitude of the earth's magnetic field from its x, y, and z components.
- * 
- * @param x_axis Magnetic field x component.
- * @param y_axis Magnetic field y component.
- * @param z_axis Magnetic field z component.
- * @return float Magnitude of the earth's magnetic field.
- */
-float cla_get_earth_field(const float x_axis, const float y_axis, const float z_axis);
-
-/**
- * @brief Checks if two double-precision floating-point values are approximately equal within a given tolerance.
- * 
- * @param val1 The first value.
- * @param val2 The second value.
- * @param tolerance The tolerance for comparison. It's used for both absolute and relative error checks.
- * @return bool True when values are equal to each other, otherwise, false.
- */
-bool cla_is_value_equal(const double val1, const double val2, const double tolerance);
 
 /**
  * @brief Calculates ellipsoid coefficients from calibration sample data.
@@ -235,99 +184,6 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t cla_calibration_samples_quality_print(const cla_calibration_quality_t quality_report);
-
-/**
- * @brief Initializes a first-order IIR low-pass filter IIR filter that uses a continuous-time RC 
- * approximation with specified sampling and cutoff frequencies.
- * 
- * @param filter Pointer to the IIR low-pass filter structure to initialize.
- * @param fs Sampling frequency in Hz.
- * @param fc Cutoff frequency in Hz.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_iir_lowpass_init_cutoff(cla_iir_lowpass_filter_t *const filter, const double fs, const double fc);
-
-/**
- * @brief Initializes a first-order IIR low-pass filter that uses a continuous-time RC 
- * approximation with specified alpha coefficient.
- * 
- * @param filter Pointer to the IIR low-pass filter structure to initialize.
- * @param alpha Filter coefficient (0 < alpha < 1).
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_iir_lowpass_init_alpha(cla_iir_lowpass_filter_t *const filter, const double alpha);
-
-/**
- * @brief Applies the first-order IIR low-pass filter that uses a continuous-time RC 
- * approximation to an input sample.
- * 
- * @param filter Pointer to the IIR low-pass filter structure.
- * @param x Input sample to filter.
- * @param fv Pointer to store the filtered output value.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_iir_lowpass_apply(cla_iir_lowpass_filter_t *const filter, const double x, double *const fv);
-
-/**
- * @brief Initializes a moving average FIR low-pass filter with a specified window length.
- * 
- * @param ma_filter Pointer to the moving average filter structure to initialize.
- * @param window_len Length of the moving average window.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_fir_lowpass_moving_average_init(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const uint32_t window_len);
-
-/**
- * @brief Deletes a moving average FIR low-pass filter, freeing allocated resources.
- * 
- * @param ma_filter Pointer to the moving average filter structure to delete.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_average_t *const ma_filter);
-
-/**
- * @brief Applies the moving average FIR low-pass filter to an input sample.
- * 
- * @param ma_filter Pointer to the moving average filter structure.
- * @param x Input sample to filter.
- * @param fv Pointer to store the filtered output value.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const double x, double *const fv);
-
-/**
- * @brief Calculates the median of an array of double-precision floating-point values using sorting.
- * 
- * @param data Input array of double values.
- * @param n Number of elements in the input array.
- * @param median Pointer to store the calculated median value.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_get_median_by_sort(const double *data, const uint16_t n, double *const median);
-
-/**
- * @brief Calculates the median of an array of double-precision floating-point values using the Quickselect algorithm 
- * that does not modify the input array.
- * 
- * @param data Input array of double values.
- * @param n Number of elements in the input array.
- * @param median Pointer to store the calculated median value.
- * @return esp_err_t ESP_OK on success.
- */
-esp_err_t cla_get_median_by_quickselect(const double *data, const uint16_t n, double *const median);
-
-/**
- * @brief Clamps a double-precision floating-point value within specified minimum and maximum bounds.  A 
- * value outside the minimum or maximum bounds will be set the respective bound.  If the minimum bound is
- * not set, there is no lower bound.  If the maximum bound is not set, there is no upper bound.
- * 
- * @param min The lower bound of the range.
- * @param max The upper bound of the range.
- * @param ignore_out_of_range Ignores values outside the specified range when set to true.
- * @param value The value to clamp.
- * @return double Clamped value.
- */
-double cla_clamp_value(const double min, const double max, const bool ignore_out_of_range, const double value);
 
 /**
  * @brief Converts `cla` firmware version numbers (major, minor, patch) into a string.

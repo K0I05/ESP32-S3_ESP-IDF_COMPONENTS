@@ -189,20 +189,44 @@ static inline esp_err_t ahtxx_calculate_dewpoint(const float temperature, const 
     ESP_ARG_CHECK( dewpoint );
     
     if(temperature > 80.0f || temperature < -40.0f) {
-        ESP_LOGE(TAG, "Temperature %.2f°C out of valid range (-40 to 80°C)", temperature);
-        return ESP_ERR_INVALID_ARG;
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate dew-point failed");
     }
     
     if(humidity > 100.0f || humidity < 0.0f) {
-        ESP_LOGE(TAG, "Humidity %.2f%% out of valid range (0 to 100%%)", humidity);
-        return ESP_ERR_INVALID_ARG;
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate dew-point failed");
     }
     
     /* calculate dew-point temperature using Magnus formula */
-    float H = (log10f(humidity) - 2.0f) / 0.4343f + (17.62f * temperature) / (243.12f + temperature);
+    const float H = (log10f(humidity) - 2.0f) / 0.4343f + (17.62f * temperature) / (243.12f + temperature);
     *dewpoint = 243.12f * H / (17.62f - H);
     
     return ESP_OK;
+}
+
+/**
+ * @brief Calculates wet-bulb temperature from air temperature and relative humidity.
+ *
+ * @param[in] temperature air temperature in degrees Celsius.
+ * @param[in] humidity relative humidity in percent.
+ * @param[out] wetbulb calculated wet-bulb temperature in degrees Celsius.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t ahtxx_calculate_wetbulb(const float temperature, const float humidity, float *const wetbulb) {
+    /* validate arguments */
+    ESP_ARG_CHECK(wetbulb);
+
+    // validate range of temperature parameter
+    if(temperature > 80.0f || temperature < -40.0f) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate wet-bulb failed");
+    }
+
+    // validate range of humidity parameter
+    if(humidity > 100.0f || humidity < 0.0f) {
+        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate wet-bulb failed");
+    }
+    
+    // calculate wet-bulb temperature
+    return temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
 }
 
 /**
@@ -211,8 +235,8 @@ static inline esp_err_t ahtxx_calculate_dewpoint(const float temperature, const 
  * @param temperature_sig ADC temperature signal from AHTXX.
  * @return float Converted temperature measurement from AHTXX in degrees Celsius.
  */
-static inline float ahtxx_convert_temperature_signal(const uint32_t temperature_sig) {
-    return ((float)temperature_sig / powf(2, 20)) * 200.0f - 50.0f;
+static inline float ahtxx_convert_temperature_signal(const uint32_t signal) {
+    return ((float)signal / powf(2, 20)) * 200.0f - 50.0f;
 }
 
 /**
@@ -221,8 +245,8 @@ static inline float ahtxx_convert_temperature_signal(const uint32_t temperature_
  * @param humidity_sig ADC humidity signal from AHTXX.
  * @return float Converted humidity measurement from AHTXX in percent.
  */
-static inline float ahtxx_convert_humidity_signal(uint32_t humidity_sig) {
-    return ((float)humidity_sig / powf(2, 20)) * 100.0f;
+static inline float ahtxx_convert_humidity_signal(uint32_t signal) {
+    return ((float)signal / powf(2, 20)) * 100.0f;
 }
 
 /**
@@ -380,7 +404,7 @@ static inline esp_err_t ahtxx_i2c_set_reset_register(ahtxx_device_t *device) {
  * @param device AHTXX device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ahtxx_i2c_setup(ahtxx_device_t *device) {
+static inline esp_err_t ahtxx_i2c_setup(ahtxx_device_t *const device) {
     const bit24_uint8_buffer_t aht10_tx = { AHTXX_CMD_AHT10_INIT, AHTXX_CTRL_CALI, AHTXX_CTRL_NOP };
     const bit24_uint8_buffer_t aht20_tx = { AHTXX_CMD_AHT20_INIT, AHTXX_CTRL_CALI, AHTXX_CTRL_NOP };
 
@@ -421,7 +445,7 @@ static inline esp_err_t ahtxx_i2c_setup(ahtxx_device_t *device) {
  * @param device AHTXX device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t ahtxx_i2c_calibrate(ahtxx_device_t *device) {
+static inline esp_err_t ahtxx_i2c_calibrate(ahtxx_device_t *const device) {
     ahtxx_status_register_t status_reg = { 0 };
 
     /* validate arguments */
@@ -454,6 +478,79 @@ static inline esp_err_t ahtxx_i2c_calibrate(ahtxx_device_t *device) {
     }
 
     return ESP_OK;
+}
+
+/**
+ * @brief AHTXX I2C HAL get raw ADC temperature and humidity signals.
+ * 
+ * @param device AHTXX device descriptor.
+ * @param temperature Pointer to store raw ADC temperature signal.
+ * @param humidity Pointer to store raw ADC humidity signal.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t ahtxx_i2c_get_adc_signals(ahtxx_device_t *const device, uint32_t *const temperature, uint32_t *const humidity) {
+    const bit24_uint8_buffer_t tx = { AHTXX_CMD_TRIGGER_MEAS, AHTXX_CTRL_MEAS, AHTXX_CTRL_NOP };
+    esp_err_t                 ret = ESP_OK;
+    const uint64_t     start_time = esp_timer_get_time();
+    bool            data_is_ready = false;
+    bit56_uint8_buffer_t       rx = { 0 };
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && temperature && humidity );
+
+    /* attempt i2c write transaction */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_write(device, tx, BIT24_UINT8_BUFFER_SIZE ), TAG, "write measurement trigger command for get measurement failed" );
+
+    /* delay before next i2c transaction */
+    vTaskDelay(pdMS_TO_TICKS(AHTXX_MEAS_PROC_DELAY_MS));
+
+    /* attempt to poll status until data is available or timeout occurs  */
+    do {
+        ahtxx_status_register_t status_reg = { 0 };
+
+        /* attempt to read status register to check if data is ready */
+        ESP_GOTO_ON_ERROR( ahtxx_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for busy status failed" );
+
+        /* set data is ready flag */
+        data_is_ready = !status_reg.bits.busy;
+
+        /* validate timeout condition */
+        if (ESP_TIMEOUT_CHECK(start_time, (AHTXX_DATA_POLL_TIMEOUT_MS * 1000))) {
+            return ESP_ERR_TIMEOUT;
+        }
+
+        /* delay task before next poll if data is not ready */
+        if (!data_is_ready) {
+            vTaskDelay(pdMS_TO_TICKS(AHTXX_DATA_READY_DELAY_MS));
+        }
+    } while (data_is_ready == false);
+
+    /* handle aht sensor read by type */
+    if(device->config.sensor_type == AHTXX_AHT10) {
+        /* aht10 returns 6 bytes */
+
+        /* attempt i2c read transaction for aht10 sensor type */
+        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(device, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
+    } else {
+        /* aht20, aht21, aht25, and aht30 return 7 bytes */
+
+        /* attempt i2c read transaction for aht20, aht21, aht25, and aht30 sensor types */
+        ESP_RETURN_ON_ERROR( ahtxx_i2c_read(device, rx, BIT56_UINT8_BUFFER_SIZE), TAG, "read measurement data for get measurement failed" );
+
+        /* validate CRC if available (AHT20/21/25/30) */
+        ESP_RETURN_ON_ERROR( ahtxx_validate_crc(rx, BIT56_UINT8_BUFFER_SIZE), TAG, "CRC validation failed for measurement data" );
+    }
+
+    /* concat humidity signal */
+    *humidity = ((uint32_t)rx[1] << 12) | ((uint32_t)rx[2] << 4) | ((uint32_t)rx[3] >> 4);
+
+    /* concat temperature signal */
+    *temperature = ((uint32_t)(rx[3] & 0x0f) << 16) | ((uint32_t)rx[4] << 8) | (uint32_t)rx[5];
+
+    return ESP_OK;
+
+    err:
+        return ret;
 }
 
 esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_config_t *ahtxx_config, ahtxx_handle_t *const ahtxx_handle) {
@@ -514,12 +611,32 @@ esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_co
 }
 
 esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature, float *const humidity) {
+    uint32_t   temp_signal = 0;
+    uint32_t    hum_signal = 0;
+    ahtxx_device_t* device = (ahtxx_device_t*)handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( device && temperature && humidity );
+
+    /* attempt to get adc signals */
+    ESP_RETURN_ON_ERROR( ahtxx_i2c_get_adc_signals(device, &temp_signal, &hum_signal), TAG, "get adc signals for get measurement failed" );
+
+    /* compute and set temperature */
+    *temperature = ahtxx_convert_temperature_signal(temp_signal);
+
+    /* compute and set humidity */
+    *humidity = ahtxx_convert_humidity_signal(hum_signal);
+    
+    return ESP_OK;
+}
+
+esp_err_t ahtxx_get_measurement__(ahtxx_handle_t handle, float *const temperature, float *const humidity) {
     const bit24_uint8_buffer_t tx = { AHTXX_CMD_TRIGGER_MEAS, AHTXX_CTRL_MEAS, AHTXX_CTRL_NOP };
-    esp_err_t     ret           = ESP_OK;
-    uint64_t      start_time    = esp_timer_get_time();
-    bool          data_is_ready = false;
-    bit56_uint8_buffer_t rx     = { 0 };
-    ahtxx_device_t* device      = (ahtxx_device_t*)handle;
+    esp_err_t      ret           = ESP_OK;
+    const uint64_t start_time    = esp_timer_get_time();
+    bool           data_is_ready = false;
+    bit56_uint8_buffer_t rx      = { 0 };
+    ahtxx_device_t* device       = (ahtxx_device_t*)handle;
 
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature && humidity );
@@ -585,15 +702,18 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
         return ret;
 }
 
-esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint) {
+esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle && (temperature || humidity || dewpoint) );
+    ESP_ARG_CHECK( handle && temperature && humidity && dewpoint && wetbulb );
 
     /* attempt to get temperature and humidity measurements */
     ESP_RETURN_ON_ERROR( ahtxx_get_measurement(handle, temperature, humidity), TAG, "read measurement for get measurements failed" );
 
     /* compute dew-point from temperature and humidity */
     ESP_RETURN_ON_ERROR( ahtxx_calculate_dewpoint(*temperature, *humidity, dewpoint), TAG, "calculate dew-point for get measurements failed" );
+
+    /* compute wet-bulb from temperature and humidity */
+    ESP_RETURN_ON_ERROR( ahtxx_calculate_wetbulb(*temperature, *humidity, wetbulb), TAG, "calculate wet-bulb for get measurements failed" );
 
     return ESP_OK;
 }
