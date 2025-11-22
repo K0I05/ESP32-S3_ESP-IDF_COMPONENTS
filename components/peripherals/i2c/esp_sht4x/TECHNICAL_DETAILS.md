@@ -75,7 +75,7 @@ A container for all measurement outputs.
 
 ### Initialization
 
-- **`sht4x_init`**: Allocates resources, probes the I2C bus, resets the sensor, reads the serial number, and initializes the device handle. Accepts a `void*` master handle.
+- **`sht4x_init`**: Allocates resources, probes the HAL master communication bus, resets the sensor, reads the serial number, and initializes the device handle. Accepts a `void*` HAL device communication handle.
 
 ### Measurement
 
@@ -91,7 +91,7 @@ A container for all measurement outputs.
 ### System & Maintenance
 
 - **`sht4x_reset`**: Sends a soft-reset command to the sensor.
-- **`sht4x_remove`**: Removes the device from the I2C bus (does not free memory).
+- **`sht4x_remove`**: Removes the device from the HAL master communication bus (does not free memory).
 - **`sht4x_delete`**: Removes the device and frees the handle memory.
 - **`sht4x_get_fw_version`**: Returns the driver version string.
 - **`sht4x_get_fw_version_number`**: Returns the driver version as an integer.
@@ -136,7 +136,7 @@ The driver implements a Hardware Abstraction Layer (HAL) to isolate the core dri
 ### HAL Implementation Strategy
 
 - **Encapsulation**: All direct calls to `i2c_master_*` functions are contained within `hal_*` functions.
-- **Error Propagation**: HAL functions return `esp_err_t` to propagate low-level I2C errors up to the public API.
+- **Error Propagation**: HAL functions return `esp_err_t` to propagate low-level communication errors up to the public API.
 - **Device Handle**: The `sht4x_device_t` structure holds a `void*` handle (abstracting the underlying `i2c_master_dev_handle_t`), which is passed to HAL functions to identify the target device.
 
 ### HAL Functions
