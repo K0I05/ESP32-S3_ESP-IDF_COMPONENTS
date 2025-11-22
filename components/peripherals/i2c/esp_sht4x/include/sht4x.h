@@ -235,7 +235,7 @@ esp_err_t sht4x_set_heater_mode(sht4x_handle_t handle, const sht4x_heater_modes_
 esp_err_t sht4x_reset(sht4x_handle_t handle);
 
 /**
- * @brief Removes an SHT4X device from master I2C bus.
+ * @brief Removes an SHT4X device from HAL master communication bus.
  *
  * @param[in] handle SHT4X device handle.
  * @return esp_err_t ESP_OK on success.
@@ -243,7 +243,7 @@ esp_err_t sht4x_reset(sht4x_handle_t handle);
 esp_err_t sht4x_remove(sht4x_handle_t handle);
 
 /**
- * @brief Removes an SHT4X device from master I2C bus and delete the handle.
+ * @brief Removes an SHT4X device from HAL master communication bus and delete the handle.
  * 
  * @param handle SHT4X device handle.
  * @return esp_err_t ESP_OK on success.

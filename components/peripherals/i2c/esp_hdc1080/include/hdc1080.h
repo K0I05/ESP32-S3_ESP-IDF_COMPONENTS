@@ -235,7 +235,7 @@ esp_err_t hdc1080_set_humidity_resolution(hdc1080_handle_t handle, const hdc1080
 esp_err_t hdc1080_reset(hdc1080_handle_t handle);
 
 /**
- * @brief Removes an HDC1080 device from master I2C bus.
+ * @brief Removes an HDC1080 device from HAL master communication bus.
  *
  * @param[in] handle HDC1080 device handle.
  * @return esp_err_t ESP_OK on success.
@@ -243,7 +243,7 @@ esp_err_t hdc1080_reset(hdc1080_handle_t handle);
 esp_err_t hdc1080_remove(hdc1080_handle_t handle);
 
 /**
- * @brief Removes an HDC1080 device from master bus and frees handle.
+ * @brief Removes an HDC1080 device from HAL master communication bus and frees handle.
  * 
  * @param[in] handle HDC1080 device handle.
  * @return esp_err_t ESP_OK on success.
