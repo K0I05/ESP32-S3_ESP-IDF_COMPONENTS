@@ -94,6 +94,7 @@ A container for all measurement outputs.
 - **`sht4x_remove`**: Removes the device from the I2C bus (does not free memory).
 - **`sht4x_delete`**: Removes the device and frees the handle memory.
 - **`sht4x_get_fw_version`**: Returns the driver version string.
+- **`sht4x_get_fw_version_number`**: Returns the driver version as an integer.
 
 ## Implementation Details
 
@@ -140,12 +141,12 @@ The driver implements a Hardware Abstraction Layer (HAL) to isolate the core dri
 
 ### HAL Functions
 
-- **`hal_probe`**: Checks if the device exists on the I2C bus using `i2c_master_probe`. Accepts a `void*` master handle.
-- **`hal_init`**: Configures the I2C device (address, clock speed) and adds it to the master bus using `i2c_master_bus_add_device`. Accepts a `void*` master handle.
-- **`hal_read`**: Wraps `i2c_master_receive` to read data from the sensor. Accepts a `void*` device handle.
-- **`hal_write`**: Wraps `i2c_master_transmit` to write data (commands) to the sensor. Accepts a `void*` device handle.
-- **`hal_write_command`**: A specialized write function for sending single-byte commands. Accepts a `void*` device handle.
-- **`hal_remove`**: Removes the device from the I2C bus using `i2c_master_bus_rm_device`. Accepts a `void*` device handle.
+- **`hal_master_probe`**: Checks if the device exists on the I2C bus using `i2c_master_probe`. Accepts a `void*` master handle.
+- **`hal_master_init`**: Configures the I2C device (address, clock speed) and adds it to the master bus using `i2c_master_bus_add_device`. Accepts a `void*` master handle.
+- **`hal_master_read`**: Wraps `i2c_master_receive` to read data from the sensor. Accepts a `void*` device handle.
+- **`hal_master_write`**: Wraps `i2c_master_transmit` to write data (commands) to the sensor. Accepts a `void*` device handle.
+- **`hal_master_write_command`**: A specialized write function for sending single-byte commands. Accepts a `void*` device handle.
+- **`hal_master_remove`**: Removes the device from the I2C bus using `i2c_master_bus_rm_device`. Accepts a `void*` device handle.
 - **`hal_get_serial_number_register`**: Executes the specific sequence (write command -> delay -> read) to retrieve the serial number.
 - **`hal_set_reset_register`**: Sends the soft-reset command and waits for the required reset time.
 - **`hal_get_adc_signals`**: Handles the measurement sequence: sends command, waits for measurement duration, and reads raw ADC results. It includes retry logic for the read operation.
