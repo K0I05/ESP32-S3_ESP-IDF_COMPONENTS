@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define CCS811_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define CCS811_FW_SEMANTIC_VERSION         "1.2.8-93"
+#define CCS811_FW_SEMANTIC_VERSION         "1.2.8-94"
 /** Git version hash */
-#define CCS811_FW_GIT_SHORT_SHA            "40a45f5"
+#define CCS811_FW_GIT_SHORT_SHA            "3f3b207"
 
 
 /**

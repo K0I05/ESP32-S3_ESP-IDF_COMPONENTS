@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define AT24CXXX_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define AT24CXXX_FW_SEMANTIC_VERSION         "1.2.8-93"
+#define AT24CXXX_FW_SEMANTIC_VERSION         "1.2.8-94"
 /** Git version hash */
-#define AT24CXXX_FW_GIT_SHORT_SHA            "40a45f5"
+#define AT24CXXX_FW_GIT_SHORT_SHA            "3f3b207"
 
 
 /**

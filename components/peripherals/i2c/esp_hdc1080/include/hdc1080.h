@@ -61,7 +61,7 @@ extern "C" {
 */
 
 /**
- * @brief Macro that initializes `i2c_hdc1080_config_t` to default configuration settings.
+ * @brief Macro that initializes `hdc1080_config_t` to default configuration settings.
  */
 #define HDC1080_CONFIG_DEFAULT {                                            \
         .i2c_address                = I2C_HDC1080_DEV_ADDR_0,                   \
@@ -118,6 +118,15 @@ typedef struct hdc1080_config_s {
     hdc1080_humidity_resolutions_t      humidity_resolution;    /*!< hdc1080 device humidity resolution */
 } hdc1080_config_t;
 
+/**
+ * @brief HDC1080 data record structure definition.
+ */
+typedef struct hdc1080_data_record_s {
+    float drybulb;        /*!< dry-bulb temperature in degree Celsius */
+    float humidity;       /*!< relative humidity in percentage */
+    float dewpoint;       /*!< calculated dew-point temperature in degree Celsius */
+    float wetbulb;        /*!< calculated wet-bulb temperature in degree Celsius */
+} hdc1080_data_record_t;
 
 /**
  * @brief HDC1080 opaque handle structure definition.
@@ -125,14 +134,14 @@ typedef struct hdc1080_config_s {
 typedef void* hdc1080_handle_t;
 
 /**
- * @brief Initializes an HDC1080 device onto the I2C master bus.
+ * @brief Initializes an HDC1080 device onto the HAL master communication bus.
  *
- * @param[in] master_handle I2C master bus handle.
+ * @param[in] hal_master_handle HAL master communication bus handle.
  * @param[in] hdc1080_config HDC1080 device configuration.
  * @param[out] hdc1080_handle HDC1080 device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t hdc1080_init(i2c_master_bus_handle_t master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle);
+esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle);
 
 /**
  * @brief Reads temperature and relative humidity from HDC1080.
@@ -155,6 +164,15 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
+
+/**
+ * @brief Reads temperature, relative humidity, dew-point and wet-bulb temperatures from HDC1080 and stores them in a data record structure.
+ * 
+ * @param[in] handle HDC1080 device handle.
+ * @param[out] data_record HDC1080 data record structure.
+ * @return esp_err_t ESP_OK on success.
+ */
+esp_err_t hdc1080_get_measurement_record(hdc1080_handle_t handle, hdc1080_data_record_t *const data_record);
 
 /**
  * @brief Enables HDC1080 heater.

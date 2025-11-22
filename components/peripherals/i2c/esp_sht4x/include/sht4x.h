@@ -64,7 +64,7 @@ extern "C" {
  */
 
 /**
- * @brief Macro that initializes `i2c_sht4x_config_t` to default configuration settings.
+ * @brief Macro that initializes `sht4x_config_t` to default configuration settings.
  */
 #define SHT4X_CONFIG_DEFAULT {                      \
         .i2c_address    = I2C_SHT4X_DEV_ADDR_LO,        \
@@ -146,14 +146,14 @@ typedef void* sht4x_handle_t;
 
 
 /**
- * @brief Initializes an SHT4X device onto the HAL bus.
+ * @brief Initializes an SHT4X device onto the HAL master communication bus.
  *
- * @param[in] hal_handle HAL bus handle.
+ * @param[in] hal_master_handle HAL master communication bus handle.
  * @param[in] sht4x_config SHT4X device configuration.
  * @param[out] sht4x_handle SHT4X device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_init(const void* hal_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
+esp_err_t sht4x_init(const void* hal_master_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
 
 /**
  * @brief Reads high-level measurements from SHT4X.  This is a blocking function.

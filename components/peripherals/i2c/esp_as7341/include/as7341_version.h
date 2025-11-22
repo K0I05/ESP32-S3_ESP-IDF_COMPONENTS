@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define AS7341_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define AS7341_FW_SEMANTIC_VERSION         "1.2.8-93"
+#define AS7341_FW_SEMANTIC_VERSION         "1.2.8-94"
 /** Git version hash */
-#define AS7341_FW_GIT_SHORT_SHA            "40a45f5"
+#define AS7341_FW_GIT_SHORT_SHA            "3f3b207"
 
 
 /**
