@@ -165,7 +165,7 @@ These `static inline` functions perform utility tasks, calculations, and logic m
 - **`get_repeat_duration`**: Returns the required measurement duration (in ms) based on the selected repeatability mode (when heater is off).
 - **`get_measurement_duration`**: Determines the total wait time required for a measurement, considering both heater and repeatability settings.
 - **`get_measurement_tick_duration`**: Converts the measurement duration from milliseconds to FreeRTOS ticks.
-- **`map_heater_command`**: Maps a `sht4x_heater_modes_t` enum value to the corresponding I2C command byte.
+- **`map_heater_command`**: Maps a `sht4x_heater_modes_t` enum value to the corresponding HAL device communication command byte.
 - **`get_command`**: Determines the correct I2C command byte to send based on the current heater and repeatability configuration.
 
 ### Range Validation
