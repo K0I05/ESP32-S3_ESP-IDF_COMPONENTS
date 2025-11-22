@@ -75,7 +75,7 @@
 #define SHT4X_RETRY_DELAY_MS        UINT16_C(2)     /*!< sht4x delay between an I2C receive transaction retry */
 #define SHT4X_TX_RX_DELAY_MS        UINT16_C(10)    /*!< sht4x delay after attempting an I2C transmit transaction and attempting an I2C receive transaction */
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
+#define I2C_XFR_TIMEOUT_MS          UINT16_C(500)          //!< I2C transaction timeout in milliseconds
 
 /*
  * macro definitions
@@ -87,7 +87,7 @@
  */
 typedef struct sht4x_device_s {
     sht4x_config_t  config;          /*!< sht4x device configuration */
-    void*           hal_dev_handle;  /*!< sht4x HAL device handle */
+    void*           hal_handle;      /*!< sht4x HAL device handle */
     uint32_t        serial_number;   /*!< sht4x device serial number */
 } sht4x_device_t;
 
@@ -147,7 +147,7 @@ static inline esp_err_t hal_init(const void* master_handle, sht4x_device_t *cons
     };
 
     /* attempt to add device to i2c master bus */
-    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_dev_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
+    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
 
     return ESP_OK;
 }
@@ -444,13 +444,13 @@ static inline esp_err_t hal_get_serial_number_register(sht4x_device_t *const dev
     ESP_ARG_CHECK( device );
 
     /* attempt write transaction */
-    ESP_RETURN_ON_ERROR( hal_write(device->hal_dev_handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get serial number failed");
+    ESP_RETURN_ON_ERROR( hal_write(device->hal_handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get serial number failed");
 	
     /* delay before attempting read transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_TX_RX_DELAY_MS));
 
     /* attempt read transaction */
-    ESP_RETURN_ON_ERROR( hal_read(device->hal_dev_handle, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to device handle, get serial number failed");
+    ESP_RETURN_ON_ERROR( hal_read(device->hal_handle, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to device handle, get serial number failed");
 
     /**
     * The serial number is returned as two 16-bit words, each with its own CRC.
@@ -471,7 +471,7 @@ static inline esp_err_t hal_set_reset_register(sht4x_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_dev_handle, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
+    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_handle, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
 
     /* delay before next command - soft-reset */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
@@ -514,14 +514,14 @@ static inline esp_err_t hal_get_adc_signals(sht4x_device_t *const device, uint16
     bit48_uint8_buffer_t rx     = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( device && (temperature || humidity) );
+    ESP_ARG_CHECK( device && temperature && humidity );
     
     /* get command and measurement duration from handle settings */
     const bit8_uint8_buffer_t tx = { get_command(device) };
     const uint32_t delay_ticks   = get_measurement_tick_duration(device);
 
     /* attempt write transaction */
-    ESP_RETURN_ON_ERROR( hal_write(device->hal_dev_handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get measurement failed");
+    ESP_RETURN_ON_ERROR( hal_write(device->hal_handle, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get measurement failed");
 	
 	/* delay task - allow time for the sensor to process measurement request */
     if(delay_ticks) vTaskDelay(delay_ticks);
@@ -529,7 +529,7 @@ static inline esp_err_t hal_get_adc_signals(sht4x_device_t *const device, uint16
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     do {
         /* attempt read transaction */
-        ret = hal_read(device->hal_dev_handle, rx, BIT48_UINT8_BUFFER_SIZE);
+        ret = hal_read(device->hal_handle, rx, BIT48_UINT8_BUFFER_SIZE);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(SHT4X_RETRY_DELAY_MS));
@@ -593,7 +593,7 @@ esp_err_t sht4x_init(const void* hal_master_handle, const sht4x_config_t *sht4x_
     /* something went wrong - after device descriptor instantiation */
     err_handle:
         /* remove device from hal master communication bus */
-        ret = hal_remove(device->hal_dev_handle);
+        ret = hal_remove(device->hal_handle);
 
         /* free device handle */
         free(device);
@@ -717,7 +717,7 @@ esp_err_t sht4x_remove(sht4x_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* remove device from hal bus */
-    return hal_remove(device->hal_dev_handle);
+    return hal_remove(device->hal_handle);
 }
 
 esp_err_t sht4x_delete(sht4x_handle_t handle) {

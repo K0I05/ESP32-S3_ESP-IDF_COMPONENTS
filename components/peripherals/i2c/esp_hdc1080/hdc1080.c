@@ -122,7 +122,7 @@ typedef union __attribute__((packed)) hdc1080_serial_number_register_u {
  */
 typedef struct hdc1080_device_s {
     hdc1080_config_t                    config;                 /*!< hdc1080 device configuration */ 
-    void*                               hal_dev_handle;         /*!< hdc1080 HAL device handle */
+    void*                               hal_handle;             /*!< hdc1080 HAL device handle */
     uint64_t                            serial_number;          /*!< hdc1080 device serial number */
     uint16_t                            manufacturer_id;        /*!< hdc1080 device manufacturer identifier */
     uint16_t                            id;                     /*!< hdc1080 device device identifier */
@@ -185,7 +185,7 @@ static inline esp_err_t hal_init(const void* master_handle, hdc1080_device_t *co
     };
 
     /* attempt to add device to i2c master bus */
-    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_dev_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
+    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
 
     return ESP_OK;
 }
@@ -505,7 +505,7 @@ static inline esp_err_t hal_get_manufacturer_id_register(hdc1080_device_t *const
     ESP_ARG_CHECK( device );
 
     /* attempt to read manufacturer identifier */
-    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_dev_handle, HDC1080_REG_MANUFACTURER_ID, reg), TAG, "read manufacturer identifier failed" );
+    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_handle, HDC1080_REG_MANUFACTURER_ID, reg), TAG, "read manufacturer identifier failed" );
 
     return ESP_OK;
 }
@@ -522,7 +522,7 @@ static inline esp_err_t hal_get_device_id_register(hdc1080_device_t *const devic
     ESP_ARG_CHECK( device );
 
     /* attempt to read device identifier */
-    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_dev_handle, HDC1080_REG_DEVICE_ID, reg), TAG, "read device identifier failed" );
+    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_handle, HDC1080_REG_DEVICE_ID, reg), TAG, "read device identifier failed" );
 
     return ESP_OK;
 }
@@ -540,7 +540,7 @@ static inline esp_err_t hal_get_config_register(hdc1080_device_t *const device, 
 
     /* attempt to read configuration register */
     uint16_t config;
-    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_dev_handle, HDC1080_REG_CONFIGURATION, &config), TAG, "read configuration register failed" );
+    ESP_RETURN_ON_ERROR( hal_read_word_from(device->hal_handle, HDC1080_REG_CONFIGURATION, &config), TAG, "read configuration register failed" );
 
     /* set output parameter */
     reg->reg = config;
@@ -567,7 +567,7 @@ static inline esp_err_t hal_set_config_register(hdc1080_device_t *const device, 
     config.bits.reserved2 = 0;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( hal_write_word_to(device->hal_dev_handle, HDC1080_REG_CONFIGURATION, config.reg), TAG, "write configuration register failed" );
+    ESP_RETURN_ON_ERROR( hal_write_word_to(device->hal_handle, HDC1080_REG_CONFIGURATION, config.reg), TAG, "write configuration register failed" );
 
     return ESP_OK;
 }
@@ -585,7 +585,7 @@ static inline esp_err_t hal_setup_registers(hdc1080_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_dev_handle, &config_reg), TAG, "unable to read configuration register, setup failed");
+    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_handle, &config_reg), TAG, "unable to read configuration register, setup failed");
 
     /* configure device */
     config_reg.bits.acquisition_mode       = HDC1080_ACQUISITION_SEQUENCED;
@@ -593,7 +593,7 @@ static inline esp_err_t hal_setup_registers(hdc1080_device_t *const device) {
     config_reg.bits.humidity_resolution    = device->config.humidity_resolution;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR(hal_set_config_register(device->hal_dev_handle, config_reg), TAG, "unable to write configuration register, setup failed");
+    ESP_RETURN_ON_ERROR(hal_set_config_register(device->hal_handle, config_reg), TAG, "unable to write configuration register, setup failed");
 
     return ESP_OK;
 }
@@ -611,13 +611,13 @@ static inline esp_err_t hal_set_reset_register(hdc1080_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_dev_handle, &config_reg), TAG, "unable to read configuration register, write reset register failed");
+    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_handle, &config_reg), TAG, "unable to read configuration register, write reset register failed");
 
     /* set soft-reset bit */
     config_reg.bits.reset_enabled = true;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( hal_set_config_register(device->hal_dev_handle, config_reg), TAG, "unable to write configuration register, write reset register failed" );
+    ESP_RETURN_ON_ERROR( hal_set_config_register(device->hal_handle, config_reg), TAG, "unable to write configuration register, write reset register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay( pdMS_TO_TICKS(HDC1080_RESET_DELAY_MS) );
@@ -640,10 +640,10 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     bit16_uint8_buffer_t rx      = { 0 };
 
     /* validate arguments */
-    ESP_ARG_CHECK( device );
+    ESP_ARG_CHECK( device && temperature && humidity );
 
     /* attempt write transaction */
-    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_dev_handle, HDC1080_REG_TEMPERATURE), TAG, "unable to write to device handle, write to trigger temperature measurement failed");
+    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_handle, HDC1080_REG_TEMPERATURE), TAG, "unable to write to device handle, write to trigger temperature measurement failed");
 
     /* delay before next transaction */
     vTaskDelay(get_temperature_tick_duration(device->config.temperature_resolution));
@@ -651,7 +651,7 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     do {
         /* attempt read transaction */
-        ret = hal_read(device->hal_dev_handle, rx, BIT16_UINT8_BUFFER_SIZE);
+        ret = hal_read(device->hal_handle, rx, BIT16_UINT8_BUFFER_SIZE);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(HDC1080_RETRY_DELAY_MS));
@@ -664,7 +664,7 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     *temperature = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
 
     /* attempt write transaction */
-    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_dev_handle, HDC1080_REG_HUMIDITY), TAG, "unable to write to device handle, write to trigger humidity measurement failed");
+    ESP_RETURN_ON_ERROR( hal_write_command(device->hal_handle, HDC1080_REG_HUMIDITY), TAG, "unable to write to device handle, write to trigger humidity measurement failed");
 
     /* delay before next transaction */
     vTaskDelay(get_humidity_tick_duration(device->config.humidity_resolution));
@@ -673,7 +673,7 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     rx_retry_count = 0;
     do {
         /* attempt read transaction */
-        ret = hal_read(device->hal_dev_handle, rx, BIT16_UINT8_BUFFER_SIZE);
+        ret = hal_read(device->hal_handle, rx, BIT16_UINT8_BUFFER_SIZE);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(HDC1080_RETRY_DELAY_MS));
@@ -737,7 +737,7 @@ esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hd
     /* something went wrong - after device descriptor instantiation */
     err_handle:
         /* remove device from hal master communication bus */
-        ret = hal_remove(device->hal_dev_handle);
+        ret = hal_remove(device->hal_handle);
 
         /* free device handle */
         free(device);
@@ -926,7 +926,7 @@ esp_err_t hdc1080_remove(hdc1080_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* remove device from hal bus */
-    return hal_remove(device->hal_dev_handle);
+    return hal_remove(device->hal_handle);
 }
 
 esp_err_t hdc1080_delete(hdc1080_handle_t handle) {
