@@ -1,4 +1,4 @@
-# Sensirion SHT4X Series of Sensors
+# Technical Documentation: ESP-IDF Driver for Sensirion SHT4X Series of Sensors
 
 [![K0I05](https://img.shields.io/badge/K0I05-a9a9a9?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODgiIGhlaWdodD0iMTg3Ij48cGF0aCBmaWxsPSIjNDU0QjU0IiBkPSJNMTU1LjU1NSAyMS45M2MxOS4yNzMgMTUuOTggMjkuNDcyIDM5LjM0NSAzMi4xNjggNjMuNzg5IDEuOTM3IDIyLjkxOC00LjU1MyA0Ni42Ni0xOC44NDggNjQuNzgxQTUwOS40NzggNTA5LjQ3OCAwIDAgMSAxNjUgMTU1bC0xLjQ4NCAxLjg4M2MtMTMuMTk2IDE2LjUzMS0zNS41NTUgMjcuMjE1LTU2LjMzOSAyOS45MDItMjguMzEyIDIuOC01Mi4yNTUtNC43MzctNzQuNzMyLTIxLjcxNUMxMy4xNzIgMTQ5LjA5IDIuOTczIDEyNS43MjUuMjc3IDEwMS4yODEtMS42NiA3OC4zNjMgNC44MyA1NC42MjEgMTkuMTI1IDM2LjVBNTA5LjQ3OCA1MDkuNDc4IDAgMCAxIDIzIDMybDEuNDg0LTEuODgzQzM3LjY4IDEzLjU4NiA2MC4wNCAyLjkwMiA4MC44MjMuMjE1YzI4LjMxMi0yLjggNTIuMjU1IDQuNzM3IDc0LjczMiAyMS43MTVaIi8+PHBhdGggZmlsbD0iI0ZERkRGRCIgZD0iTTExOS44NjcgNDUuMjdDMTI4LjkzMiA1Mi4yNiAxMzMuODIgNjMgMTM2IDc0Yy42MyA0Ljk3Mi44NDIgOS45NTMuOTUzIDE0Ljk2LjA0NCAxLjkxMS4xMjIgMy44MjIuMjAzIDUuNzMxLjM0IDEyLjIxLjM0IDEyLjIxLTMuMTU2IDE3LjMwOWE5NS42MDQgOTUuNjA0IDAgMCAxLTQuMTg4IDMuNjI1Yy00LjUgMy43MTctNi45NzQgNy42ODgtOS43MTcgMTIuODAzQzEwNi45NCAxNTIuNzkyIDEwNi45NCAxNTIuNzkyIDk3IDE1N2MtMy40MjMuNTkyLTUuODAxLjY4NS04Ljg3OS0xLjA3NC05LjgyNi03Ljg4LTE2LjAzNi0xOS41OS0yMS44NTgtMzAuNTEyLTIuNTM0LTQuNTc1LTUuMDA2LTcuMjEtOS40NjYtMTAuMDItMy43MTQtMi44ODItNS40NS02Ljk4Ni02Ljc5Ny0xMS4zOTQtLjU1LTQuODg5LS41NjEtOS4zMTYgMS0xNCAuMDkzLTEuNzYzLjE4Mi0zLjUyNy4yMzktNS4yOTIuNDkxLTEzLjg4NCAzLjg2Ni0yNy4wNTcgMTQuMTU2LTM3LjAyOCAxNy4yMTgtMTQuMzM2IDM1Ljg1OC0xNS4wNjYgNTQuNDcyLTIuNDFaIi8+PHBhdGggZmlsbD0iI0M2RDVFMCIgZD0iTTEwOSAzOWMxMS43MDMgNS4yNTUgMTkuMjA2IDEzLjE4NiAyNC4yOTMgMjUuMDA0IDIuODU3IDguMjQgMy40NyAxNi4zMTYgMy42NiAyNC45NTYuMDQ0IDEuOTExLjEyMiAzLjgyMi4yMDMgNS43MzEuMzQgMTIuMjEuMzQgMTIuMjEtMy4xNTYgMTcuMzA5YTk1LjYwNCA5NS42MDQgMCAwIDEtNC4xODggMy42MjVjLTQuNSAzLjcxNy02Ljk3NCA3LjY4OC05LjcxNyAxMi44MDNDMTA2LjgwNCAxNTMuMDQxIDEwNi44MDQgMTUzLjA0MSA5NyAxNTdjLTIuMzMyLjA3OC00LjY2OC4wOS03IDBsMi4xMjUtMS44NzVjNS40My01LjQ0NSA4Ljc0NC0xMi41NzcgMTEuNzU0LTE5LjU1OWEzNDkuNzc1IDM0OS43NzUgMCAwIDEgNC40OTYtOS44NzlsMS42NDgtMy41NWMyLjI0LTMuNTU1IDQuNDEtNC45OTYgNy45NzctNy4xMzcgMi4zMjMtMi42MSAyLjMyMy0yLjYxIDQtNWwtMyAxYy0yLjY4LjE0OC01LjMxOS4yMy04IC4yNWwtMi4xOTUuMDYzYy01LjI4Ny4wMzktNS4yODcuMDM5LTcuNzc4LTEuNjUzLTEuNjY2LTIuNjkyLTEuNDUzLTQuNTYtMS4wMjctNy42NiAyLjM5NS00LjM2MiA0LjkyNC04LjA0IDkuODI4LTkuNTcgMi4zNjQtLjQ2OCA0LjUxNC0uNTI4IDYuOTIyLS40OTNsMi40MjIuMDI4TDEyMSA5MmwtMS0yYTkyLjc1OCA5Mi43NTggMCAwIDEtLjM2LTQuNTg2QzExOC42IDY5LjYzMiAxMTYuNTE3IDU2LjA5NCAxMDQgNDVjLTUuOTA0LTQuNjY0LTExLjYtNi4wODgtMTktNyA3LjU5NC00LjI2NCAxNi4yMjMtMS44MSAyNCAxWiIvPjxwYXRoIGZpbGw9IiM0OTUwNTgiIGQ9Ik03NyA5MmM0LjYxMyAxLjY3MSA3LjI2IDMuOTQ1IDEwLjA2MyA3LjkzOCAxLjA3OCAzLjUyMy45NzYgNS41NDYtLjA2MyA5LjA2Mi0yLjk4NCAyLjk4NC02LjI1NiAyLjM2OC0xMC4yNSAyLjM3NWwtMi4yNzcuMDc0Yy01LjI5OC4wMjgtOC4yNTQtLjk4My0xMi40NzMtNC40NDktMi44MjYtMy41OTctMi40MTYtNy42MzQtMi0xMiA0LjUwMi00LjcyOCAxMC45OS0zLjc2IDE3LTNaIi8+PHBhdGggZmlsbD0iIzQ4NEY1NyIgZD0ibTExOCA5MS43NSAzLjEyNS0uMDc4YzMuMjU0LjM3MSA0LjU5NyAxLjAwMiA2Ljg3NSAzLjMyOC42MzkgNC4yMzEuMjkgNi40NDItMS42ODggMTAuMjUtMy40MjggNC4wNzgtNS44MjcgNS41OTgtMTEuMTk1IDYuMTQ4LTEuNDE0LjAwOC0yLjgyOCAwLTQuMjQyLS4wMjNsLTIuMTY4LjAzNWMtMi45OTgtLjAxNy01LjE1Ny0uMDMzLTcuNjcyLTEuNzU4LTEuNjgxLTIuNjg0LTEuNDYtNC41NTItMS4wMzUtNy42NTIgMi4zNzUtNC4zMjUgNC44OTQtOC4wMDkgOS43NS05LjU1OSAyLjc3Ny0uNTQ0IDUuNDItLjY0OSA4LjI1LS42OTFaIi8+PHBhdGggZmlsbD0iIzUyNTg2MCIgZD0iTTg2IDEzNGgxNmwxIDRjLTIgMi0yIDItNS4xODggMi4yNjZMOTQgMTQwLjI1bC0zLjgxMy4wMTZDODcgMTQwIDg3IDE0MCA4NSAxMzhsMS00WiIvPjwvc3ZnPg==)](https://github.com/K0I05)
 [![License: MIT](https://cdn.prod.website-files.com/5e0f1144930a8bc8aace526c/65dd9eb5aaca434fac4f1c34_License-MIT-blue.svg)](/LICENSE)
@@ -9,81 +9,178 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_sht4x.svg)](https://registry.platformio.org/libraries/k0i05/esp_sht4x)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_sht4x/badge.svg)](https://components.espressif.com/components/k0i05/esp_sht4x)
 
-This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the Sensirion SHT4X series of sensors (SHT40, SHT41, SHT43, and SHT45).  Information on features and functionality are documented and can be found in the `sht4x.h` header file and in the `documentation` folder.
+## Overview
 
-## Repository
+The `esp_sht4x` component is an ESP-IDF compatible driver for the Sensirion SHT4x series of digital humidity and temperature sensors. It utilizes the I2C bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.
 
-The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_sht4x>
+## Architecture & Dependencies
 
-## General Usage
+This driver is built upon the ESP-IDF I2C Master driver (`driver/i2c_master.h`). It handles the low-level I2C transactions, including command transmission, data reception, and CRC verification, abstracting these details from the user.
 
-To get started, simply copy the component to your project's `components` folder and reference the `sht4x.h` header file as an include.  The component includes documentation for the peripheral such as the datasheet, application notes, and/or user manual where applicable.
+**Dependencies:**
 
-```text
-components
-└── esp_sht4x
-    ├── CMakeLists.txt
-    ├── README.md
-    ├── LICENSE
-    ├── idf_component.yml
-    ├── library.json
-    ├── documentation
-    │   └── datasheets, etc.
-    ├── include
-    │   └── sht4x_version.h
-    │   └── sht4x.h
-    └── sht4x.c
-```
+- `driver/i2c_master.h`: For I2C bus communication.
+- `esp_err.h`: For standard error handling.
+- `esp_log.h`: For logging.
+- `freertos/FreeRTOS.h`, `freertos/task.h`: For delays and task management.
+- `math.h`: For dew-point and wet-bulb calculations.
 
-## Basic Example
+## Data Structures
 
-Once a driver instance is instantiated the sensor is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings and makes a measurement request from the sensor at user defined interval and prints the results.
+### Configuration: `sht4x_config_t`
 
-```c
-#include <sht4x.h>
+This structure defines the initial state of the SHT4x device.
 
-void i2c0_sht4x_task( void *pvParameters ) {
-    // initialize the xLastWakeTime variable with the current time.
-    TickType_t last_wake_time = xTaskGetTickCount ();
-    //
-    // initialize i2c device configuration
-    sht4x_config_t    dev_cfg = SHT4X_CONFIG_DEFAULT;
-    sht4x_handle_t    dev_hdl = NULL;
-    //
-    // init device
-    esp_err_t          result = sht4x_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
-    if (dev_hdl == NULL) {
-        ESP_LOGE(APP_TAG, "sht4x handle init failed (%s)", esp_err_to_name(result));
-        assert(dev_hdl);
-    }
-    //
-    // task loop entry point
-    for ( ;; ) {
-        ESP_LOGI(APP_TAG, "######################## SHT4X - START #########################");
-        //
-        // handle sensor
-        sht4x_data_record_t data_record;
-        result = sht4x_get_measurement_record(dev_hdl, &data_record);
-        if(result != ESP_OK) {
-            ESP_LOGE(APP_TAG, "sht4x device read failed (%s)", esp_err_to_name(result));
-        } else {
-            ESP_LOGI(APP_TAG, "dry-bulb temperature:  %4.2f °C", data_record.drybulb);
-            ESP_LOGI(APP_TAG, "dew-point temperature: %4.2f °C", data_record.dewpoint);
-            ESP_LOGI(APP_TAG, "wet-bulb temperature:  %4.2f °C", data_record.wetbulb);
-            ESP_LOGI(APP_TAG, "relative humidity:     %4.2f %c", data_record.humidity, '%');
-        }
-        //
-        ESP_LOGI(APP_TAG, "######################## SHT4X - END ###########################");
-        //
-        //
-        // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
-    }
-    //
-    // free resources
-    sht4x_delete( dev_hdl );
-    vTaskDelete( NULL );
-}
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `i2c_address` | `uint16_t` | I2C device address (Default: `0x44` or `0x45`). |
+| `i2c_clock_speed` | `uint32_t` | I2C SCL clock frequency (Default: `100000` Hz). |
+| `repeat_mode` | `sht4x_repeat_modes_t` | Measurement repeatability (resolution) setting. |
+| `heater_mode` | `sht4x_heater_modes_t` | Built-in heater configuration. |
+
+**Default Configuration Macro:** `SHT4X_CONFIG_DEFAULT`
+
+### Enumerations
+
+#### `sht4x_repeat_modes_t`
+
+Controls the duration and precision of measurements.
+
+- `SHT4X_REPEAT_HIGH`: High repeatability (Longest duration).
+- `SHT4X_REPEAT_MEDIUM`: Medium repeatability.
+- `SHT4X_REPEAT_LOW`: Low repeatability (Shortest duration).
+
+#### `sht4x_heater_modes_t`
+
+Controls the on-chip heater to remove condensation or check for drift.
+
+- `SHT4X_HEATER_OFF`: Heater disabled.
+- `SHT4X_HEATER_HIGH_LONG`: High power (~200mW), 1s.
+- `SHT4X_HEATER_HIGH_SHORT`: High power (~200mW), 0.1s.
+- `SHT4X_HEATER_MEDIUM_LONG`: Medium power (~110mW), 1s.
+- `SHT4X_HEATER_MEDIUM_SHORT`: Medium power (~110mW), 0.1s.
+- `SHT4X_HEATER_LOW_LONG`: Low power (~20mW), 1s.
+- `SHT4X_HEATER_LOW_SHORT`: Low power (~20mW), 0.1s.
+
+### Data Record: `sht4x_data_record_t`
+
+A container for all measurement outputs.
+
+- `drybulb` (float): Dry-Bulb Temperature in °C.
+- `humidity` (float): Relative Humidity in %.
+- `dewpoint` (float): Calculated Dew-Point in °C.
+- `wetbulb` (float): Calculated Wet-Bulb temperature in °C.
+
+## API Reference
+
+### Initialization
+
+- **`sht4x_init`**: Allocates resources, probes the I2C bus, resets the sensor, reads the serial number, and initializes the device handle.
+
+### Measurement
+
+- **`sht4x_get_measurement`**: Performs a blocking measurement based on current settings and returns Temperature and Humidity.
+- **`sht4x_get_measurements`**: Same as above but also calculates and returns Dew-Point and Wet-Bulb.
+- **`sht4x_get_measurement_record`**: Returns all data in a `sht4x_data_record_t` struct.
+
+### Configuration
+
+- **`sht4x_set_repeat_mode` / `sht4x_get_repeat_mode`**: Set/Get the repeatability mode.
+- **`sht4x_set_heater_mode` / `sht4x_get_heater_mode`**: Set/Get the heater mode.
+
+### System & Maintenance
+
+- **`sht4x_reset`**: Sends a soft-reset command to the sensor.
+- **`sht4x_remove`**: Removes the device from the I2C bus (does not free memory).
+- **`sht4x_delete`**: Removes the device and frees the handle memory.
+- **`sht4x_get_fw_version`**: Returns the driver version string.
+
+## Implementation Details
+
+### I2C Communication
+
+The driver uses standard I2C read/write operations.
+
+- **Commands**: 8-bit commands are sent to trigger measurements or read serial numbers.
+- **Response**: Data is received in 16-bit words followed by an 8-bit CRC.
+
+### CRC8 Verification
+
+Every 2 bytes of data received from the SHT4x are followed by a CRC8 checksum. The driver implements the polynomial `0x31` (x^8 + x^5 + x^4 + 1) with initialization `0xFF` to validate data integrity. If the calculated CRC does not match the received CRC, `ESP_ERR_INVALID_CRC` is returned.
+
+### Signal Conversion
+
+Raw ADC values are converted to physical units using the formulas specified in the datasheet:
+
+- **Temperature**: $T = -45 + 175 \cdot \frac{S_T}{2^{16}-1}$
+- **Humidity**: $RH = -6 + 125 \cdot \frac{S_{RH}}{2^{16}-1}$
+
+### Derived Calculations
+
+- **Dew Point**: Calculated using the Magnus formula approximation.
+- **Wet Bulb**: Calculated using an empirical formula based on dry-bulb temperature and relative humidity (Stull, 2011).
+
+### Timing
+
+The driver handles necessary delays:
+
+- **Power-up**: Waits 5ms.
+- **Soft Reset**: Waits 25ms.
+- **Measurement**: Waits for a duration corresponding to the selected repeatability or heater mode (e.g., up to ~1.1s for long heater pulses).
+
+## Hardware Abstraction Layer (HAL)
+
+The driver implements a Hardware Abstraction Layer (HAL) to isolate the core driver logic from the specific ESP-IDF I2C driver implementation. This is achieved through a set of `static inline` functions prefixed with `hal_`.
+
+### HAL Implementation Strategy
+
+- **Encapsulation**: All direct calls to `i2c_master_*` functions are contained within `hal_*` functions.
+- **Error Propagation**: HAL functions return `esp_err_t` to propagate low-level I2C errors up to the public API.
+- **Device Handle**: The `sht4x_device_t` structure holds the `i2c_master_dev_handle_t`, which is passed to HAL functions to identify the target device.
+
+### HAL Functions
+
+- **`hal_probe`**: Checks if the device exists on the I2C bus using `i2c_master_probe`.
+- **`hal_init`**: Configures the I2C device (address, clock speed) and adds it to the master bus using `i2c_master_bus_add_device`.
+- **`hal_read`**: Wraps `i2c_master_receive` to read data from the sensor.
+- **`hal_write`**: Wraps `i2c_master_transmit` to write data (commands) to the sensor.
+- **`hal_write_command`**: A specialized write function for sending single-byte commands.
+- **`hal_remove`**: Removes the device from the I2C bus using `i2c_master_bus_rm_device`.
+- **`hal_get_serial_number_register`**: Executes the specific sequence (write command -> delay -> read) to retrieve the serial number.
+- **`hal_set_reset_register`**: Sends the soft-reset command and waits for the required reset time.
+- **`hal_get_adc_signals`**: Handles the measurement sequence: sends command, waits for measurement duration, and reads raw ADC results. It includes retry logic for the read operation.
+
+## Internal Helper Functions
+
+These `static inline` functions perform utility tasks, calculations, and logic mapping to support the public API and HAL.
+
+### CRC Calculation
+
+- **`calculate_crc8`**: Implements the CRC-8 algorithm (Polynomial: `0x31`, Init: `0xFF`) to verify data integrity of received packets.
+
+### Timing & Command Mapping
+
+- **`get_heater_duration`**: Returns the required measurement duration (in ms) based on the selected heater mode.
+- **`get_repeat_duration`**: Returns the required measurement duration (in ms) based on the selected repeatability mode (when heater is off).
+- **`get_measurement_duration`**: Determines the total wait time required for a measurement, considering both heater and repeatability settings.
+- **`get_measurement_tick_duration`**: Converts the measurement duration from milliseconds to FreeRTOS ticks.
+- **`map_heater_command`**: Maps a `sht4x_heater_modes_t` enum value to the corresponding I2C command byte.
+- **`get_command`**: Determines the correct I2C command byte to send based on the current heater and repeatability configuration.
+
+### Range Validation
+
+- **`is_value_in_range`**: Generic helper to check if a float value is within a min/max range.
+- **`is_drybulb_in_range`**: Validates if a temperature value is within the sensor's operating range (-40 to 125 °C).
+- **`is_humidity_in_range`**: Validates if a humidity value is within the sensor's operating range (0 to 100 %).
+
+### Helper: Derived Calculations
+
+- **`get_dewpoint`**: Calculates dew point temperature using the Magnus formula. Includes input validation.
+- **`get_wetbulb`**: Calculates wet bulb temperature using the Stull formula. Includes input validation.
+
+### Helper: Signal Conversion
+
+- **`convert_adc_signal_to_temperature`**: Converts the raw 16-bit ADC temperature value to degrees Celsius.
+- **`convert_adc_signal_to_humidity`**: Converts the raw 16-bit ADC humidity value to relative humidity percentage.
 
 Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

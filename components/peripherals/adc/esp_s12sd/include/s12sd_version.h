@@ -49,7 +49,7 @@ extern "C" {
 
 #define S12SD_COMPONENT_NAME              "esp_s12sd"
 /** Version release date  */
-#define S12SD_FW_VERSION_DATE             "2025-11-20"
+#define S12SD_FW_VERSION_DATE             "2025-11-22"
 /** Major version number (X.x.x) */
 #define S12SD_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define S12SD_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define S12SD_FW_SEMANTIC_VERSION         "1.2.8-90"
+#define S12SD_FW_SEMANTIC_VERSION         "1.2.8-93"
 /** Git version hash */
-#define S12SD_FW_GIT_SHORT_SHA            "11a6da3"
+#define S12SD_FW_GIT_SHORT_SHA            "40a45f5"
 
 
 /**

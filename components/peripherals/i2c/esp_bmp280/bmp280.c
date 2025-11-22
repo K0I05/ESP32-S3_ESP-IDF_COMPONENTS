@@ -206,7 +206,7 @@ static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device,
 }
 
 /**
- * @brief BMP280 I2C HAL read byte from register address transaction.
+ * @brief I2C HAL read byte from BMP280 register address transaction.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to read from.
@@ -230,7 +230,7 @@ static inline esp_err_t bmp280_i2c_read_byte_from(bmp280_device_t *const device,
 }
 
 /**
- * @brief BMP280 I2C HAL write byte to register address transaction.
+ * @brief I2C HAL write byte to BMP280 register address transaction.
  * 
  * @param device BMP280 device descriptor.
  * @param reg_addr BMP280 register address to write to.
@@ -256,7 +256,7 @@ static inline esp_err_t bmp280_i2c_write_byte_to(bmp280_device_t *const device, 
  * @param[in] adc_temperature Raw adc temperature.
  * @return Compensated temperature in degrees Celsius.
  */
-static inline float bmp280_compensate_temperature(bmp280_device_t *const device, const int32_t adc_temperature) {
+static inline float compensate_temperature(bmp280_device_t *const device, const int32_t adc_temperature) {
     int32_t var1, var2;
 
     var1 = ((((adc_temperature >> 3) - ((int32_t)device->cal_factors->dig_T1 << 1))) * (int32_t)device->cal_factors->dig_T2) >> 11;
@@ -276,7 +276,7 @@ static inline float bmp280_compensate_temperature(bmp280_device_t *const device,
  * @param[in] adc_pressure Raw adc pressure.
  * @return Compensated pressure in pascal.
  */
-static inline float bmp280_compensate_pressure(bmp280_device_t *const device, const int32_t adc_pressure) {
+static inline float compensate_pressure(bmp280_device_t *const device, const int32_t adc_pressure) {
     int64_t var1, var2, p;
 
     var1 = (int64_t)device->cal_factors->t_fine - 128000;
@@ -646,8 +646,8 @@ esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperatu
     ESP_RETURN_ON_ERROR( bmp280_i2c_get_adc_signals(device, &adc_temp, &adc_press), TAG, "read temperature and pressure adc signals failed" );
 
     /* compensate adc temperature & pressure and set output parameters */
-    *temperature = bmp280_compensate_temperature(device, adc_temp);
-    *pressure    = bmp280_compensate_pressure(device, adc_press);
+    *temperature = compensate_temperature(device, adc_temp);
+    *pressure    = compensate_pressure(device, adc_press);
 
     return ESP_OK;
 }

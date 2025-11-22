@@ -609,7 +609,7 @@ void app_main( void ) {
     //i2c0_component_example_start(I2C_COMPONENT_MPU6050);
     //i2c0_component_example_start(I2C_COMPONENT_PCT2075);
     //i2c0_component_example_start(I2C_COMPONENT_SGP4X);
-    //i2c0_component_example_start(I2C_COMPONENT_SHT4X);
+    i2c0_component_example_start(I2C_COMPONENT_SHT4X);
     //i2c0_component_example_start(I2C_COMPONENT_SSD1306);
     //i2c0_component_example_start(I2C_COMPONENT_TCS3472);
     //i2c0_component_example_start(I2C_COMPONENT_TLV493D);
@@ -621,7 +621,7 @@ void app_main( void ) {
     //sch_component_example_start(SCH_COMPONENT_TIME_INTO_INTERVAL);
 
     //utils_component_example_start(UTILS_COMPONENT_UUID);
-    utils_component_example_start(UTILS_COMPONENT_SCALAR_TREND);
+    //utils_component_example_start(UTILS_COMPONENT_SCALAR_TREND);
 
 
     cla_matrix_ptr_t matrix;

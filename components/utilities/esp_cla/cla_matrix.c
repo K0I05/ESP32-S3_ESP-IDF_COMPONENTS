@@ -65,7 +65,7 @@ static const char *TAG = "cla_matrix";
  * @param max_row_idx Row index of the absolute maximum value found in the specified column.
  * @return esp_err_t ESP_OK on success. 
  */
-static inline esp_err_t cla_matrix_get_abs_max_row(const cla_matrix_ptr_t m, const uint16_t col_idx, uint16_t *const max_row_idx) {
+static inline esp_err_t get_abs_max_row(const cla_matrix_ptr_t m, const uint16_t col_idx, uint16_t *const max_row_idx) {
     ESP_ARG_CHECK(m);
     ESP_RETURN_ON_FALSE( (col_idx < m->num_cols), ESP_ERR_INVALID_ARG, TAG, "Invalid column index, column index must be lower than the number of columns" );
     double max_value = fabs(m->data[col_idx][col_idx]);
@@ -89,7 +89,7 @@ static inline esp_err_t cla_matrix_get_abs_max_row(const cla_matrix_ptr_t m, con
  * @param pivot_row_idx Pivot row index result. -1 if no pivot found.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t cla_matrix_get_pivot_idx(const cla_matrix_ptr_t m, const uint16_t row_idx, const uint16_t col_idx, int16_t *const pivot_row_idx) {
+static inline esp_err_t get_pivot_idx(const cla_matrix_ptr_t m, const uint16_t row_idx, const uint16_t col_idx, int16_t *const pivot_row_idx) {
     ESP_ARG_CHECK(m);
     ESP_RETURN_ON_FALSE( (row_idx < m->num_rows), ESP_ERR_INVALID_ARG, TAG, "Invalid row index, row index must be lower than the number of rows" );
     ESP_RETURN_ON_FALSE( (col_idx < m->num_cols), ESP_ERR_INVALID_ARG, TAG, "Invalid column index, column index must be lower than the number of columns" );
@@ -113,7 +113,7 @@ static inline esp_err_t cla_matrix_get_pivot_idx(const cla_matrix_ptr_t m, const
  * @param pivot_row_idx Pivot row index result. -1 if no pivot found.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t cla_matrix_get_max_pivot_idx(const cla_matrix_ptr_t m, const uint16_t row_idx, const uint16_t col_idx, int16_t *const pivot_row_idx) {
+static inline esp_err_t get_max_pivot_idx(const cla_matrix_ptr_t m, const uint16_t row_idx, const uint16_t col_idx, int16_t *const pivot_row_idx) {
     ESP_ARG_CHECK(m);
     ESP_RETURN_ON_FALSE( (row_idx < m->num_rows), ESP_ERR_INVALID_ARG, TAG, "Invalid row index, row index must be lower than the number of rows" );
     ESP_RETURN_ON_FALSE( (col_idx < m->num_cols), ESP_ERR_INVALID_ARG, TAG, "Invalid column index, column index must be lower than the number of columns" );
@@ -133,7 +133,7 @@ static inline esp_err_t cla_matrix_get_max_pivot_idx(const cla_matrix_ptr_t m, c
 /**
  * @brief Performs a single Jacobi rotation to zero out an off-diagonal element.
  */
-static inline void cla_matrix_jacobi_apply(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q, double s, double tau) {
+static inline void jacobi_apply(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q, double s, double tau) {
     for (int i = 0; i < p; i++) {
         const double g_val = a->data[i][p];
         const double h_val = a->data[i][q];
@@ -160,7 +160,7 @@ static inline void cla_matrix_jacobi_apply(cla_matrix_ptr_t a, cla_matrix_ptr_t 
     }
 }
 
-static void cla_matrix_jacobi_rotate(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q) {
+static inline void jacobi_rotate(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q) {
     if (fabs(a->data[p][q]) < 1e-12) {
         return;
     }
@@ -192,7 +192,7 @@ static void cla_matrix_jacobi_rotate(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int
     a->data[q][q] += h_rot;
     a->data[p][q] = 0.0;
 
-    cla_matrix_jacobi_apply(a, v, p, q, s, tau);
+    jacobi_apply(a, v, p, q, s, tau);
 }
 
 /**
@@ -341,7 +341,7 @@ esp_err_t cla_matrix_get_vector_dot_product(const cla_matrix_ptr_t m1, const uin
  * @param m_aug Augmented matrix.
  * @return esp_err_t 
  */
-static inline esp_err_t cla_matrix_inverse_build_augmented(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_aug) {
+static inline esp_err_t inverse_build_augmented(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_aug) {
     ESP_RETURN_ON_ERROR( cla_matrix_create(m->num_rows, m->num_cols * 2, m_aug), TAG, "Unable to create augmented matrix for inversion" );
     for(uint16_t i = 0; i < m->num_rows; i++) {
         for(uint16_t j = 0; j < m->num_cols; j++) {
@@ -359,7 +359,7 @@ static inline esp_err_t cla_matrix_inverse_build_augmented(const cla_matrix_ptr_
  * @param r1 Row 1 index.
  * @param r2 Row 2 index.
  */
-static inline void cla_matrix_inverse_swap_rows(cla_matrix_ptr_t m_aug, uint16_t r1, uint16_t r2) {
+static inline void inverse_swap_rows(cla_matrix_ptr_t m_aug, uint16_t r1, uint16_t r2) {
     if(r1 == r2) return;
     for(uint16_t j = 0; j < m_aug->num_cols; j++) {
         cla_swap_values(&m_aug->data[r1][j], &m_aug->data[r2][j]);
@@ -372,7 +372,7 @@ static inline void cla_matrix_inverse_swap_rows(cla_matrix_ptr_t m_aug, uint16_t
  * @param m_aug Augmented matrix.
  * @param pivot_idx Pivot row index.
  */
-static inline esp_err_t cla_matrix_inverse_normalize_pivot(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
+static inline esp_err_t inverse_normalize_pivot(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
     double pivot_value = m_aug->data[pivot_idx][pivot_idx];
     for(uint16_t j = 0; j < m_aug->num_cols; j++) {
         m_aug->data[pivot_idx][j] /= pivot_value;
@@ -386,7 +386,7 @@ static inline esp_err_t cla_matrix_inverse_normalize_pivot(cla_matrix_ptr_t m_au
  * @param m_aug Augmented matrix.
  * @param pivot_idx Pivot row index.
  */
-static inline esp_err_t cla_matrix_inverse_eliminate(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
+static inline esp_err_t inverse_eliminate(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
     for(uint16_t r = 0; r < m_aug->num_rows; r++) {
         if(r == pivot_idx) continue;
         double factor = m_aug->data[r][pivot_idx];
@@ -404,14 +404,14 @@ static inline esp_err_t cla_matrix_inverse_eliminate(cla_matrix_ptr_t m_aug, uin
  * @param m_aug Augmented matrix.
  * @param n Size of the original matrix.
  */
-static inline esp_err_t cla_matrix_inverse_gauss_jordan(cla_matrix_ptr_t m_aug, uint16_t n) {
+static inline esp_err_t inverse_gauss_jordan(cla_matrix_ptr_t m_aug, uint16_t n) {
     for(uint16_t i = 0; i < n; i++) {
         int16_t pivot_row = -1;
-        ESP_RETURN_ON_ERROR( cla_matrix_get_max_pivot_idx(m_aug, i, i, &pivot_row), TAG, "Unable to get pivot index during inversion" );
+        ESP_RETURN_ON_ERROR( get_max_pivot_idx(m_aug, i, i, &pivot_row), TAG, "Unable to get pivot index during inversion" );
         ESP_RETURN_ON_FALSE( (pivot_row != -1), ESP_ERR_INVALID_ARG, TAG, "Matrix is singular and cannot be inverted" );
-        cla_matrix_inverse_swap_rows(m_aug, i, pivot_row);
-        ESP_RETURN_ON_ERROR( cla_matrix_inverse_normalize_pivot(m_aug, i), TAG, "Unable to normalize pivot row during inversion" );
-        ESP_RETURN_ON_ERROR( cla_matrix_inverse_eliminate(m_aug, i), TAG, "Unable to eliminate non-pivot rows during inversion" );
+        inverse_swap_rows(m_aug, i, pivot_row);
+        ESP_RETURN_ON_ERROR( inverse_normalize_pivot(m_aug, i), TAG, "Unable to normalize pivot row during inversion" );
+        ESP_RETURN_ON_ERROR( inverse_eliminate(m_aug, i), TAG, "Unable to eliminate non-pivot rows during inversion" );
     }
     return ESP_OK;
 }
@@ -423,7 +423,7 @@ static inline esp_err_t cla_matrix_inverse_gauss_jordan(cla_matrix_ptr_t m_aug, 
  * @param n Size of the original matrix.
  * @param m_inverse Inverse matrix result.
  */
-static inline esp_err_t cla_matrix_inverse_extract(const cla_matrix_ptr_t m_aug, uint16_t n, cla_matrix_ptr_t *const m_inverse) {
+static inline esp_err_t inverse_extract(const cla_matrix_ptr_t m_aug, uint16_t n, cla_matrix_ptr_t *const m_inverse) {
     ESP_RETURN_ON_ERROR( cla_matrix_create(n, n, m_inverse), TAG, "Unable to create inverse matrix" );
     for(uint16_t i = 0; i < n; i++) {
         for(uint16_t j = 0; j < n; j++) {
@@ -439,9 +439,9 @@ esp_err_t cla_matrix_get_inverse(const cla_matrix_ptr_t m, cla_matrix_ptr_t *con
     esp_err_t ret = ESP_OK;
     cla_matrix_ptr_t augmented_matrix = NULL;
 
-    ESP_GOTO_ON_ERROR( cla_matrix_inverse_build_augmented(m, &augmented_matrix), cleanup, TAG, "Failed to build augmented matrix" );
-    ESP_GOTO_ON_ERROR( cla_matrix_inverse_gauss_jordan(augmented_matrix, m->num_rows), cleanup, TAG, "Gauss-Jordan elimination failed" );
-    ESP_GOTO_ON_ERROR( cla_matrix_inverse_extract(augmented_matrix, m->num_rows, m_inverse), cleanup, TAG, "Failed to extract inverse matrix" );
+    ESP_GOTO_ON_ERROR( inverse_build_augmented(m, &augmented_matrix), cleanup, TAG, "Failed to build augmented matrix" );
+    ESP_GOTO_ON_ERROR( inverse_gauss_jordan(augmented_matrix, m->num_rows), cleanup, TAG, "Gauss-Jordan elimination failed" );
+    ESP_GOTO_ON_ERROR( inverse_extract(augmented_matrix, m->num_rows, m_inverse), cleanup, TAG, "Failed to extract inverse matrix" );
 
 cleanup:
     cla_matrix_delete(augmented_matrix);
@@ -507,7 +507,7 @@ esp_err_t cla_matrix_get_eigen_decomposition(const cla_matrix_ptr_t m, cla_matri
     for (int iter = 0; iter < 50; iter++) {
         for (int p = 0; p < m->num_rows; p++) {
             for (int q = p + 1; q < m->num_rows; q++) {
-                cla_matrix_jacobi_rotate(a_copy, *m_eigenvectors, p, q);
+                jacobi_rotate(a_copy, *m_eigenvectors, p, q);
             }
         }
     }
@@ -900,7 +900,7 @@ esp_err_t cla_matrix_lup_solve(const cla_matrix_ptr_t m, cla_matrix_lup_ptr_t *c
     uint16_t num_permutations = 0;
     for(uint16_t j = 0; j < u->num_cols; j++) {
         uint16_t pivot_row;
-        ESP_RETURN_ON_ERROR( cla_matrix_get_abs_max_row(u, j, &pivot_row), TAG, "Unable to get absolute maximum row for pivoting" );
+        ESP_RETURN_ON_ERROR( get_abs_max_row(u, j, &pivot_row), TAG, "Unable to get absolute maximum row for pivoting" );
         ESP_RETURN_ON_FALSE( fabs(u->data[pivot_row][j]) > CLA_MATRIX_MIN_COEF, ESP_ERR_INVALID_ARG, TAG, "Matrix is singular, cannot perform LUP decomposition" );
         if(pivot_row != j) {
             ESP_RETURN_ON_ERROR( cla_matrix_swap_rows(j, pivot_row, &u), TAG, "Unable to swap rows in U matrix for pivoting" );
@@ -1130,7 +1130,7 @@ esp_err_t cla_matrix_get_row_echelon_form(const cla_matrix_ptr_t m, cla_matrix_p
     while(j < (*m_ref)->num_cols && i < (*m_ref)->num_rows) {
         // Find the pivot - the first non-zero entry in the first column of the matrix
         int16_t pivot_row = -1;
-        ESP_RETURN_ON_ERROR( cla_matrix_get_pivot_idx(*m_ref, i, j, &pivot_row), TAG, "Unable to get pivot index, get pivot index failed" );
+        ESP_RETURN_ON_ERROR( get_pivot_idx(*m_ref, i, j, &pivot_row), TAG, "Unable to get pivot index, get pivot index failed" );
         if(pivot_row < 0) {
             j++;
             continue;

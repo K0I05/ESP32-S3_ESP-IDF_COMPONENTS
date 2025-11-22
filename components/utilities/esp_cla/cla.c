@@ -214,7 +214,7 @@ cleanup:
     return ret;
 }
 
-static inline void cla_update_min_max_values(const double x, const double y, const double z, cla_calibration_quality_t *const quality_report) {
+static inline void update_min_max_values(const double x, const double y, const double z, cla_calibration_quality_t *const quality_report) {
     if (x < quality_report->min_x) quality_report->min_x = x;
     if (x > quality_report->max_x) quality_report->max_x = x;
     if (y < quality_report->min_y) quality_report->min_y = y;
@@ -223,7 +223,7 @@ static inline void cla_update_min_max_values(const double x, const double y, con
     if (z > quality_report->max_z) quality_report->max_z = z;
 }
 
-static inline esp_err_t cla_calculate_basic_statistics(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report, double *const magnitudes) {
+static inline esp_err_t calculate_basic_statistics(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report, double *const magnitudes) {
     double sum_x = 0, sum_y = 0, sum_z = 0;
     double sum_sq_x = 0, sum_sq_y = 0, sum_sq_z = 0;
     double sum_magnitude = 0;
@@ -237,7 +237,7 @@ static inline esp_err_t cla_calculate_basic_statistics(const cla_vector_samples_
         const double y = v_calib_data[i]->data[1];
         const double z = v_calib_data[i]->data[2];
         
-        cla_update_min_max_values(x, y, z, quality_report);
+        update_min_max_values(x, y, z, quality_report);
         
         sum_x += x;
         sum_y += y;
@@ -269,7 +269,7 @@ static inline esp_err_t cla_calculate_basic_statistics(const cla_vector_samples_
     return ESP_OK;
 }
 
-static inline void cla_calculate_magnitude_std_dev(const double *magnitudes, cla_calibration_quality_t *const quality_report) {
+static inline void calculate_magnitude_std_dev(const double *magnitudes, cla_calibration_quality_t *const quality_report) {
     double sum_mag_sq_diff = 0;
     for (uint16_t i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
         const double diff = magnitudes[i] - quality_report->mean_magnitude;
@@ -278,7 +278,7 @@ static inline void cla_calculate_magnitude_std_dev(const double *magnitudes, cla
     quality_report->magnitude_std_dev = sqrt(sum_mag_sq_diff / CLA_CAL_SAMPLE_SIZE);
 }
 
-static inline void cla_count_duplicate_samples(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report) {
+static inline void count_duplicate_samples(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report) {
     const double duplicate_tolerance = 1.0;
     quality_report->unique_count = CLA_CAL_SAMPLE_SIZE;
     quality_report->duplicate_count = 0;
@@ -299,7 +299,7 @@ static inline void cla_count_duplicate_samples(const cla_vector_samples_t v_cali
     }
 }
 
-static inline void cla_assess_calibration_quality(cla_calibration_quality_t *const quality_report) {
+static inline void assess_calibration_quality(cla_calibration_quality_t *const quality_report) {
     const double min_expected_range = quality_report->mean_magnitude * 1.6;
     quality_report->has_good_coverage = 
         (quality_report->range_x >= min_expected_range * 0.8) &&
@@ -321,7 +321,7 @@ static inline void cla_assess_calibration_quality(cla_calibration_quality_t *con
     quality_report->overall_quality = coverage_score + distribution_score + uniqueness_score;
 }
 
-static inline void cla_log_quality_report(const cla_calibration_quality_t *quality_report) {
+static inline void log_quality_report(const cla_calibration_quality_t *quality_report) {
     ESP_LOGI(TAG, "Calibration Quality Report:");
     ESP_LOGI(TAG, "  X: [%.2f, %.2f] range=%.2f, var=%.2f", 
              quality_report->min_x, quality_report->max_x, 
@@ -360,19 +360,19 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
     if (!magnitudes) return ESP_ERR_NO_MEM;
     
     // Calculate basic statistics
-    ESP_GOTO_ON_ERROR(cla_calculate_basic_statistics(v_calib_data, quality_report, magnitudes), cleanup, TAG, "Failed to calculate basic statistics");
+    ESP_GOTO_ON_ERROR(calculate_basic_statistics(v_calib_data, quality_report, magnitudes), cleanup, TAG, "Failed to calculate basic statistics");
     
     // Calculate magnitude standard deviation
-    cla_calculate_magnitude_std_dev(magnitudes, quality_report);
+    calculate_magnitude_std_dev(magnitudes, quality_report);
     
     // Count duplicate samples
-    cla_count_duplicate_samples(v_calib_data, quality_report);
+    count_duplicate_samples(v_calib_data, quality_report);
     
     // Assess overall quality
-    cla_assess_calibration_quality(quality_report);
+    assess_calibration_quality(quality_report);
     
     // Log quality report
-    cla_log_quality_report(quality_report);
+    log_quality_report(quality_report);
     
 cleanup:
     free(magnitudes);

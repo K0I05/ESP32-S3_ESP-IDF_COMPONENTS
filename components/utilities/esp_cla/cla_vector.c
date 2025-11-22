@@ -50,13 +50,13 @@
 static const char *TAG = "cla_vector";
 
 /**
- * @brief
+ * @brief Get offset pointer for vector component index.
  * 
- * @param v 
- * @param cmp_idx 
- * @return double* 
+ * @param v Vector pointer.
+ * @param cmp_idx Component index.
+ * @return double* Vector data offset pointer.
  */
-static inline double* cla_vector_get_offset(const cla_vector_ptr_t v, const uint16_t cmp_idx) {
+static inline double* get_offset(const cla_vector_ptr_t v, const uint16_t cmp_idx) {
 	return v->data + (cmp_idx * v->num_cmps);
 }
 

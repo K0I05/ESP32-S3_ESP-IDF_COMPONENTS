@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  *
  * ESP-IDF driver for sht4x sensor
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * MIT Licensed as described in the file LICENSE
  */
@@ -127,12 +127,15 @@ typedef struct sht4x_config_s {
     sht4x_heater_modes_t heater_mode;       /*!< sht4x measurement heater mode setting */
 } sht4x_config_t;
 
-typedef struct sht4x_data_s {
-    float temperature;    /*!< temperature in degree Celsius */
+/**
+ * @brief SHT4X data record structure definition.
+ */
+typedef struct sht4x_data_record_s {
+    float drybulb;        /*!< dry-bulb temperature in degree Celsius */
     float humidity;       /*!< relative humidity in percentage */
     float dewpoint;       /*!< calculated dew-point temperature in degree Celsius */
     float wetbulb;        /*!< calculated wet-bulb temperature in degree Celsius */
-} sht4x_data_t;
+} sht4x_data_record_t;
 
 /**
  * @brief SHT4X opaque handle structure definition.
@@ -143,14 +146,14 @@ typedef void* sht4x_handle_t;
 
 
 /**
- * @brief Initializes an SHT4X device onto the I2C master bus.
+ * @brief Initializes an SHT4X device onto the HAL bus.
  *
- * @param[in] master_handle I2C master bus handle.
+ * @param[in] hal_handle HAL bus handle.
  * @param[in] sht4x_config SHT4X device configuration.
  * @param[out] sht4x_handle SHT4X device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_init(const i2c_master_bus_handle_t master_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
+esp_err_t sht4x_init(const void* hal_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
 
 /**
  * @brief Reads high-level measurements from SHT4X.  This is a blocking function.
@@ -167,25 +170,25 @@ esp_err_t sht4x_init(const i2c_master_bus_handle_t master_handle, const sht4x_co
 esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature, float *const humidity);
 
 /**
- * @brief Similar to `sht4x_get_measurement` but it includes the dew-point and wet-bulb temperatures in the results.
+ * @brief Similar to `sht4x_get_measurement` but it includes derived dew-point and wet-bulb temperatures in the results.
  *
  * @param[in] handle SHT4X device handle.
- * @param[out] temperature Temperature in degree Celsius.
+ * @param[out] drybulb Dry-bulb temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
  * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
  * @param[out] wetbulb Calculated wet-bulb temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
+esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const drybulb, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
- * @brief Reads measurements from SHT4X into a `sht4x_data_t` structure.  This is a blocking function.
+ * @brief Reads measurements from SHT4X and transforms them into a `sht4x_data_record_t` structure.  This is a blocking function.
  * 
  * @param handle SHT4X device handle.
- * @param data Data structure that contains temperature, humidity and dew-point measurements.
+ * @param data_record Data record structure that contains dry-bulb, humidity, dew-point, and wet-bulb measurements.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_get_data(sht4x_handle_t handle, sht4x_data_t *const data);
+esp_err_t sht4x_get_measurement_record(sht4x_handle_t handle, sht4x_data_record_t *const data_record);
 
 /**
  * @brief Reads measurement repeatability mode setting from SHT4X.

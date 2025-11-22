@@ -53,7 +53,7 @@ static const char *TAG = "cla_filter";
 
 
 /* In-place bit-reversal permutation for arrays real[], imag[] of length n (n power of two) */
-static inline void cla_filter_bit_reversal_permutation(double *real, double *imag, const uint16_t n) {
+static inline void bit_reversal_permutation(double *real, double *imag, const uint16_t n) {
     uint16_t i, j, k;
     j = 0;
     for (i = 1; i < n; ++i) {
@@ -77,10 +77,10 @@ static inline void cla_filter_bit_reversal_permutation(double *real, double *ima
 /* Forward/inverse FFT core. inverse == false => forward FFT, inverse == true => inverse FFT.
  * Returns ESP_OK on success, ESP_ERR_INVALID_ARG on invalid n.
  */
-static inline esp_err_t cla_filter_fft_core(double *real, double *imag, const uint16_t n, const bool inverse) {
+static inline esp_err_t fft_core(double *real, double *imag, const uint16_t n, const bool inverse) {
     if (!cla_is_value_power_of_two(n)) return ESP_ERR_INVALID_ARG;
 
-    cla_filter_bit_reversal_permutation(real, imag, n);
+    bit_reversal_permutation(real, imag, n);
 
     for (int len = 2; len <= n; len <<= 1) {
         const double ang = 2.0 * M_PI / (double)len * (inverse ? 1.0 : -1.0); /* sign: - for forward, + for inverse */
@@ -120,7 +120,7 @@ static inline esp_err_t cla_filter_fft_core(double *real, double *imag, const ui
  * In-place selection algorithm (Hoare/ Lomuto style, randomized pivot avoided by median-of-three).
  * Returns the k-th smallest element (0-based). Requires n > 0 and k < n.
  */
-static inline uint16_t cla_filter_get_median_of_three_index(const double *a, const uint16_t left, const uint16_t right) {
+static inline uint16_t get_median_of_three_index(const double *a, const uint16_t left, const uint16_t right) {
     const uint16_t mid = left + ((right - left) >> 1);
     const double al = a[left], am = a[mid], ar = a[right];
 
@@ -149,8 +149,8 @@ static inline uint16_t cla_filter_get_median_of_three_index(const double *a, con
 }
 
 /* helper to select pivot (median-of-three) and partition; returns final pivot index */
-static inline uint16_t cla_filter_select_pivot_and_partition(double *a, const uint16_t left, const uint16_t right) {
-    const uint16_t pidx  = cla_filter_get_median_of_three_index(a, left, right);
+static inline uint16_t select_pivot_and_partition(double *a, const uint16_t left, const uint16_t right) {
+    const uint16_t pidx  = get_median_of_three_index(a, left, right);
     const double   pivot = a[pidx];
     cla_swap_values(&a[pidx], &a[right]); /* move pivot to end */
     uint16_t store = left;
@@ -164,7 +164,7 @@ static inline uint16_t cla_filter_select_pivot_and_partition(double *a, const ui
     return store;
 }
 
-static inline esp_err_t cla_filter_median_quickselect_kth(double *a, const uint16_t n, const uint16_t k, double *const v) {
+static inline esp_err_t median_quickselect_kth(double *a, const uint16_t n, const uint16_t k, double *const v) {
     if (n == 0 || k >= n) return ESP_ERR_INVALID_ARG;
     uint16_t left = 0, right = n - 1;
     while (left <= right) {
@@ -172,7 +172,7 @@ static inline esp_err_t cla_filter_median_quickselect_kth(double *a, const uint1
             *v = a[left];
             return ESP_OK;
         }
-        const uint16_t store = cla_filter_select_pivot_and_partition(a, left, right);
+        const uint16_t store = select_pivot_and_partition(a, left, right);
         if (k == store) {
             *v = a[store];
             return ESP_OK;
@@ -210,12 +210,12 @@ esp_err_t cla_filter_get_median_by_quickselect(const double *data, const uint16_
     memcpy(buf, data, n * sizeof(double));
     double med;
     if (n & 1) {
-        cla_filter_median_quickselect_kth(buf, n, n/2, &med);
+        median_quickselect_kth(buf, n, n/2, &med);
     } else {
         /* need the two middle values: find lower middle and upper middle */
         double v1, v2;
-        cla_filter_median_quickselect_kth(buf, n, n/2 - 1, &v1);
-        cla_filter_median_quickselect_kth(buf, n, n/2, &v2);
+        median_quickselect_kth(buf, n, n/2 - 1, &v1);
+        median_quickselect_kth(buf, n, n/2, &v2);
         med = 0.5 * (v1 + v2);
     }
     free(buf);
@@ -224,7 +224,7 @@ esp_err_t cla_filter_get_median_by_quickselect(const double *data, const uint16_
 }
 
 /* helper to prepare bounds and ensure order */
-static inline void cla_filter_prepare_bounds(double *const min_in, double *const max_in, bool *const has_min, bool *const has_max) {
+static inline void prepare_bounds(double *const min_in, double *const max_in, bool *const has_min, bool *const has_max) {
     *has_min = !isnan(*min_in);
     *has_max = !isnan(*max_in);
     if (*has_min && *has_max && *min_in > *max_in) {
@@ -240,7 +240,7 @@ double cla_filter_clamp(const double min, const double max, const bool ignore_ou
     double min_in = min;
     double max_in = max;
     bool has_min, has_max;
-    cla_filter_prepare_bounds(&min_in, &max_in, &has_min, &has_max);
+    prepare_bounds(&min_in, &max_in, &has_min, &has_max);
 
     double v = value;
 
@@ -377,11 +377,11 @@ esp_err_t cla_filter_fir_lowpass_moving_average_apply(cla_filter_fir_lowpass_mov
 }
 
 esp_err_t cla_filter_get_fft_dft(double *real, double *imag, const uint16_t n, int16_t *const dft) {
-    return cla_filter_fft_core(real, imag, n, false);
+    return fft_core(real, imag, n, false);
 }
 
 esp_err_t cla_filter_get_fft_idft(double *real, double *imag, const uint16_t n, int16_t *const dft) {
-    esp_err_t r = cla_filter_fft_core(real, imag, n, true);
+    esp_err_t r = fft_core(real, imag, n, true);
 
     if(r != ESP_OK) {
         return r;

@@ -27,7 +27,7 @@
  * @{
  *
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * MIT Licensed as described in the file LICENSE
  */
@@ -38,16 +38,16 @@
 
 void i2c0_sht4x_task( void *pvParameters ) {
     // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
+    TickType_t last_wake_time = xTaskGetTickCount ();
     //
     // initialize i2c device configuration
-    sht4x_config_t dev_cfg          = SHT4X_CONFIG_DEFAULT;
-    sht4x_handle_t dev_hdl;
+    sht4x_config_t    dev_cfg = SHT4X_CONFIG_DEFAULT;
+    sht4x_handle_t    dev_hdl = NULL;
     //
     // init device
-    sht4x_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
+    esp_err_t          result = sht4x_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
     if (dev_hdl == NULL) {
-        ESP_LOGE(APP_TAG, "sht4x handle init failed");
+        ESP_LOGE(APP_TAG, "sht4x handle init failed (%s)", esp_err_to_name(result));
         assert(dev_hdl);
     }
     //
@@ -56,13 +56,15 @@ void i2c0_sht4x_task( void *pvParameters ) {
         ESP_LOGI(APP_TAG, "######################## SHT4X - START #########################");
         //
         // handle sensor
-        float temperature, humidity;
-        esp_err_t result = sht4x_get_measurement(dev_hdl, &temperature, &humidity);
+        sht4x_data_record_t data_record;
+        result = sht4x_get_measurement_record(dev_hdl, &data_record);
         if(result != ESP_OK) {
             ESP_LOGE(APP_TAG, "sht4x device read failed (%s)", esp_err_to_name(result));
         } else {
-            ESP_LOGI(APP_TAG, "air temperature:     %.2f °C", temperature);
-            ESP_LOGI(APP_TAG, "relative humidity:   %.2f %c", humidity, '%');
+            ESP_LOGI(APP_TAG, "dry-bulb temperature:  %4.2f °C", data_record.drybulb);
+            ESP_LOGI(APP_TAG, "dew-point temperature: %4.2f °C", data_record.dewpoint);
+            ESP_LOGI(APP_TAG, "wet-bulb temperature:  %4.2f °C", data_record.wetbulb);
+            ESP_LOGI(APP_TAG, "relative humidity:     %4.2f %c", data_record.humidity, '%');
         }
         //
         ESP_LOGI(APP_TAG, "######################## SHT4X - END ###########################");

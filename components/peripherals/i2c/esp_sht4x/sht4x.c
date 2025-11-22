@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  *
  * Ported from esp-open-rtos
  *
- * Copyright (c) 2024 Eric Gionet (gionet.c.eric@gmail.com)
+ * Copyright (c) 2025 Eric Gionet (gionet.c.eric@gmail.com)
  *
  * MIT Licensed as described in the file LICENSE
  */
@@ -63,10 +63,10 @@
 #define SHT4X_CMD_MEAS_H_LOW_LONG   UINT8_C(0x1E)   //!< sht4x I2C low resolution measurement command with heater enabled long pulse
 #define SHT4X_CMD_MEAS_H_LOW_SHORT  UINT8_C(0x15)   //!< sht4x I2C low resolution measurement command with heater enabled short pulse
 
-#define SHT4X_TEMPERATURE_MAX       (float)(125.0)  //!< sht4x maximum temperature range
-#define SHT4X_TEMPERATURE_MIN       (float)(-40.0)  //!< sht4x minimum temperature range
-#define SHT4X_HUMIDITY_MAX          (float)(100.0)  //!< sht4x maximum humidity range
-#define SHT4X_HUMIDITY_MIN          (float)(0.0)    //!< sht4x minimum humidity range
+#define SHT4X_DRYBULB_MAX           (float)(125.0)  //!< sht4x maximum dry-bulb temperature range
+#define SHT4X_DRYBULB_MIN           (float)(-40.0)  //!< sht4x minimum dry-bulb temperature range
+#define SHT4X_HUMIDITY_MAX          (float)(100.0)  //!< sht4x maximum relative humidity range
+#define SHT4X_HUMIDITY_MIN          (float)(0.0)    //!< sht4x minimum relative humidity range
 
 #define SHT4X_POWERUP_DELAY_MS      UINT16_C(5)     /*!< sht4x delay on power-up before attempting I2C transactions */
 #define SHT4X_APPSTART_DELAY_MS     UINT16_C(10)    /*!< sht4x delay after initialization before application start-up */
@@ -101,16 +101,65 @@ static const char *TAG = "sht4x";
 */
 
 
+/**
+ * @brief HAL probe device on communication bus.
+ * 
+ * @param device SHT4X device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_probe(const void* hal_handle, sht4x_device_t *const device) {
+    /* cast to i2c master bus handle */
+    i2c_master_bus_handle_t hal = (i2c_master_bus_handle_t)hal_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK(hal && device );
+
+    /* attempt to probe device on i2c master bus */
+    esp_err_t ret = i2c_master_probe(hal, device->config.i2c_address, I2C_XFR_TIMEOUT_MS);
+    ESP_RETURN_ON_ERROR(ret, TAG, "i2c device does not exist at address 0x%02x, hal probe failed", device->config.i2c_address);
+
+    return ESP_OK;
+}
 
 /**
- * @brief I2C HAL read transaction from SHT4X.
+ * @brief HAL device initialization on communication bus.
+ * 
+ * @param hal_handle Pointer to HAL communication bus handle.
+ * @param device Pointer to SHT4X device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_init(const void* hal_handle, sht4x_device_t *const device) {
+    /* cast to i2c master bus handle */
+    i2c_master_bus_handle_t hal = (i2c_master_bus_handle_t)hal_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK(hal && device );
+
+    /* set i2c device configuration */
+    const i2c_device_config_t i2c_dev_conf = {
+        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed
+    };
+
+    /* validate i2c device handle */
+    if (device->i2c_handle == NULL) {
+        ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(hal, &i2c_dev_conf, &device->i2c_handle), TAG, "unable to add device to i2c bus, hal initialization failed");
+    }
+
+    return ESP_OK;
+}
+
+
+/**
+ * @brief HAL read transaction.
  * 
  * @param device SHT4X device descriptor.
  * @param buffer Buffer to store results from read transaction.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t i2c_hal_read(sht4x_device_t *const device, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t hal_read(sht4x_device_t *const device, uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -121,14 +170,14 @@ static inline esp_err_t i2c_hal_read(sht4x_device_t *const device, uint8_t *buff
 }
 
 /**
- * @brief I2C HAL write transaction to SHT4X.
+ * @brief HAL write transaction.
  * 
  * @param device SHT4X device descriptor.
  * @param buffer Buffer to write for write transaction.
  * @param size Length of buffer to write for write transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t i2c_hal_write(sht4x_device_t *const device, const uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t hal_write(sht4x_device_t *const device, const uint8_t *buffer, const uint8_t size) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -139,13 +188,13 @@ static inline esp_err_t i2c_hal_write(sht4x_device_t *const device, const uint8_
 }
 
 /**
- * @brief I2C HAL write command to SHT4X register address transaction.
+ * @brief HAL write command to register address transaction.
  * 
  * @param device SHT4X device descriptor.
- * @param reg_addr SHT4X command register address to write to.
+ * @param reg_addr Command register address to write to.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t i2c_hal_write_command(sht4x_device_t *const device, const uint8_t reg_addr) {
+static inline esp_err_t hal_write_command(sht4x_device_t *const device, const uint8_t reg_addr) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
     /* validate arguments */
@@ -154,6 +203,30 @@ static inline esp_err_t i2c_hal_write_command(sht4x_device_t *const device, cons
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
                         
+    return ESP_OK;
+}
+
+/**
+ * @brief HAL remove device handle and free resources.
+ * 
+ * @param device SHT4X device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_remove(sht4x_device_t *const device) {
+    /* validate arguments */
+    ESP_ARG_CHECK( device );
+
+    /* validate handle instance */
+    if(device->i2c_handle) {
+        /* remove device from i2c master bus */
+        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
+        if(ret != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+            return ret;
+        }
+        device->i2c_handle = NULL;
+    }
+
     return ESP_OK;
 }
 
@@ -208,7 +281,7 @@ static inline uint8_t get_repeat_duration(const sht4x_repeat_modes_t rm) {
  * @brief Gets SHT4X measurement duration in milliseconds from device handle.  See datasheet for details.
  *
  * @param[in] device SHT4X device descriptor.
- * @return uint32_t Measurement duration in milliseconds.
+ * @return uint16_t Measurement duration in milliseconds.
  */
 static inline uint16_t get_measurement_duration(sht4x_device_t *const device) {
     if (!device) return 2;
@@ -265,84 +338,108 @@ static inline uint8_t get_command(sht4x_device_t *const device) {
 }
 
 /**
- * @brief Calculates dew-point temperature from air temperature and relative humidity.
+ * @brief Helper: check if value is in range.
+ * 
+ * @param value value to check.
+ * @param min minimum acceptable value.
+ * @param max maximum acceptable value.
+ * @return true if value is in range, false otherwise.
+ */
+static inline bool is_value_in_range(const float value, const float min, const float max) {
+    return (value <= max && value >= min);
+}
+
+/**
+ * @brief Helper: check if dry-bulb temperature is in range.
+ * 
+ * @param drybulb dry-bulb temperature in degrees Celsius.
+ * @return true if dry-bulb temperature is in range, false otherwise.
+ */
+static inline bool is_drybulb_in_range(const float drybulb) {
+    return is_value_in_range(drybulb, SHT4X_DRYBULB_MIN, SHT4X_DRYBULB_MAX);
+}
+
+/**
+ * @brief Helper: check if relative humidity is in range.
+ * 
+ * @param humidity relative humidity in percent.
+ * @return true if relative humidity is in range, false otherwise.
+ */
+static inline bool is_humidity_in_range(const float humidity) {
+    return is_value_in_range(humidity, SHT4X_HUMIDITY_MIN, SHT4X_HUMIDITY_MAX);
+}
+
+/**
+ * @brief Gets calculated dew-point temperature from dry-bulb temperature and relative humidity.
  *
- * @param[in] temperature air temperature in degrees Celsius.
+ * @param[in] drybulb dry-bulb temperature in degrees Celsius.
  * @param[in] humidity relative humidity in percent.
  * @param[out] dewpoint calculated dew-point temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t calculate_dewpoint(const float temperature, const float humidity, float *const dewpoint) {
+static inline esp_err_t get_dewpoint(const float drybulb, const float humidity, float *const dewpoint) {
     /* validate arguments */
     ESP_ARG_CHECK(dewpoint);
 
-    // validate range of temperature parameter
-    if(temperature > SHT4X_TEMPERATURE_MAX || temperature < SHT4X_TEMPERATURE_MIN) {
-        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate dew-point failed");
-    }
+    /* validate range of dry-bulb temperature parameter */
+    ESP_RETURN_ON_FALSE( is_drybulb_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "drybulb temperature is out of range, get calculated dew-point temperature failed");
 
-    // validate range of humidity parameter
-    if(humidity > SHT4X_HUMIDITY_MAX || humidity < SHT4X_HUMIDITY_MIN) {
-        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate dew-point failed");
-    }
+    /* validate range of relative humidity parameter */
+    ESP_RETURN_ON_FALSE( is_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated dew-point temperature failed");
     
-    // calculate dew-point temperature
-    const float H = (log10f(humidity)-2)/0.4343f + (17.62f*temperature)/(243.12f+temperature);
+    /* calculate dew-point temperature */
+    const float H = (log10f(humidity)-2)/0.4343f + (17.62f*drybulb)/(243.12f+drybulb);
     *dewpoint = 243.12f*H/(17.62f-H);
     
     return ESP_OK;
 }
 
 /**
- * @brief Calculates wet-bulb temperature from air temperature and relative humidity.
+ * @brief Gets calculated wet-bulb temperature from dry-bulb temperature and relative humidity.
  *
- * @param[in] temperature air temperature in degrees Celsius.
+ * @param[in] drybulb dry-bulb temperature in degrees Celsius.
  * @param[in] humidity relative humidity in percent.
  * @param[out] wetbulb calculated wet-bulb temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t calculate_wetbulb(const float temperature, const float humidity, float *const wetbulb) {
+static inline esp_err_t get_wetbulb(const float drybulb, const float humidity, float *const wetbulb) {
     /* validate arguments */
     ESP_ARG_CHECK(wetbulb);
 
-    // validate range of temperature parameter
-    if(temperature > SHT4X_TEMPERATURE_MAX || temperature < SHT4X_TEMPERATURE_MIN) {
-        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "temperature is out of range, calculate wet-bulb failed");
-    }
+    /* validate range of dry-bulb temperature parameter */
+    ESP_RETURN_ON_FALSE( is_drybulb_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "drybulb temperature is out of range, get calculated wet-bulb temperature failed");
 
-    // validate range of humidity parameter
-    if(humidity > SHT4X_HUMIDITY_MAX || humidity < SHT4X_HUMIDITY_MIN) {
-        ESP_RETURN_ON_FALSE( false, ESP_ERR_INVALID_ARG, TAG, "humidity is out of range, calculate wet-bulb failed");
-    }
+    /* validate range of relative humidity parameter */
+    ESP_RETURN_ON_FALSE( is_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated wet-bulb temperature failed");
     
-    // calculate wet-bulb temperature
-    *wetbulb = temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
-
+    /* calculate wet-bulb temperature */
+    *wetbulb = drybulb * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(drybulb + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
+    
     return ESP_OK;
 }
 
 /**
- * @brief I2C HAL read serial number from SHT4X.
+ * @brief HAL read serial number register from SHT4X.
  *
  * @param[in] device SHT4X device descriptor.
  * @param[out] serial_number SHT4X serial number. 
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t i2c_hal_get_serial_number(sht4x_device_t *const device, uint32_t *const serial_number) {
+static inline esp_err_t hal_get_serial_number_register(sht4x_device_t *const device, uint32_t *const serial_number) {
     const bit8_uint8_buffer_t tx = { SHT4X_CMD_SERIAL };
     bit48_uint8_buffer_t      rx = { 0 };
 
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_hal_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get serial number failed");
+    /* attempt write transaction */
+    ESP_RETURN_ON_ERROR( hal_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get serial number failed");
 	
-    /* delay before attempting i2c read transaction */
+    /* delay before attempting read transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_TX_RX_DELAY_MS));
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_hal_read(device, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to i2c device handle, get serial number failed");
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_read(device, rx, BIT48_UINT8_BUFFER_SIZE), TAG, "unable to read to device handle, get serial number failed");
 
     /**
     * The serial number is returned as two 16-bit words, each with its own CRC.
@@ -358,12 +455,12 @@ static inline esp_err_t i2c_hal_get_serial_number(sht4x_device_t *const device, 
     return ESP_OK;
 }
 
-static inline esp_err_t i2c_hal_set_reset(sht4x_device_t *const device) {
+static inline esp_err_t hal_set_reset_register(sht4x_device_t *const device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( i2c_hal_write_command(device, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
+    ESP_RETURN_ON_ERROR( hal_write_command(device, SHT4X_CMD_RESET), TAG, "unable to write to device handle, device reset failed");
 
     /* delay before next command - soft-reset */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_RESET_DELAY_MS));
@@ -372,34 +469,34 @@ static inline esp_err_t i2c_hal_set_reset(sht4x_device_t *const device) {
 }
 
 /**
- * @brief Converts SHT4X raw temperature signal to degrees Celsius.
+ * @brief Converts SHT4X ADC temperature signal to temperature in degrees Celsius.
  *
- * @param[in] signal raw temperature signal from SHT4X.
+ * @param[in] adc_signal ADC temperature signal from SHT4X.
  * @return float temperature in degrees Celsius.
  */
-static inline float convert_uint16_signal_to_temperature(const uint16_t signal) {
-    return (float)signal * 175.0f / 65535.0f - 45.0f;
+static inline float convert_adc_signal_to_temperature(const uint16_t adc_signal) {
+    return (float)adc_signal * 175.0f / 65535.0f - 45.0f;
 }
 
 /**
- * @brief Converts SHT4X raw humidity signal to relative humidity percentage.
+ * @brief Converts SHT4X ADC humidity signal to relative humidity percentage.
  * 
- * @param signal raw humidity signal from SHT4X.
+ * @param[in] adc_signal ADC humidity signal from SHT4X.
  * @return float relative humidity in percent.
  */
-static inline float convert_uint16_signal_to_humidity(const uint16_t signal) {
-    return (float)signal * 125.0f / 65535.0f - 6.0f;
+static inline float convert_adc_signal_to_humidity(const uint16_t adc_signal) {
+    return (float)adc_signal * 125.0f / 65535.0f - 6.0f;
 }
 
 /**
- * @brief Gets SHT4X raw ADC temperature and humidity signals.
+ * @brief HAL read raw ADC temperature and humidity signals from SHT4X.
  *
  * @param[in] device SHT4X device descriptor.
  * @param[out] temperature raw temperature signal from SHT4X.
  * @param[out] humidity raw humidity signal from SHT4X.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t i2c_hal_get_adc_signals(sht4x_device_t *const device, uint16_t *const temperature, uint16_t *const humidity) {
+static inline esp_err_t hal_get_adc_signals(sht4x_device_t *const device, uint16_t *const temperature, uint16_t *const humidity) {
     const uint8_t rx_retry_max  = 5;
     uint8_t rx_retry_count      = 0;
     esp_err_t ret               = ESP_OK;
@@ -412,23 +509,23 @@ static inline esp_err_t i2c_hal_get_adc_signals(sht4x_device_t *const device, ui
     const bit8_uint8_buffer_t tx = { get_command(device) };
     const uint32_t delay_ticks   = get_measurement_tick_duration(device);
 
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_hal_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to i2c device handle, get measurement failed");
+    /* attempt write transaction */
+    ESP_RETURN_ON_ERROR( hal_write(device, tx, BIT8_UINT8_BUFFER_SIZE), TAG, "unable to write to device handle, get measurement failed");
 	
 	/* delay task - allow time for the sensor to process measurement request */
     if(delay_ticks) vTaskDelay(delay_ticks);
 
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     do {
-        /* attempt i2c read transaction */
-        ret = i2c_hal_read(device, rx, BIT48_UINT8_BUFFER_SIZE);
+        /* attempt read transaction */
+        ret = hal_read(device, rx, BIT48_UINT8_BUFFER_SIZE);
 
         /* delay before next retry attempt */
         vTaskDelay(pdMS_TO_TICKS(SHT4X_RETRY_DELAY_MS));
     } while (++rx_retry_count <= rx_retry_max && ret != ESP_OK );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to i2c device handle, get measurement failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to device handle, get measurement failed" );
 	
     /* validate crc values */
     if (rx[2] != calculate_crc8(rx, 2) || rx[5] != calculate_crc8(rx + 3, 2)) {
@@ -442,44 +539,37 @@ static inline esp_err_t i2c_hal_get_adc_signals(sht4x_device_t *const device, ui
     return ESP_OK;
 }
 
-esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *sht4x_handle) {
+esp_err_t sht4x_init(const void* hal_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle) {
     /* validate arguments */
-    ESP_ARG_CHECK( master_handle && (sht4x_config || sht4x_handle) );
+    ESP_ARG_CHECK( hal_handle && (sht4x_config || sht4x_handle) );
 
     /* power-up delay */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_POWERUP_DELAY_MS));
 
-    /* validate device exists on the master bus */
-    esp_err_t ret = i2c_master_probe(master_handle, sht4x_config->i2c_address, I2C_XFR_TIMEOUT_MS);
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, device handle initialization failed", sht4x_config->i2c_address);
-
     /* validate memory availability for handle */
+    esp_err_t ret;
     sht4x_device_t* device = (sht4x_device_t*)calloc(1, sizeof(sht4x_device_t));
     ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for device, device handle initialization failed");
 
     /* copy configuration */
     device->config = *sht4x_config;
 
-    /* set device configuration */
-    const i2c_device_config_t i2c_dev_conf = {
-        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = device->config.i2c_address,
-        .scl_speed_hz       = device->config.i2c_clock_speed
-    };
+    /* validate device exists on the hal communication bus */
+    ret = hal_probe(hal_handle, device);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal device does not exist, device handle initialization failed");
 
-    /* validate device handle */
-    if (device->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "unable to add device to master bus, device handle initialization failed");
-    }
+    /* initialize device onto the hal communication bus */
+    ret = hal_init(hal_handle, device);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal initialization failed, device handle initialization failed");
 
     /* delay before next i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(SHT4X_CMD_DELAY_MS));
 
     /* attempt to reset the device */
-    ESP_GOTO_ON_ERROR(i2c_hal_set_reset(device), err_handle, TAG, "unable to soft-reset device, device handle initialization failed");
+    ESP_GOTO_ON_ERROR(hal_set_reset_register(device), err_handle, TAG, "unable to soft-reset device register, device handle initialization failed");
 
     /* sht4x attempt to read device serial number */
-    ESP_GOTO_ON_ERROR(i2c_hal_get_serial_number(device, &device->serial_number), err_handle, TAG, "unable to read serial number, device reset failed");
+    ESP_GOTO_ON_ERROR(hal_get_serial_number_register(device, &device->serial_number), err_handle, TAG, "unable to read serial number from device register, device reset failed");
 
     /* set device handle */
     *sht4x_handle = (sht4x_handle_t)device;
@@ -489,10 +579,12 @@ esp_err_t sht4x_init(i2c_master_bus_handle_t master_handle, const sht4x_config_t
 
     return ESP_OK;
 
+    /* something went wrong - after device descriptor instantiation */
     err_handle:
-        if (device && device->i2c_handle) {
-            i2c_master_bus_rm_device(device->i2c_handle);
-        }
+        /* remove device from hal bus */
+        ret = hal_remove(device);
+
+        /* free device handle */
         free(device);
     err:
         return ret;
@@ -506,26 +598,40 @@ esp_err_t sht4x_get_measurement(sht4x_handle_t handle, float *const temperature,
     /* validate arguments */
     ESP_ARG_CHECK( device && temperature && humidity );
 
-    /* attempt to i2c transaction */
-    ESP_RETURN_ON_ERROR( i2c_hal_get_adc_signals(device, &temp_signal, &hum_signal), TAG, "unable to read measurement, get measurement failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_get_adc_signals(device, &temp_signal, &hum_signal), TAG, "unable to read measurement, get measurement failed" );
 
     /* convert adc signals to engineering units of measure */
-    *temperature = convert_uint16_signal_to_temperature(temp_signal);
-    *humidity    = convert_uint16_signal_to_humidity(hum_signal);
+    *temperature = convert_adc_signal_to_temperature(temp_signal);
+    *humidity    = convert_adc_signal_to_humidity(hum_signal);
 
     return ESP_OK;
 }
 
-esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb) {
+esp_err_t sht4x_get_measurements(sht4x_handle_t handle, float *const drybulb, float *const humidity, float *const dewpoint, float *const wetbulb) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle && temperature && humidity && dewpoint && wetbulb );
+    ESP_ARG_CHECK( handle && drybulb && humidity && dewpoint && wetbulb );
 
     /* attempt to read measurements */
-    ESP_RETURN_ON_ERROR( sht4x_get_measurement(handle, temperature, humidity), TAG, "unable to read measurement, read measurements failed" );
+    ESP_RETURN_ON_ERROR( sht4x_get_measurement(handle, drybulb, humidity), TAG, "unable to read measurement, read measurements failed" );
 
-    /* calculate dew-point and wet-bulb if requested */
-    ESP_RETURN_ON_ERROR( calculate_dewpoint(*temperature, *humidity, dewpoint), TAG, "unable to calculate dew-point, read measurements failed" );
-    ESP_RETURN_ON_ERROR( calculate_wetbulb(*temperature, *humidity, wetbulb), TAG, "unable to calculate wet-bulb, read measurements failed" );
+    /* get calculated dew-point and wet-bulb */
+    ESP_RETURN_ON_ERROR( get_dewpoint(*drybulb, *humidity, dewpoint), TAG, "unable to calculate dew-point, read measurements failed" );
+    ESP_RETURN_ON_ERROR( get_wetbulb(*drybulb, *humidity, wetbulb), TAG, "unable to calculate wet-bulb, read measurements failed" );
+
+    return ESP_OK;
+}
+
+esp_err_t sht4x_get_measurement_record(sht4x_handle_t handle, sht4x_data_record_t *const data_record) {
+    /* validate arguments */
+    ESP_ARG_CHECK( handle && data_record );
+
+    /* attempt to read measurements */
+    ESP_RETURN_ON_ERROR( sht4x_get_measurements(handle, &data_record->drybulb, 
+                                                        &data_record->humidity, 
+                                                        &data_record->dewpoint, 
+                                                        &data_record->wetbulb), 
+    TAG, "unable to read measurement record, read measurement record failed" );
 
     return ESP_OK;
 }
@@ -585,10 +691,10 @@ esp_err_t sht4x_reset(sht4x_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( i2c_hal_set_reset(device), TAG, "unable to write to device handle, device reset failed" );
+    ESP_RETURN_ON_ERROR( hal_set_reset_register(device), TAG, "unable to write to device reset register, device reset failed" );
 
     /* sht4x attempt to read device serial number */
-    ESP_RETURN_ON_ERROR( i2c_hal_get_serial_number(device, &device->serial_number), TAG, "unable to read serial number, device reset failed" );
+    ESP_RETURN_ON_ERROR( hal_get_serial_number_register(device, &device->serial_number), TAG, "unable to read serial number from device register, device reset failed" );
 
     return ESP_OK;
 }
@@ -599,25 +705,15 @@ esp_err_t sht4x_remove(sht4x_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* validate handle instance */
-    if(device->i2c_handle) {
-        /* remove device from i2c master bus */
-        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
-        if(ret != ESP_OK) {
-            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-            return ret;
-        }
-        device->i2c_handle = NULL;
-    }
-
-    return ESP_OK;
+    /* remove device from hal bus */
+    return hal_remove(device);
 }
 
 esp_err_t sht4x_delete(sht4x_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( handle );
 
-    /* remove device from master bus */
+    /* remove device from hal bus */
     esp_err_t ret = sht4x_remove(handle);
 
     /* free handles */
