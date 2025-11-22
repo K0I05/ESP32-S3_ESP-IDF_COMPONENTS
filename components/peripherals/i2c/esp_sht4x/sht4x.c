@@ -178,7 +178,7 @@ static inline uint8_t calculate_crc8(const uint8_t data[], const uint8_t len) {
 /**
  * @brief Helper: map heater mode to fixed measurement duration (ms); returns 0 if heater not used.
  */
-static inline uint32_t get_heater_duration(const sht4x_heater_modes_t hm) {
+static inline uint16_t get_heater_duration(const sht4x_heater_modes_t hm) {
     switch (hm) {
         case SHT4X_HEATER_HIGH_LONG:
         case SHT4X_HEATER_MEDIUM_LONG:
@@ -196,7 +196,7 @@ static inline uint32_t get_heater_duration(const sht4x_heater_modes_t hm) {
 /**
  * @brief Helper: map repeat mode to measurement duration (ms) for no-heater operation.
  */
-static inline uint32_t get_repeat_duration(const sht4x_repeat_modes_t rm) {
+static inline uint8_t get_repeat_duration(const sht4x_repeat_modes_t rm) {
     switch (rm) {
         case SHT4X_REPEAT_HIGH:   return 10;
         case SHT4X_REPEAT_MEDIUM: return 5;
@@ -210,9 +210,9 @@ static inline uint32_t get_repeat_duration(const sht4x_repeat_modes_t rm) {
  * @param[in] device SHT4X device descriptor.
  * @return uint32_t Measurement duration in milliseconds.
  */
-static inline uint32_t get_measurement_duration(sht4x_device_t *const device) {
+static inline uint16_t get_measurement_duration(sht4x_device_t *const device) {
     if (!device) return 2;
-    const uint32_t heater_ms = get_heater_duration(device->config.heater_mode);
+    const uint16_t heater_ms = get_heater_duration(device->config.heater_mode);
     return heater_ms ? heater_ms : get_repeat_duration(device->config.repeat_mode);
 }
 
@@ -316,7 +316,9 @@ static inline esp_err_t calculate_wetbulb(const float temperature, const float h
     }
     
     // calculate wet-bulb temperature
-    return temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
+    *wetbulb = temperature * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(temperature + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
+
+    return ESP_OK;
 }
 
 /**
