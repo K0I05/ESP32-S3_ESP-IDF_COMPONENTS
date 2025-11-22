@@ -86,7 +86,7 @@ typedef struct cla_matrix_lup_s {
     cla_matrix_ptr_t l; /*!< L matrix */
     cla_matrix_ptr_t u; /*!< U matrix */
     cla_matrix_ptr_t p; /*!< P matrix */
-    uint16_t num_permutations;
+    uint16_t num_permutations; /*!< Number of row permutations performed during LUP decomposition */
 } cla_matrix_lup_t;
 
 /**
@@ -283,7 +283,7 @@ esp_err_t cla_matrix_qr_copy(const cla_matrix_qr_ptr_t m_qr_src, cla_matrix_qr_p
 esp_err_t cla_matrix_qr_get_decomposition(const cla_matrix_ptr_t m_a, cla_matrix_qr_ptr_t *const m_qr_a);
 
 /**
- * @brief 
+ * @brief Solves a system of linear equations Ax = b using QR decomposition.
  * 
  * @param m_a Matrix A in the equation Ax = b.
  * @param m_b Matrix b in the equation Ax = b.
@@ -324,6 +324,13 @@ esp_err_t cla_matrix_subtract(const cla_matrix_ptr_t m1, const cla_matrix_ptr_t 
  */
 esp_err_t cla_matrix_multiply(const cla_matrix_ptr_t m1, const cla_matrix_ptr_t m2, cla_matrix_ptr_t *const m_product);
 
+/**
+ * @brief Normalizes a matrix.
+ * 
+ * @param m Matrix to normalize.
+ * @param m_normalize Normalized matrix result.
+ * @return esp_err_t ESP_OK on success.
+ */
 esp_err_t cla_matrix_normalize(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_normalize);
 
 /**
@@ -347,7 +354,6 @@ esp_err_t cla_matrix_get_dot_product(const cla_matrix_ptr_t m1, const cla_matrix
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t cla_matrix_get_vector_dot_product(const cla_matrix_ptr_t m1, const uint16_t m1_col_idx, const cla_matrix_ptr_t m2, const uint16_t m2_col_idx, double *const dot);
-
 
 /**
  * @brief Calculates the inverse of a matrix using Gauss-Jordan elimination.
@@ -701,9 +707,9 @@ esp_err_t cla_matrix_ls_solve_bck(const cla_matrix_ptr_t m_u, const cla_matrix_p
  *   L * y = P b (forward substitution)
  *   U * x = y (backward substitution)
  * 
- * @param m_lup_lu 
- * @param m_b 
- * @param m_x 
+ * @param m_lup_lu LUP decomposition of matrix A. 
+ * @param m_b Column matrix of size n x 1.
+ * @param m_x Solution column matrix of size n x 1.
  * @return esp_err_t ESP_OK on success.
  */
 esp_err_t cla_matrix_ls_solve(const cla_matrix_lup_ptr_t m_lup_lu, const cla_matrix_ptr_t m_b, cla_matrix_ptr_t *const m_x);

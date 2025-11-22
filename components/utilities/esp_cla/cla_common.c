@@ -69,6 +69,10 @@ bool cla_is_value_equal(const double val1, const double val2, const double toler
     return diff <= tolerance || diff < fmax(fabs(val1), fabs(val2)) * tolerance;
 }
 
+bool cla_is_value_power_of_two(const uint16_t val) {
+    return val > 0 && (val & (val - 1)) == 0;
+}
+
 float cla_get_heading(const float x_axis, const float y_axis) {
     float heading;
     /* honeywell application note AN-203 */

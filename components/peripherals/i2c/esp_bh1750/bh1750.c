@@ -203,13 +203,13 @@ static inline uint32_t bh1750_get_tick_duration(bh1750_device_t *const device) {
 }
 
 /**
- * @brief Reads the current measurement mode from the BH1750 device.
+ * @brief BH1750 I2C HAL read measurement mode from register.
  * 
  * @param device BH1750 device descriptor.
  * @param mode Pointer to store the current measurement mode
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bh1750_get_measurement_mode_register(bh1750_device_t *const device, bh1750_measurement_modes_t *const mode) {
+static inline esp_err_t bh1750_i2c_get_measurement_mode_register(bh1750_device_t *const device, bh1750_measurement_modes_t *const mode) {
     /* validate arguments */
     ESP_ARG_CHECK( device && mode );
 
@@ -223,13 +223,13 @@ static inline esp_err_t bh1750_get_measurement_mode_register(bh1750_device_t *co
 }
 
 /**
- * @brief Writes measurement mode to bh1750.
+ * @brief BH1750 I2C HAL write measurement mode to register.
  *
  * @param[in] device bh1750 device handle.
  * @param[in] mode bh1750 measurement mode.
  * @return ESP_OK on success.
  */
-static inline esp_err_t bh1750_set_measurement_mode_register(bh1750_device_t *const device, const bh1750_measurement_modes_t mode) {
+static inline esp_err_t bh1750_i2c_set_measurement_mode_register(bh1750_device_t *const device, const bh1750_measurement_modes_t mode) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
@@ -243,7 +243,7 @@ static inline esp_err_t bh1750_set_measurement_mode_register(bh1750_device_t *co
 }
 
 /**
- * @brief Reads the current measurement time from the BH1750 device.
+ * @brief BH1750 I2C HAL read measurement time from register.
  * 
  * @param device BH1750 device descriptor.
  * @param timespan Pointer to store the current measurement time duration
@@ -267,7 +267,7 @@ static inline esp_err_t bh1750_i2c_get_measurement_time_register(bh1750_device_t
 }
 
 /**
- * @brief Writes measurement time to bh1750.
+ * @brief BH1750 I2C HAL write measurement time to register.
  *
  * @param[in] device bh1750 device handle.
  * @param[in] timespan bh1750 measurement time duration.
@@ -288,7 +288,7 @@ static inline esp_err_t bh1750_i2c_set_measurement_time_register(bh1750_device_t
 }
 
 /**
- * @brief Writes soft-reset command to BH1750 register.
+ * @brief BH1750 I2C HAL write soft-reset command to register.
  * 
  * @param device BH1750 device descriptor.
  * @return esp_err_t ESP_OK on success.
@@ -307,7 +307,7 @@ static inline esp_err_t bh1750_i2c_set_reset_register(bh1750_device_t *const dev
 }
 
 /**
- * @brief Setup and configure BH1750 registers.
+ * @brief BH1750 I2C HAL setup and configure registers.
  * 
  * @param device BH1750 device descriptor.
  * @return esp_err_t ESP_OK on success.

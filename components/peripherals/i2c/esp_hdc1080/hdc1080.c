@@ -514,7 +514,7 @@ static inline esp_err_t hdc1080_i2c_set_reset_register(hdc1080_device_t *const d
 }
 
 /**
- * @brief HDC1080 I2C HAL to get raw adc temperature and humidity signals.
+ * @brief HDC1080 I2C HAL read raw adc temperature and humidity signals.
  * 
  * @param device HDC1080 device descriptor.
  * @param temperature Raw adc temperature signal.

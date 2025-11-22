@@ -97,6 +97,13 @@ esp_err_t cla_copy_buffer(const void *pa, const void *pb);
  */
 bool cla_is_value_equal(const double val1, const double val2, const double tolerance);
 
+/**
+ * @brief Checks if a given unsigned integer value is a power of two.
+ * 
+ * @param val The unsigned integer to check.
+ * @return bool True if the number is a power of two, otherwise false.
+ */
+bool cla_is_value_power_of_two(const uint16_t val);
 
 /**
  * @brief Calculates heading in degrees from magnetic x and y components.

@@ -67,20 +67,20 @@ extern "C" {
 
 
 /* -------------------- First-order IIR low-pass filter -------------------- */
-typedef struct cla_iir_lowpass_filter_s {
+typedef struct cla_filter_iir_lowpass_s {
     double alpha;       /* filter coefficient (0..1) */
     double previous;    /* previous output */
     bool   initialized; /* flag to initialize previous on first sample */
-} cla_iir_lowpass_filter_t;
+} cla_filter_iir_lowpass_t;
 
 /* -------------------- Moving-average (FIR) low-pass filter -------------------- */
-typedef struct cla_fir_lowpass_filter_moving_average_s {
+typedef struct cla_filter_fir_lowpass_moving_average_s {
     double    *buffer;      /* circular buffer */
     uint32_t   window_len;  /* window length */
     uint32_t   idx;         /* current insertion index */
     double     sum;         /* running sum */
     uint32_t   filled;      /* number of samples filled (<= window_len) */
-} cla_fir_lowpass_filter_moving_average_t;
+} cla_filter_fir_lowpass_moving_average_t;
 
 /**
  * public function & subroutine prototype definitions
@@ -97,7 +97,7 @@ typedef struct cla_fir_lowpass_filter_moving_average_s {
  * @param fc Cutoff frequency in Hz.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_iir_lowpass_init_cutoff(cla_iir_lowpass_filter_t *const filter, const double fs, const double fc);
+esp_err_t cla_filter_iir_lowpass_init_cutoff(cla_filter_iir_lowpass_t *const filter, const double fs, const double fc);
 
 /**
  * @brief Initializes a first-order IIR low-pass filter that uses a continuous-time RC 
@@ -107,7 +107,7 @@ esp_err_t cla_iir_lowpass_init_cutoff(cla_iir_lowpass_filter_t *const filter, co
  * @param alpha Filter coefficient (0 < alpha < 1).
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_iir_lowpass_init_alpha(cla_iir_lowpass_filter_t *const filter, const double alpha);
+esp_err_t cla_filter_iir_lowpass_init_alpha(cla_filter_iir_lowpass_t *const filter, const double alpha);
 
 /**
  * @brief Applies the first-order IIR low-pass filter that uses a continuous-time RC 
@@ -118,7 +118,7 @@ esp_err_t cla_iir_lowpass_init_alpha(cla_iir_lowpass_filter_t *const filter, con
  * @param fv Pointer to store the filtered output value.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_iir_lowpass_apply(cla_iir_lowpass_filter_t *const filter, const double x, double *const fv);
+esp_err_t cla_filter_iir_lowpass_apply(cla_filter_iir_lowpass_t *const filter, const double x, double *const fv);
 
 /**
  * @brief Initializes a moving average FIR low-pass filter with a specified window length.
@@ -127,7 +127,7 @@ esp_err_t cla_iir_lowpass_apply(cla_iir_lowpass_filter_t *const filter, const do
  * @param window_len Length of the moving average window.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_fir_lowpass_moving_average_init(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const uint32_t window_len);
+esp_err_t cla_filter_fir_lowpass_moving_average_init(cla_filter_fir_lowpass_moving_average_t *const ma_filter, const uint32_t window_len);
 
 /**
  * @brief Deletes a moving average FIR low-pass filter, freeing allocated resources.
@@ -135,7 +135,7 @@ esp_err_t cla_fir_lowpass_moving_average_init(cla_fir_lowpass_filter_moving_aver
  * @param ma_filter Pointer to the moving average filter structure to delete.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_average_t *const ma_filter);
+esp_err_t cla_filter_fir_lowpass_moving_average_delete(cla_filter_fir_lowpass_moving_average_t *const ma_filter);
 
 /**
  * @brief Applies the moving average FIR low-pass filter to an input sample.
@@ -145,7 +145,7 @@ esp_err_t cla_fir_lowpass_moving_average_delete(cla_fir_lowpass_filter_moving_av
  * @param fv Pointer to store the filtered output value.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_average_t *const ma_filter, const double x, double *const fv);
+esp_err_t cla_filter_fir_lowpass_moving_average_apply(cla_filter_fir_lowpass_moving_average_t *const ma_filter, const double x, double *const fv);
 
 /**
  * @brief Calculates the median of an array of double-precision floating-point values using sorting.
@@ -155,7 +155,7 @@ esp_err_t cla_fir_lowpass_moving_average_apply(cla_fir_lowpass_filter_moving_ave
  * @param median Pointer to store the calculated median value.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_get_median_by_sort(const double *data, const uint16_t n, double *const median);
+esp_err_t cla_filter_get_median_by_sort(const double *data, const uint16_t n, double *const median);
 
 /**
  * @brief Calculates the median of an array of double-precision floating-point values using the Quickselect algorithm 
@@ -166,7 +166,7 @@ esp_err_t cla_get_median_by_sort(const double *data, const uint16_t n, double *c
  * @param median Pointer to store the calculated median value.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t cla_get_median_by_quickselect(const double *data, const uint16_t n, double *const median);
+esp_err_t cla_filter_get_median_by_quickselect(const double *data, const uint16_t n, double *const median);
 
 /**
  * @brief Clamps a double-precision floating-point value within specified `minimum` and `maximum` bounds.  The 
@@ -181,7 +181,7 @@ esp_err_t cla_get_median_by_quickselect(const double *data, const uint16_t n, do
  * @param value The value to clamp.
  * @return double The results of the clamped value.
  */
-double cla_clamp_filter(const double min, const double max, const bool ignore_out_of_range, const double value);
+double cla_filter_clamp(const double min, const double max, const bool ignore_out_of_range, const double value);
 
 /**
  * @brief Computes the discrete Fourier transform (DFT) of real and imaginary input arrays using the FFT algorithm.
@@ -192,7 +192,7 @@ double cla_clamp_filter(const double min, const double max, const bool ignore_ou
  * @param dft Pointer to an array to store the DFT results (can be NULL if not needed).
  * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if n is not a power of two.
  */
-esp_err_t cla_get_fft_dft(double *real, double *imag, const uint16_t n, int16_t *const dft);
+esp_err_t cla_filter_get_fft_dft(double *real, double *imag, const uint16_t n, int16_t *const dft);
 
 /**
  * @brief Computes the inverse discrete Fourier transform (IDFT) of real and imaginary input arrays using the FFT algorithm.
@@ -203,7 +203,7 @@ esp_err_t cla_get_fft_dft(double *real, double *imag, const uint16_t n, int16_t 
  * @param dft Pointer to an array to store the IDFT results (can be NULL if not needed).
  * @return esp_err_t ESP_OK on success, ESP_ERR_INVALID_ARG if n is not a power of two.
  */
-esp_err_t cla_get_ifft_dft(double *real, double *imag, const uint16_t n, int16_t *const dft);
+esp_err_t cla_filter_get_fft_idft(double *real, double *imag, const uint16_t n, int16_t *const dft);
 
 #ifdef __cplusplus
 }

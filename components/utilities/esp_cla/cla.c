@@ -166,15 +166,14 @@ esp_err_t cla_get_calibration_parameters(const cla_vector_ptr_t v_ellip_coeffs, 
     ESP_GOTO_ON_ERROR(cla_vector_scale(M_inv_b, -0.5, v_offset), cleanup, TAG, "Vector scaling failed");
 
     // 3. Calculate the scalar 's'
-    double s = 0;
     cla_vector_ptr_t b_transpose_M_inv = NULL;
     cla_matrix_ptr_t b_transpose = NULL;
     ESP_GOTO_ON_ERROR(cla_vector_to_matrix(b, &b_transpose), cleanup, TAG, "Vector to matrix conversion failed for transpose");
     ESP_GOTO_ON_ERROR(cla_matrix_transpose(b_transpose, &b_transpose), cleanup, TAG, "Matrix transpose failed");
     ESP_GOTO_ON_ERROR(cla_matrix_multiply_vector(M_inv, b, &b_transpose_M_inv), cleanup, TAG, "Matrix-vector multiply for scalar 's' failed");
-    double b_dot_Minv_b = b->data[0] * b_transpose_M_inv->data[0] + b->data[1] * b_transpose_M_inv->data[1] + b->data[2] * b_transpose_M_inv->data[2];
+    const double b_dot_Minv_b = b->data[0] * b_transpose_M_inv->data[0] + b->data[1] * b_transpose_M_inv->data[1] + b->data[2] * b_transpose_M_inv->data[2];
     // The equation is solved for ... = 1, so J = -1. s = (1/4) * b^T * M_inv * b - J
-    s = 1.0 / ((b_dot_Minv_b / 4.0) + 1.0);
+    const double s = 1.0 / ((b_dot_Minv_b / 4.0) + 1.0);
 
     // 4. Calculate Soft-Iron correction matrix W from scaled M
     cla_matrix_ptr_t M_scaled = NULL;
@@ -215,25 +214,22 @@ cleanup:
     return ret;
 }
 
-esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib_data, const double expected_field_strength, cla_calibration_quality_t *quality_report) {
-    ESP_ARG_CHECK(v_calib_data);
-    
-    memset(quality_report, 0, sizeof(cla_calibration_quality_t));
-    
-    // Initialize min/max
-    quality_report->min_x = quality_report->min_y = quality_report->min_z = DBL_MAX;
-    quality_report->max_x = quality_report->max_y = quality_report->max_z = -DBL_MAX;
-    
+static inline void cla_update_min_max_values(const double x, const double y, const double z, cla_calibration_quality_t *const quality_report) {
+    if (x < quality_report->min_x) quality_report->min_x = x;
+    if (x > quality_report->max_x) quality_report->max_x = x;
+    if (y < quality_report->min_y) quality_report->min_y = y;
+    if (y > quality_report->max_y) quality_report->max_y = y;
+    if (z < quality_report->min_z) quality_report->min_z = z;
+    if (z > quality_report->max_z) quality_report->max_z = z;
+}
+
+static inline esp_err_t cla_calculate_basic_statistics(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report, double *const magnitudes) {
     double sum_x = 0, sum_y = 0, sum_z = 0;
     double sum_sq_x = 0, sum_sq_y = 0, sum_sq_z = 0;
     double sum_magnitude = 0;
-    double *magnitudes = malloc(CLA_CAL_SAMPLE_SIZE * sizeof(double));
-    if (!magnitudes) return ESP_ERR_NO_MEM;
     
-    // Pass 1: Calculate statistics
     for (uint16_t i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
         if (v_calib_data[i] == NULL || v_calib_data[i]->num_cmps != 3) {
-            free(magnitudes);
             return ESP_ERR_INVALID_ARG;
         }
         
@@ -241,15 +237,8 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
         const double y = v_calib_data[i]->data[1];
         const double z = v_calib_data[i]->data[2];
         
-        // Min/Max
-        if (x < quality_report->min_x) quality_report->min_x = x;
-        if (x > quality_report->max_x) quality_report->max_x = x;
-        if (y < quality_report->min_y) quality_report->min_y = y;
-        if (y > quality_report->max_y) quality_report->max_y = y;
-        if (z < quality_report->min_z) quality_report->min_z = z;
-        if (z > quality_report->max_z) quality_report->max_z = z;
+        cla_update_min_max_values(x, y, z, quality_report);
         
-        // Sums for mean and variance
         sum_x += x;
         sum_y += y;
         sum_z += z;
@@ -257,7 +246,6 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
         sum_sq_y += y * y;
         sum_sq_z += z * z;
         
-        // Magnitude
         magnitudes[i] = sqrt(x*x + y*y + z*z);
         sum_magnitude += magnitudes[i];
     }
@@ -278,17 +266,23 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
     quality_report->variance_y = (sum_sq_y / CLA_CAL_SAMPLE_SIZE) - (mean_y * mean_y);
     quality_report->variance_z = (sum_sq_z / CLA_CAL_SAMPLE_SIZE) - (mean_z * mean_z);
     
-    // Calculate magnitude standard deviation
+    return ESP_OK;
+}
+
+static inline void cla_calculate_magnitude_std_dev(const double *magnitudes, cla_calibration_quality_t *const quality_report) {
     double sum_mag_sq_diff = 0;
     for (uint16_t i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
-        double diff = magnitudes[i] - quality_report->mean_magnitude;
+        const double diff = magnitudes[i] - quality_report->mean_magnitude;
         sum_mag_sq_diff += diff * diff;
     }
     quality_report->magnitude_std_dev = sqrt(sum_mag_sq_diff / CLA_CAL_SAMPLE_SIZE);
-    
-    // Check for duplicates (within tolerance)
-    const double duplicate_tolerance = 1.0; // Same reading within 1 unit
+}
+
+static inline void cla_count_duplicate_samples(const cla_vector_samples_t v_calib_data, cla_calibration_quality_t *const quality_report) {
+    const double duplicate_tolerance = 1.0;
     quality_report->unique_count = CLA_CAL_SAMPLE_SIZE;
+    quality_report->duplicate_count = 0;
+    
     for (uint16_t i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
         for (uint16_t j = i + 1; j < CLA_CAL_SAMPLE_SIZE; j++) {
             const double dx = v_calib_data[i]->data[0] - v_calib_data[j]->data[0];
@@ -299,38 +293,35 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
             if (dist < duplicate_tolerance) {
                 quality_report->duplicate_count++;
                 quality_report->unique_count--;
-                break; // Only count once per sample
+                break;
             }
         }
     }
-    
-    free(magnitudes);
-    
-    // Quality assessment
-    // 1. Good coverage: Each axis should span at least 80% of expected range
-    const double min_expected_range = quality_report->mean_magnitude * 1.6; // Should span ~2x radius
+}
+
+static inline void cla_assess_calibration_quality(cla_calibration_quality_t *const quality_report) {
+    const double min_expected_range = quality_report->mean_magnitude * 1.6;
     quality_report->has_good_coverage = 
         (quality_report->range_x >= min_expected_range * 0.8) &&
         (quality_report->range_y >= min_expected_range * 0.8) &&
         (quality_report->range_z >= min_expected_range * 0.8);
     
-    // 2. Good distribution: Variance should be reasonable (not too clustered)
     const double min_variance = (quality_report->mean_magnitude * quality_report->mean_magnitude) / 4.0;
     quality_report->has_good_distribution = 
         (quality_report->variance_x >= min_variance) &&
         (quality_report->variance_y >= min_variance) &&
         (quality_report->variance_z >= min_variance);
     
-    // 3. Good uniqueness: Less than 20% duplicates
     quality_report->has_good_uniqueness = 
         (quality_report->duplicate_count < (CLA_CAL_SAMPLE_SIZE / 5));
     
-    // 4. Calculate overall quality score (0-100)
     const uint8_t coverage_score = quality_report->has_good_coverage ? 40 : 0;
     const uint8_t distribution_score = quality_report->has_good_distribution ? 30 : 0;
     const uint8_t uniqueness_score = quality_report->has_good_uniqueness ? 30 : 0;
     quality_report->overall_quality = coverage_score + distribution_score + uniqueness_score;
-    
+}
+
+static inline void cla_log_quality_report(const cla_calibration_quality_t *quality_report) {
     ESP_LOGI(TAG, "Calibration Quality Report:");
     ESP_LOGI(TAG, "  X: [%.2f, %.2f] range=%.2f, var=%.2f", 
              quality_report->min_x, quality_report->max_x, 
@@ -352,8 +343,40 @@ esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib
     ESP_LOGI(TAG, "  Overall Quality: %d/100 %s", 
              quality_report->overall_quality,
              quality_report->overall_quality >= 70 ? "(GOOD)" : "(POOR)");
+}
+
+esp_err_t cla_get_calibration_samples_quality(const cla_vector_samples_t v_calib_data, const double expected_field_strength, cla_calibration_quality_t *const quality_report) {
+    esp_err_t ret = ESP_OK;
+    ESP_ARG_CHECK(v_calib_data);
+    ESP_ARG_CHECK(quality_report);
     
-    return ESP_OK;
+    memset(quality_report, 0, sizeof(cla_calibration_quality_t));
+    
+    // Initialize min/max
+    quality_report->min_x = quality_report->min_y = quality_report->min_z = DBL_MAX;
+    quality_report->max_x = quality_report->max_y = quality_report->max_z = -DBL_MAX;
+    
+    double *magnitudes = malloc(CLA_CAL_SAMPLE_SIZE * sizeof(double));
+    if (!magnitudes) return ESP_ERR_NO_MEM;
+    
+    // Calculate basic statistics
+    ESP_GOTO_ON_ERROR(cla_calculate_basic_statistics(v_calib_data, quality_report, magnitudes), cleanup, TAG, "Failed to calculate basic statistics");
+    
+    // Calculate magnitude standard deviation
+    cla_calculate_magnitude_std_dev(magnitudes, quality_report);
+    
+    // Count duplicate samples
+    cla_count_duplicate_samples(v_calib_data, quality_report);
+    
+    // Assess overall quality
+    cla_assess_calibration_quality(quality_report);
+    
+    // Log quality report
+    cla_log_quality_report(quality_report);
+    
+cleanup:
+    free(magnitudes);
+    return ret;
 }
 
 esp_err_t cla_calibration_samples_quality_print(const cla_calibration_quality_t quality_report) {

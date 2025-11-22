@@ -120,7 +120,7 @@ static inline esp_err_t cla_matrix_get_max_pivot_idx(const cla_matrix_ptr_t m, c
     double max = fabs(m->data[row_idx][col_idx]);
     uint16_t maxi = row_idx;
     for(uint16_t i = row_idx + 1; i < m->num_rows; i++) {
-        double micol = fabs(m->data[i][col_idx]);
+        const double micol = fabs(m->data[i][col_idx]);
         if(micol > max) {
             max = micol;
             maxi = i;
@@ -133,41 +133,66 @@ static inline esp_err_t cla_matrix_get_max_pivot_idx(const cla_matrix_ptr_t m, c
 /**
  * @brief Performs a single Jacobi rotation to zero out an off-diagonal element.
  */
+static inline void cla_matrix_jacobi_apply(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q, double s, double tau) {
+    for (int i = 0; i < p; i++) {
+        const double g_val = a->data[i][p];
+        const double h_val = a->data[i][q];
+        a->data[i][p] = g_val - s * (h_val + g_val * tau);
+        a->data[i][q] = h_val + s * (g_val - h_val * tau);
+    }
+    for (int i = p + 1; i < q; i++) {
+        const double g_val = a->data[p][i];
+        const double h_val = a->data[i][q];
+        a->data[p][i] = g_val - s * (h_val + g_val * tau);
+        a->data[i][q] = h_val + s * (g_val - h_val * tau);
+    }
+    for (int i = q + 1; i < a->num_rows; i++) {
+        const double g_val = a->data[p][i];
+        const double h_val = a->data[q][i];
+        a->data[p][i] = g_val - s * (h_val + g_val * tau);
+        a->data[q][i] = h_val + s * (g_val - h_val * tau);
+    }
+    for (int i = 0; i < a->num_rows; i++) {
+        const double g_val = v->data[i][p];
+        const double h_val = v->data[i][q];
+        v->data[i][p] = g_val - s * (h_val + g_val * tau);
+        v->data[i][q] = h_val + s * (g_val - h_val * tau);
+    }
+}
+
 static void cla_matrix_jacobi_rotate(cla_matrix_ptr_t a, cla_matrix_ptr_t v, int p, int q) {
     if (fabs(a->data[p][q]) < 1e-12) {
         return;
     }
 
-    double theta, t, c, s;
-    double g = 100.0 * fabs(a->data[p][q]);
-
-    if (g > 1e-12) {
-        double h = a->data[q][q] - a->data[p][p];
-        if (fabs(h) + g == fabs(h)) {
-            t = (a->data[p][q]) / h;
-        } else {
-            theta = 0.5 * h / (a->data[p][q]);
-            t = 1.0 / (fabs(theta) + sqrt(1.0 + theta * theta));
-            if (theta < 0.0) {
-                t = -t;
-            }
-        }
-        c = 1.0 / sqrt(1 + t * t);
-        s = t * c;
-        double tau = s / (1.0 + c);
-        h = t * a->data[p][q];
-
-        a->data[p][p] -= h;
-        a->data[q][q] += h;
+    const double g = 100.0 * fabs(a->data[p][q]);
+    if (g <= 1e-12) {
         a->data[p][q] = 0.0;
-
-        for (int i = 0; i < p; i++) { double g_val = a->data[i][p]; double h_val = a->data[i][q]; a->data[i][p] = g_val - s * (h_val + g_val * tau); a->data[i][q] = h_val + s * (g_val - h_val * tau); }
-        for (int i = p + 1; i < q; i++) { double g_val = a->data[p][i]; double h_val = a->data[i][q]; a->data[p][i] = g_val - s * (h_val + g_val * tau); a->data[i][q] = h_val + s * (g_val - h_val * tau); }
-        for (int i = q + 1; i < a->num_rows; i++) { double g_val = a->data[p][i]; double h_val = a->data[q][i]; a->data[p][i] = g_val - s * (h_val + g_val * tau); a->data[q][i] = h_val + s * (g_val - h_val * tau); }
-        for (int i = 0; i < a->num_rows; i++) { double g_val = v->data[i][p]; double h_val = v->data[i][q]; v->data[i][p] = g_val - s * (h_val + g_val * tau); v->data[i][q] = h_val + s * (g_val - h_val * tau); }
-    } else {
-        a->data[p][q] = 0.0;
+        return;
     }
+
+    double t;
+    const double h = a->data[q][q] - a->data[p][p];
+    if (fabs(h) + g == fabs(h)) {
+        t = (a->data[p][q]) / h;
+    } else {
+        const double theta = 0.5 * h / (a->data[p][q]);
+        t = 1.0 / (fabs(theta) + sqrt(1.0 + theta * theta));
+        if (theta < 0.0) {
+            t = -t;
+        }
+    }
+
+    const double c = 1.0 / sqrt(1 + t * t);
+    const double s = t * c;
+    const double tau = s / (1.0 + c);
+    const double h_rot = t * a->data[p][q];
+
+    a->data[p][p] -= h_rot;
+    a->data[q][q] += h_rot;
+    a->data[p][q] = 0.0;
+
+    cla_matrix_jacobi_apply(a, v, p, q, s, tau);
 }
 
 /**
@@ -224,11 +249,10 @@ esp_err_t cla_matrix_delete(cla_matrix_ptr_t m) {
 
 esp_err_t cla_matrix_print(cla_matrix_ptr_t m) {
     ESP_ARG_CHECK(m);
-    const char *fmt = "%6.6lf\t";
     printf("\n");
     for(uint16_t i = 0; i < m->num_rows; i++) {
         for(uint16_t j = 0; j < m->num_cols; j++) {
-            printf(fmt, m->data[i][j]);
+            printf("%6.6lf\t", m->data[i][j]);
         }
         printf("\n");
     }
@@ -310,54 +334,118 @@ esp_err_t cla_matrix_get_vector_dot_product(const cla_matrix_ptr_t m1, const uin
     return ESP_OK;  
 }
 
+/**
+ * @brief Build an augmented matrix for inversion.
+ * 
+ * @param m Matrix to invert.
+ * @param m_aug Augmented matrix.
+ * @return esp_err_t 
+ */
+static inline esp_err_t cla_matrix_inverse_build_augmented(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_aug) {
+    ESP_RETURN_ON_ERROR( cla_matrix_create(m->num_rows, m->num_cols * 2, m_aug), TAG, "Unable to create augmented matrix for inversion" );
+    for(uint16_t i = 0; i < m->num_rows; i++) {
+        for(uint16_t j = 0; j < m->num_cols; j++) {
+            (*m_aug)->data[i][j] = m->data[i][j];
+            (*m_aug)->data[i][j + m->num_cols] = (i == j) ? 1.0 : 0.0;
+        }
+    }
+    return ESP_OK;
+}
+
+/**
+ * @brief Swap two rows in the augmented matrix.
+ * 
+ * @param m_aug Augmented matrix.
+ * @param r1 Row 1 index.
+ * @param r2 Row 2 index.
+ */
+static inline void cla_matrix_inverse_swap_rows(cla_matrix_ptr_t m_aug, uint16_t r1, uint16_t r2) {
+    if(r1 == r2) return;
+    for(uint16_t j = 0; j < m_aug->num_cols; j++) {
+        cla_swap_values(&m_aug->data[r1][j], &m_aug->data[r2][j]);
+    }
+}
+
+/**
+ * @brief Normalize the pivot row in the augmented matrix.
+ * 
+ * @param m_aug Augmented matrix.
+ * @param pivot_idx Pivot row index.
+ */
+static inline esp_err_t cla_matrix_inverse_normalize_pivot(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
+    double pivot_value = m_aug->data[pivot_idx][pivot_idx];
+    for(uint16_t j = 0; j < m_aug->num_cols; j++) {
+        m_aug->data[pivot_idx][j] /= pivot_value;
+    }
+    return ESP_OK;
+}
+
+/**
+ * @brief Eliminate non-pivot rows in the augmented matrix.
+ * 
+ * @param m_aug Augmented matrix.
+ * @param pivot_idx Pivot row index.
+ */
+static inline esp_err_t cla_matrix_inverse_eliminate(cla_matrix_ptr_t m_aug, uint16_t pivot_idx) {
+    for(uint16_t r = 0; r < m_aug->num_rows; r++) {
+        if(r == pivot_idx) continue;
+        double factor = m_aug->data[r][pivot_idx];
+        if(fabs(factor) < CLA_MATRIX_MIN_COEF) continue;
+        for(uint16_t c = 0; c < m_aug->num_cols; c++) {
+            m_aug->data[r][c] -= factor * m_aug->data[pivot_idx][c];
+        }
+    }
+    return ESP_OK;
+}
+
+/**
+ * @brief Perform Gauss-Jordan elimination on the augmented matrix.
+ * 
+ * @param m_aug Augmented matrix.
+ * @param n Size of the original matrix.
+ */
+static inline esp_err_t cla_matrix_inverse_gauss_jordan(cla_matrix_ptr_t m_aug, uint16_t n) {
+    for(uint16_t i = 0; i < n; i++) {
+        int16_t pivot_row = -1;
+        ESP_RETURN_ON_ERROR( cla_matrix_get_max_pivot_idx(m_aug, i, i, &pivot_row), TAG, "Unable to get pivot index during inversion" );
+        ESP_RETURN_ON_FALSE( (pivot_row != -1), ESP_ERR_INVALID_ARG, TAG, "Matrix is singular and cannot be inverted" );
+        cla_matrix_inverse_swap_rows(m_aug, i, pivot_row);
+        ESP_RETURN_ON_ERROR( cla_matrix_inverse_normalize_pivot(m_aug, i), TAG, "Unable to normalize pivot row during inversion" );
+        ESP_RETURN_ON_ERROR( cla_matrix_inverse_eliminate(m_aug, i), TAG, "Unable to eliminate non-pivot rows during inversion" );
+    }
+    return ESP_OK;
+}
+
+/**
+ * @brief Extract the inverse matrix from the augmented matrix.
+ * 
+ * @param m_aug Augmented matrix.
+ * @param n Size of the original matrix.
+ * @param m_inverse Inverse matrix result.
+ */
+static inline esp_err_t cla_matrix_inverse_extract(const cla_matrix_ptr_t m_aug, uint16_t n, cla_matrix_ptr_t *const m_inverse) {
+    ESP_RETURN_ON_ERROR( cla_matrix_create(n, n, m_inverse), TAG, "Unable to create inverse matrix" );
+    for(uint16_t i = 0; i < n; i++) {
+        for(uint16_t j = 0; j < n; j++) {
+            (*m_inverse)->data[i][j] = m_aug->data[i][j + n];
+        }
+    }
+    return ESP_OK;
+}
+
 esp_err_t cla_matrix_get_inverse(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_inverse) {
     ESP_ARG_CHECK(m);
     ESP_RETURN_ON_FALSE( (m->is_square), ESP_ERR_INVALID_ARG, TAG, "Invalid matrix, only square matrices can be inverted" );
+    esp_err_t ret = ESP_OK;
     cla_matrix_ptr_t augmented_matrix = NULL;
-    ESP_RETURN_ON_ERROR( cla_matrix_create(m->num_rows, m->num_cols * 2, &augmented_matrix), TAG, "Unable to create augmented matrix for inversion" );
-    for(uint16_t i = 0; i < m->num_rows; i++) {
-        for(uint16_t j = 0; j < m->num_cols; j++) {
-            augmented_matrix->data[i][j] = m->data[i][j];
-        }
-        for(uint16_t j = 0; j < m->num_cols; j++) {
-            augmented_matrix->data[i][j + m->num_cols] = (i == j) ? 1.0 : 0.0;
-        }
-    }
-    for(uint16_t i = 0; i < m->num_rows; i++) {
-        int16_t pivot_row = -1;
-        ESP_RETURN_ON_ERROR( cla_matrix_get_max_pivot_idx(augmented_matrix, i, i, &pivot_row), TAG, "Unable to get pivot index during inversion" );
-        ESP_RETURN_ON_FALSE( (pivot_row != -1), ESP_ERR_INVALID_ARG, TAG, "Matrix is singular and cannot be inverted" );
-        if(pivot_row != i) {
-            for(uint16_t j = 0; j < augmented_matrix->num_cols; j++) {
-                cla_swap_values(&augmented_matrix->data[i][j], &augmented_matrix->data[pivot_row][j]);
-            }
-        }
-        double pivot_value = augmented_matrix->data[i][i];
-        for(uint16_t j = 0; j < augmented_matrix->num_cols; j++) {
-            augmented_matrix->data[i][j] /= pivot_value;
-        }
-        for(uint16_t k = 0; k < augmented_matrix->num_rows; k++) {
-            if(k != i) {
-                double factor = augmented_matrix->data[k][i];
-                for(uint16_t j = 0; j < augmented_matrix->num_cols; j++) {
-                    augmented_matrix->data[k][j] -= factor * augmented_matrix->data[i][j];
-                }
-            }
-        }
-    }
-    for(uint16_t i = 0; i < m->num_rows; i++) {
-        for(uint16_t j = 0; j < m->num_cols; j++) {
-            augmented_matrix->data[i][j] = augmented_matrix->data[i][j + m->num_cols];
-        }
-    }
-    ESP_RETURN_ON_ERROR( cla_matrix_create(m->num_rows, m->num_cols, m_inverse), TAG, "Unable to create inverse matrix" );
-    for(uint16_t i = 0; i < m->num_rows; i++) {
-        for(uint16_t j = 0; j < m->num_cols; j++) {
-            (*m_inverse)->data[i][j] = augmented_matrix->data[i][j];
-        }
-    }
+
+    ESP_GOTO_ON_ERROR( cla_matrix_inverse_build_augmented(m, &augmented_matrix), cleanup, TAG, "Failed to build augmented matrix" );
+    ESP_GOTO_ON_ERROR( cla_matrix_inverse_gauss_jordan(augmented_matrix, m->num_rows), cleanup, TAG, "Gauss-Jordan elimination failed" );
+    ESP_GOTO_ON_ERROR( cla_matrix_inverse_extract(augmented_matrix, m->num_rows, m_inverse), cleanup, TAG, "Failed to extract inverse matrix" );
+
+cleanup:
     cla_matrix_delete(augmented_matrix);
-    return ESP_OK;
+    return ret;
 }
 
 esp_err_t cla_matrix_transpose(const cla_matrix_ptr_t m, cla_matrix_ptr_t *const m_transpose) {
@@ -855,8 +943,8 @@ esp_err_t cla_matrix_lup_get_inverse(const cla_matrix_lup_ptr_t m_lup, cla_matri
 
 esp_err_t cla_matrix_lup_get_determinant(const cla_matrix_lup_ptr_t m_lup, double *const determinant) {
     ESP_ARG_CHECK(m_lup);
-    int8_t sign = (m_lup->num_permutations%2==0) ? 1 : -1;
-    cla_matrix_ptr_t u = m_lup->u;
+    const int8_t sign = (m_lup->num_permutations%2==0) ? 1 : -1;
+    const cla_matrix_ptr_t u = m_lup->u;
     double product = 1.0;
     for(uint16_t i = 0; i < u->num_rows; i++) {
         product *= u->data[i][i];

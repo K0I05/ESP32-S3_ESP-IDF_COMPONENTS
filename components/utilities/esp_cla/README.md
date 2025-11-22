@@ -9,9 +9,9 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_cla.svg)](https://registry.platformio.org/libraries/k0i05/esp_cla)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_cla/badge.svg)](https://components.espressif.com/components/k0i05/esp_cla)
 
-An ESP32 espressif IoT development framework (esp-idf) Compact Linear Algebra (CLA) component.  The CLA component is a library that provides support for complex matrix and vector operations, solving linear systems of equations, and more.  Information on features and functionality are documented and can be found in the `cla.h`, `cla_common.h`, `cla_filter.h`, `cla_matrix.h`, and `cla_vector.h` header files.
+An ESP32 espressif IoT development framework (esp-idf) Compact Linear Algebra (CLA) component.  The CLA component is a library that provides support for complex matrix and vector operations, filter operations, solving linear systems of equations, and more.  Information on features and functionality are documented and can be found in the `cla.h`, `cla_common.h`, `cla_filter.h`, `cla_matrix.h`, and `cla_vector.h` header files.
 
-The library is optimized for embedded systems and has a relatively small footprint.  The matrix and vector structures are instantiated dynamically.  In addition, the matrix and vector structures use `double` precision for values and support a maximum of 32,767 rows, columns, and components.
+The library is intended to be optimized for embedded systems and has a relatively small footprint.  The matrix and vector structures are instantiated dynamically.  In addition, the matrix and vector structures use `double` precision for values and support a maximum of 32,767 rows, columns, and components.
 
 The CLA component currently supports the following features and functionality:
 
@@ -32,11 +32,12 @@ The CLA component currently supports the following features and functionality:
   * FIR Low-Pass Filter (moving average)
   * Median Filter
   * Clamp Filter
-* Common Matrix & Vector Operations
+* Matrix & Vector Operations
   * Convert Vector to Matrix
   * Convert Matrix to Vector
   * Multiply Matrix by Vector
   * Ellipsoid Coefficients
+* Common Operations (helper operations for matrices, vectors, filters, and linear systems of equations)
 
 The CLA component is still under development and it is an experimental project for electro-magnetometer calibrations.
 
@@ -81,11 +82,60 @@ components
 
 ## Basic Example
 
-Once the component is referenced as a single include and project is built, functions and subroutines should be visible and available for usage.
+Once the component is referenced as a single include and project is built, functions and subroutines should be visible and available for usage.  The snippet of sample code below attempts to solve ellipsoid coefficients and validate solved ellipsoid coefficients against expected ellipsoid coefficients:
+
+* Instantiate and populate an array of vector samples (test data) comprised of three (3) components (i.e. x, y, z).
+* Instantiate and populate a vector for expected ellipsoid coefficients comprised of nine (9) components (i.e. a, b, c, d, e, f, g, h, i).
+* Solve for ellipsoid coefficients of vector samples (test data).
+* Compare solved solved ellipsoid coefficients from vector samples (test data) against expected ellipsoid coefficients.
 
 ```c
+// cla component
 #include <cla.h>
 
+// cla vector test data
+#include <cla_ellipsoid_fitting_data.h>
+#include <cla_ellipsoid_calibration_data.h>
+
+#define CLA_TEST_TOLERANCE_SMALL_NUMBER   (0.05)
+#define CLA_TEST_TOLERANCE_BIG_NUMBER     (1e-5)
+
+void test_function_cla_solve_ellipsoid_coefficients(void) {
+    for (uint8_t k = 0; k < cla_ellipsoid_fitting_cases; k++) {
+        cla_vector_samples_t calib_data;
+        cla_ellipsoid_coeffs_t computed_coeffs = NULL;
+        cla_ellipsoid_coeffs_t expected_coeffs = NULL;
+
+        // Create and populate calibration data
+        for (int i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
+            cla_vector_create(3, &calib_data[i]);
+            calib_data[i]->data[0] = cla_ellipsoid_fitting_samples[k][i][0];
+            calib_data[i]->data[1] = cla_ellipsoid_fitting_samples[k][i][1];
+            calib_data[i]->data[2] = cla_ellipsoid_fitting_samples[k][i][2];
+        }
+
+        // Create and populate expected coefficients vector
+        cla_vector_create(CLA_ELLIPSOID_COEFF_SIZE, &expected_coeffs);
+        for (int i = 0; i < CLA_ELLIPSOID_COEFF_SIZE; i++) {
+            expected_coeffs->data[i] = cla_ellipsoid_fitting_coeffs[k][i];
+        }
+        
+        // Solve for ellipsoid coefficients
+        cla_solve_ellipsoid_coefficients(calib_data, &computed_coeffs);
+
+        bool is_equal = false;
+        cla_vector_is_equal(computed_coeffs, expected_coeffs, CLA_TEST_TOLERANCE_SMALL_NUMBER, &is_equal);
+
+        // Cleanup
+        for (int i = 0; i < CLA_CAL_SAMPLE_SIZE; i++) {
+            cla_vector_delete(calib_data[i]);
+        }
+        cla_vector_delete(computed_coeffs);
+        cla_vector_delete(expected_coeffs);
+
+        TEST_ASSERT_TRUE(is_equal);
+    }
+}
 ```
 
 ## References
