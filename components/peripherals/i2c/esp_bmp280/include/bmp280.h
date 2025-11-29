@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
-#include <driver/i2c_master.h>
+#include <hal_master.h>
 #include <type_utils.h>
 #include "bmp280_version.h"
 
@@ -65,16 +65,19 @@ extern "C" {
  */
 
 /**
- * @brief Macro that initializes `bmp280_config_t` to default configuration settings.
+ * @brief Macro that initializes `bmp280_config_t` to default configuration settings that implements the I2C bus interface.
  */
 #define BMP280_CONFIG_DEFAULT {                                          \
-        .i2c_address                = I2C_BMP280_DEV_ADDR_HI,                \
-        .i2c_clock_speed            = I2C_BMP280_DEV_CLK_SPD,                \
-        .power_mode                 = BMP280_POWER_MODE_NORMAL,              \
-        .iir_filter                 = BMP280_IIR_FILTER_OFF,                 \
-        .pressure_oversampling      = BMP280_PRESSURE_OVERSAMPLING_4X,       \
-        .temperature_oversampling   = BMP280_TEMPERATURE_OVERSAMPLING_4X,    \
-        .standby_time               = BMP280_STANDBY_TIME_250MS }
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_BMP280_DEV_ADDR_HI,   \
+        .scl_speed_hz   = I2C_BMP280_DEV_CLK_SPD    \
+    },                                              \
+    .power_mode                 = BMP280_POWER_MODE_NORMAL,              \
+    .iir_filter                 = BMP280_IIR_FILTER_OFF,                 \
+    .pressure_oversampling      = BMP280_PRESSURE_OVERSAMPLING_4X,       \
+    .temperature_oversampling   = BMP280_TEMPERATURE_OVERSAMPLING_4X,    \
+    .standby_time               = BMP280_STANDBY_TIME_250MS }
 
 
 /**
@@ -143,8 +146,8 @@ typedef enum bmp280_temperature_oversampling_e {
  * @brief BMP280 configuration structure definition.
  */
 typedef struct bmp280_config_s {
-    uint16_t                                i2c_address;                /*!< bmp280 i2c device address */
-    uint32_t                                i2c_clock_speed;            /*!< bmp280 i2c device scl clock speed  */
+    hal_master_interfaces_t                 hal_bif;                    /*!< HAL master bus interface type */
+    void                                   *hal_config;                 /*!< HAL master bus interface configuration, the type (i.e. i2c_device_config_t) depends on the bus interface */
     bmp280_power_modes_t                    power_mode;                 /*!< bmp280 power mode setting */
     bmp280_iir_filters_t                    iir_filter;                 /*!< bmp280 IIR filter setting */
     bmp280_pressure_oversampling_t          pressure_oversampling;      /*!< bmp280 pressure oversampling setting */
@@ -163,14 +166,14 @@ typedef void* bmp280_handle_t;
  */
 
 /**
- * @brief Initializes an BMP280 device onto the master bus.
+ * @brief Initializes an BMP280 device onto the HAL master communication bus.
  *
- * @param[in] hal_master_handle HAL master bus handle.
+ * @param[in] master_handle HAL master bus handle.
  * @param[in] bmp280_config BMP280 device configuration.
  * @param[out] bmp280_handle BMP280 device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle);
+esp_err_t bmp280_init(const void* master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle);
 
 /**
  * @brief Reads temperature and pressure measurements from BMP280.

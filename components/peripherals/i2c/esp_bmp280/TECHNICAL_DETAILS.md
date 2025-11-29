@@ -11,126 +11,140 @@
 
 ## Overview
 
-The `esp_bmp280` component is an ESP-IDF compatible driver for the Bosch BMP280 digital pressure and temperature sensor. It utilizes the I2C bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.
+The `esp_bmp280` component is an an espressif IoT development framework (ESP-IDF) compatible driver for the Bosch BMP280 digital pressure and temperature sensor. It utilizes the I2C or SPI bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.  It is designed for portability, maintainability, and hardware abstraction, supporting I2C and SPI communication via a generic Hardware Abstraction Layer (HAL).
+
+```text
+components
+└── esp_bmp280
+    ├── CMakeLists.txt
+    ├── README.md
+    ├── LICENSE
+    ├── idf_component.yml
+    ├── library.json
+    ├── documentation
+    │   └── datasheets, etc.
+    ├── include
+    │   └── bmp280_version.h
+    │   └── bmp280.h
+    └── bmp280.c
+```
 
 ## Architecture & Dependencies
 
-This driver is built upon the ESP-IDF I2C Master driver (`driver/i2c_master.h`). It handles the low-level I2C transactions, including command transmission, data reception, and calibration data management, abstracting these details from the user.
+This driver is built upon the ESP-IDF I2C Master driver (`driver/i2c_master.h`). It handles the low-level I2C transactions, including command transmission, data reception, and calibration data management, abstracting these details from the user.  In addition, the driver supports the ESP-IDF SPI Master driver (`driver/spi_master.h`).  It handles the low-level SPI transactions, including command transmission, data reception, and calibration data management, abstracting these details from the user.
 
 **Dependencies:**
 
 - `driver/i2c_master.h`: For I2C bus communication.
+- `driver/spi_master.h`: For SPI bus communication.
 - `esp_err.h`: For standard error handling.
-- `esp_log.h`: For logging.
-- `freertos/FreeRTOS.h`, `freertos/task.h`: For delays and task management.
-- `esp_timer.h`: For high-resolution timing.
 
-## Data Structures
+## Architecture
 
-### Configuration: `bmp280_config_t`
+- The driver is implemented in C and uses a HAL (Hardware Abstraction Layer) for all bus communication, decoupling it from ESP-IDF-specific I2C and SPI APIs.
+- The main API is exposed via `bmp280.h`.
+- The driver is thread-safe and non-blocking where possible.
+- All device configuration and state are encapsulated in an opaque handle.
 
-This structure defines the initial state of the BMP280 device.
+### HAL (Hardware Abstraction Layer)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `i2c_address` | `uint16_t` | I2C device address (Default: `0x77`). |
-| `i2c_clock_speed` | `uint32_t` | I2C SCL clock frequency (Default: `100000` Hz). |
-| `power_mode` | `bmp280_power_modes_t` | Power mode setting (Sleep, Forced, Normal). |
-| `iir_filter` | `bmp280_iir_filters_t` | IIR filter coefficient. |
-| `pressure_oversampling` | `bmp280_pressure_oversampling_t` | Pressure oversampling setting. |
-| `temperature_oversampling` | `bmp280_temperature_oversampling_t` | Temperature oversampling setting. |
-| `standby_time` | `bmp280_standby_times_t` | Standby time in normal mode. |
+- The driver uses a `hal_master_dev_handle_t` for bus operations, supporting I2C and SPI (and potentially other buses in the future).
+- The user must provide a valid HAL master device handle and a configuration struct during initialization.
+- All bus operations (read/write) are performed via the HAL interface, enabling portability and testability.
 
-**Default Configuration Macro:** `BMP280_CONFIG_DEFAULT`
+## Configuration Structure
 
-### Enumerations
+The configuration is provided via a `bmp280_config_t` struct, which includes all parameters for device operation:
 
-#### `bmp280_power_modes_t`
+```c
+typedef struct {
+ hal_master_bif_t hal_bif; // Bus interface type (e.g., I2C, SPI)
+ void *hal_config;         // Pointer to bus-specific config (e.g., i2c_device_config_t or spi_device_interface_config_t)
+ bmp280_power_modes_t power_mode;
+ bmp280_pressure_oversampling_t pressure_oversampling;
+ bmp280_temperature_oversampling_t temperature_oversampling;
+ bmp280_standby_times_t standby_time;
+ bmp280_iir_filters_t iir_filter;
+} bmp280_config_t;
+```
 
-Controls the operating mode of the sensor.
+### Default Configuration Macro
 
-- `BMP280_POWER_MODE_SLEEP`: Sleep mode, no measurements.
-- `BMP280_POWER_MODE_FORCED`: Single measurement, then returns to sleep.
-- `BMP280_POWER_MODE_NORMAL`: Continuous cycling between measurement and standby.
+Use the macro `BMP280_CONFIG_DEFAULT` to initialize a config struct with recommended defaults with I2C support:
 
-#### `bmp280_pressure_oversampling_t` / `bmp280_temperature_oversampling_t`
+```c
+#define BMP280_CONFIG_DEFAULT {
+   .hal_bif        = HAL_MASTER_BIF_I2C, \
+   .hal_config     = (void*)&(i2c_device_config_t) { \
+        .device_address = I2C_BMP280_DEV_ADDR_HI,     \
+        .scl_speed_hz   = I2C_BMP280_DEV_CLK_SPD      \
+    },                                                \
+  .power_mode = BMP280_POWER_MODE_NORMAL, \
+  .pressure_oversampling = BMP280_PRESSURE_OVERSAMPLING_16X, \
+  .temperature_oversampling = BMP280_TEMPERATURE_OVERSAMPLING_2X, \
+  .standby_time = BMP280_STANDBY_TIME_500_MS, \
+  .iir_filter = BMP280_IIR_FILTER_16 \
+ }
+```
 
-Controls the oversampling rate for measurements to reduce noise.
+## Initialization
 
-- `BMP280_*_OVERSAMPLING_SKIPPED`: Measurement skipped.
-- `BMP280_*_OVERSAMPLING_1X` to `16X`: Oversampling factors.
+Call `bmp280_init()` with a HAL master bus handle, a pointer to a `bmp280_config_t`, and a pointer to a `bmp280_handle_t`:
 
-#### `bmp280_iir_filters_t`
+```c
+esp_err_t bmp280_init(const void* master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle);
+```
 
-Controls the internal IIR filter to smooth output data.
+## API Summary
 
-- `BMP280_IIR_FILTER_OFF`: Filter disabled.
-- `BMP280_IIR_FILTER_2` to `16`: Filter coefficients.
+- `bmp280_init()` - Initialize the device
+- `bmp280_get_measurements()` - Read temperature and pressure
+- `bmp280_get_data_status()` - Check if new data is ready
+- `bmp280_get_power_mode()` / `bmp280_set_power_mode()`
+- `bmp280_get_pressure_oversampling()` / `bmp280_set_pressure_oversampling()`
+- `bmp280_get_temperature_oversampling()` / `bmp280_set_temperature_oversampling()`
+- `bmp280_get_standby_time()` / `bmp280_set_standby_time()`
+- `bmp280_get_iir_filter()` / `bmp280_set_iir_filter()`
+- `bmp280_reset()` - Reset the device
+- `bmp280_remove()` / `bmp280_delete()` - Remove or delete the device handle
+- `bmp280_get_fw_version()` / `bmp280_get_fw_version_number()`
 
-#### `bmp280_standby_times_t`
+## Example Usage
 
-Controls the inactive duration in normal mode.
+```c
+#include "bmp280.h"
 
-- `BMP280_STANDBY_TIME_0_5MS` to `4000MS`: Standby durations.
+#define I2C0_MASTER_CONFIG_DEFAULT {                                \
+        .clk_source                     = I2C_CLK_SRC_DEFAULT,      \
+        .i2c_port                       = I2C0_MASTER_PORT,         \
+        .scl_io_num                     = I2C0_MASTER_SCL_IO,       \
+        .sda_io_num                     = I2C0_MASTER_SDA_IO,       \
+        .glitch_ignore_cnt              = 7,                        \
+        .flags.enable_internal_pullup   = true, }
 
-## API Reference
+esp_err_t err = ESP_OK;
 
-### Initialization
+i2c_master_bus_config_t  i2c0_bus_config = I2C0_MASTER_CONFIG_DEFAULT;
+i2c_master_bus_handle_t  i2c0_bus_handle = NULL;
 
-- **`bmp280_init`**: Allocates resources, probes the I2C bus, resets the sensor, reads calibration data, configures the device, and initializes the device handle. Accepts a `void*` master handle.
+err = i2c_new_master_bus(&i2c0_bus_config, &i2c0_bus_handle);
+if (err != ESP_OK) assert(i2c0_bus_handle);
 
-### Measurement
+bmp280_config_t config = BMP280_CONFIG_DEFAULT;
+bmp280_handle_t handle = NULL;
 
-- **`bmp280_get_measurements`**: Reads the latest temperature and pressure data from the sensor. Returns compensated values in °C and Pascal.
-- **`bmp280_get_data_status`**: Checks if data is ready to be read.
-
-### Configuration
-
-- **`bmp280_set_power_mode` / `bmp280_get_power_mode`**: Set/Get power mode.
-- **`bmp280_set_pressure_oversampling` / `bmp280_get_pressure_oversampling`**: Set/Get pressure oversampling.
-- **`bmp280_set_temperature_oversampling` / `bmp280_get_temperature_oversampling`**: Set/Get temperature oversampling.
-- **`bmp280_set_standby_time` / `bmp280_get_standby_time`**: Set/Get standby time.
-- **`bmp280_set_iir_filter` / `bmp280_get_iir_filter`**: Set/Get IIR filter.
-
-### System & Maintenance
-
-- **`bmp280_reset`**: Sends a soft-reset command to the sensor.
-- **`bmp280_remove`**: Removes the device from the I2C bus (does not free memory).
-- **`bmp280_delete`**: Removes the device and frees the handle memory.
-- **`bmp280_get_fw_version`**: Returns the driver version string.
-- **`bmp280_get_fw_version_number`**: Returns the driver version as an integer.
-
-## Implementation Details
-
-### I2C Communication
-
-The driver uses standard I2C read/write operations.
-
-- **Registers**: Accessed via 8-bit register addresses.
-- **Burst Read**: Used for reading calibration data and measurement data (pressure and temperature) in a single transaction to ensure data consistency.
-
-### Calibration & Compensation
-
-The BMP280 stores factory calibration data in its NVM. The driver reads these coefficients (`dig_T1`..`dig_T3`, `dig_P1`..`dig_P9`) during initialization.
-Raw ADC values are compensated using the integer arithmetic formulas provided in the Bosch datasheet to produce accurate temperature and pressure readings.
-
-### Timing
-
-The driver handles necessary delays:
-
-- **Power-up**: Waits 25ms.
-- **Soft Reset**: Waits 25ms.
-- **Measurement**: Polling or delay based on status register (if applicable) or standard delays.
-
-## Hardware Abstraction Layer (HAL)
-
-The driver implements a Hardware Abstraction Layer (HAL) to isolate the core driver logic from the specific ESP-IDF I2C driver implementation. This is achieved through a set of `static inline` functions prefixed with `hal_`.
+err = bmp280_init(i2c0_bus_handle, &config, &handle);
+if (err == ESP_OK) {
+ float temp, press;
+ bmp280_get_measurements(handle, &temp, &press);
+}
+```
 
 ### HAL Implementation Strategy
 
 - **Encapsulation**: All direct calls to `i2c_master_*` functions are contained within `hal_*` functions.
 - **Error Propagation**: HAL functions return `esp_err_t` to propagate low-level I2C errors up to the public API.
-- **Device Handle**: The `bmp280_device_t` structure holds a `void*` handle (abstracting the underlying `i2c_master_dev_handle_t`), which is passed to HAL functions to identify the target device.
+- **Device Handle**: The `bmp280_device_t` structure holds a `void*` handle (abstracting the underlying `i2c_master_dev_handle_t` or `spi_device_handle_t`), which is passed to HAL functions to identify the target device.
 
 ### HAL Master Functions
 
@@ -162,5 +176,18 @@ These `static inline` functions perform utility tasks, calculations, and logic m
 - **`hal_set_config_register`**: Writes to the configuration register.
 - **`hal_set_reset_register`**: Writes to the reset register.
 - **`hal_get_adc_signals`**: Reads the raw pressure and temperature ADC values.
+
+## Notes
+
+- The driver is designed for extensibility and portability.
+- The HAL interface allows for future support of other bus types.
+- All configuration and state are encapsulated in the device handle.
+- The driver is C99-compliant and safe for use in C projects.
+
+## References
+
+- [BMP280 Repository](https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_bmp280)
+- [BMP280 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf)
+- [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/index.html)
 
 Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

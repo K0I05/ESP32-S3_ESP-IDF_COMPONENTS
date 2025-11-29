@@ -76,7 +76,6 @@
 #define BMP280_CMD_DELAY_MS             UINT16_C(5)
 #define BMP280_TX_RX_DELAY_MS           UINT16_C(10)
 
-#define I2C_XFR_TIMEOUT_MS      (500)          //!< I2C transaction timeout in milliseconds
 
 /*
  * macro definitions
@@ -147,10 +146,10 @@ typedef struct bmp280_cal_factors_s {
  * @brief BMP280 device descriptor structure definition.
  */
 typedef struct bmp280_device_s {
-    bmp280_config_t                         config;             /*!< bmp280 device configuration */  
-    void*                                   hal_handle;         /*!< bmp280 HAL communication bus handle */
-    bmp280_cal_factors_t                   *cal_factors;        /*!< bmp280 device calibration factors */
-    uint8_t                                 sensor_type;        /*!< sensor type, should be bmp280 */
+    bmp280_config_t             config;             /*!< bmp280 device configuration */  
+    hal_master_dev_handle_t     hal_handle;         /*!< bmp280 HAL communication bus handle */
+    bmp280_cal_factors_t       *cal_factors;        /*!< bmp280 device calibration factors */
+    uint8_t                     sensor_type;        /*!< sensor type, should be bmp280 */
 } bmp280_device_t;
 
 /*
@@ -161,181 +160,6 @@ static const char *TAG = "bmp280";
 
 
 
-/**
- * @brief HAL device probe on master communication bus.
- * 
- * @param master_handle Pointer to HAL master communication bus handle.
- * @param device Pointer to BMP280 device descriptor.
- * @return esp_err_t ESP_OK on success.  ESP_ERR_NOT_FOUND: probe failed, 
- * doesn't find the device with specific address you gave.  ESP_ERR_TIMEOUT: 
- * Operation timeout(larger than xfer_timeout_ms) because the bus is busy or 
- * hardware crash.
- */
-static inline esp_err_t hal_master_probe(const void* master_handle, bmp280_device_t *const device) {
-    /* cast to i2c master bus handle */
-    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK(hal_master && device );
-
-    /* attempt to probe device on i2c master bus */
-    esp_err_t ret = i2c_master_probe(hal_master, device->config.i2c_address, I2C_XFR_TIMEOUT_MS);
-    ESP_RETURN_ON_ERROR(ret, TAG, "device does not exist at address 0x%02x, device probe on HAL master communication bus failed", device->config.i2c_address);
-
-    return ESP_OK;
-}
-
-/**
- * @brief HAL device initialization on master communication bus.
- * 
- * @param master_handle Pointer to HAL master communication bus handle.
- * @param device Pointer to BMP280 device descriptor.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_init(const void* master_handle, bmp280_device_t *const device) {
-    /* cast to i2c master bus handle */
-    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_master && device );
-
-    /* set i2c device configuration */
-    const i2c_device_config_t i2c_dev_conf = {
-        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = device->config.i2c_address,
-        .scl_speed_hz       = device->config.i2c_clock_speed
-    };
-
-    /* attempt to add device to i2c master bus */
-    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
-
-    return ESP_OK;
-}
-
-/**
- * @brief Remove device from HAL master communication bus and free resources.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_remove(const void* device_handle) {
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* remove device from i2c master bus */
-    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-        return ret;
-    }
-    hal_device = NULL;
-
-    return ESP_OK;
-}
-
-/**
- * @brief HAL read from register address transaction.  This is a write and then read process.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @param reg_addr BMP280 register address to read from.
- * @param buffer BMP280 read transaction return buffer.
- * @param size Length of buffer to store results from read transaction.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_read_from(const void* device_handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read from failed" );
-
-    return ESP_OK;
-}
-
-/**
- * @brief BMP280 I2C HAL read word from register address transaction.
- * 
- * @param device BMP280 device descriptor.
- * @param reg_addr BMP280 register address to read from.
- * @param word BMP280 read transaction return word.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_read_word_from(const void* device_handle, const uint8_t reg_addr, uint16_t *const word) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
-    bit16_uint8_buffer_t rx = { 0 };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read word from failed" );
-
-    /* set output parameter */
-    *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
-
-    return ESP_OK;
-}
-
-/**
- * @brief I2C HAL read byte from BMP280 register address transaction.
- * 
- * @param device BMP280 device descriptor.
- * @param reg_addr BMP280 register address to read from.
- * @param byte BMP280 read transaction return byte.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_read_byte_from(const void* device_handle, const uint8_t reg_addr, uint8_t *const byte) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
-    bit8_uint8_buffer_t rx = { 0 };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read byte from failed" );
-
-    /* set output parameter */
-    *byte = rx[0];
-
-    return ESP_OK;
-}
-
-/**
- * @brief I2C HAL write byte to BMP280 register address transaction.
- * 
- * @param device BMP280 device descriptor.
- * @param reg_addr BMP280 register address to write to.
- * @param byte BMP280 write transaction input byte.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_write_byte_to(const void* device_handle, const uint8_t reg_addr, const uint8_t byte) {
-    const bit16_uint8_buffer_t tx = { reg_addr, byte };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(hal_device, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, HAL master write byte to failed" );
-                        
-    return ESP_OK;
-}
 
 /**
  * @brief Temperature compensation algorithm taken from datasheet.  See datasheet for details.
@@ -344,7 +168,7 @@ static inline esp_err_t hal_master_write_byte_to(const void* device_handle, cons
  * @param[in] adc_temperature Raw adc temperature.
  * @return Compensated temperature in degrees Celsius.
  */
-static inline float compensate_temperature(bmp280_device_t *const device, const int32_t adc_temperature) {
+static inline float convert_adc_signal_to_temperature(bmp280_device_t *const device, const int32_t adc_temperature) {
     int32_t var1, var2;
 
     var1 = ((((adc_temperature >> 3) - ((int32_t)device->cal_factors->dig_T1 << 1))) * (int32_t)device->cal_factors->dig_T2) >> 11;
@@ -364,7 +188,7 @@ static inline float compensate_temperature(bmp280_device_t *const device, const 
  * @param[in] adc_pressure Raw adc pressure.
  * @return Compensated pressure in pascal.
  */
-static inline float compensate_pressure(bmp280_device_t *const device, const int32_t adc_pressure) {
+static inline float convert_adc_signal_to_pressure(bmp280_device_t *const device, const int32_t adc_pressure) {
     int64_t var1, var2, p;
 
     var1 = (int64_t)device->cal_factors->t_fine - 128000;
@@ -594,7 +418,7 @@ static inline esp_err_t hal_get_adc_signals(bmp280_device_t *device, int32_t *co
     } while (data_is_ready == false);
 
     // need to read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( hal_master_read_from(device, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
+    ESP_GOTO_ON_ERROR( hal_master_read_from(device->hal_handle, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
 
     /* concat adc pressure & temperature bytes */
     const int32_t adc_press = rx[0] << 12 | rx[1] << 4 | rx[2] >> 4;
@@ -657,12 +481,9 @@ static inline esp_err_t hal_setup_registers(bmp280_device_t *const device) {
     return ESP_OK;
 }
 
-esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle) {
+esp_err_t bmp280_init(const void* master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle) {
     /* validate arguments */
-    ESP_ARG_CHECK( hal_master_handle && bmp280_config );
-
-    /* delay task before i2c transaction */
-    vTaskDelay(pdMS_TO_TICKS(BMP280_POWERUP_DELAY_MS));
+    ESP_ARG_CHECK( master_handle && bmp280_config );
 
     /* validate memory availability for handle */
     esp_err_t ret = ESP_OK;
@@ -676,13 +497,38 @@ esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp2
     /* copy configuration */
     device->config = *bmp280_config;
 
-    /* validate device exists on the hal master communication bus */
-    ret = hal_master_probe(hal_master_handle, device);
-    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal device does not exist, device handle initialization failed");
+    /* validate hal master bus interface */
+    ESP_GOTO_ON_FALSE( bmp280_config->hal_bif == HAL_MASTER_BIF_I2C, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid HAL master bus interface, device handle initialization failed");
 
-    /* initialize device onto the hal master communication bus */
-    ret = hal_master_init(hal_master_handle, device);
-    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal initialization failed, device handle initialization failed");
+    /* cast i2c_master_bus_handle_t to void pointer */
+    i2c_master_bus_handle_t i2c_master_handle = (i2c_master_bus_handle_t)master_handle;
+
+    /* validate i2c master bus handle */
+    ESP_GOTO_ON_FALSE( i2c_master_handle, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid master bus handle, device handle initialization failed");
+
+    /* cast hal_config to i2c_device_config_t pointer */
+    const i2c_device_config_t* i2c_dev_conf_ptr = (const i2c_device_config_t*)device->config.hal_config;
+
+    /* validate i2c device configuration */
+    ESP_GOTO_ON_FALSE(i2c_dev_conf_ptr, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid i2c device configuration, device handle initialization failed");
+    
+    /* set i2c device configuration */
+    const i2c_device_config_t i2c_dev_conf = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = i2c_dev_conf_ptr->device_address,
+        .scl_speed_hz    = i2c_dev_conf_ptr->scl_speed_hz
+    };
+
+    /* delay task before transaction */
+    vTaskDelay(pdMS_TO_TICKS(BMP280_POWERUP_DELAY_MS));
+
+    /* create hal master device */
+    ret = hal_master_new_i2c_device(i2c_master_handle, &i2c_dev_conf, &device->hal_handle);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal_master_new_i2c_device failed, device handle initialization failed");
+
+    /* validate device exists on the hal master communication bus */
+    ret = hal_master_probe(device->hal_handle, i2c_dev_conf_ptr->device_address);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "device does not exist on the hal master communication bus, device handle initialization failed");
 
     /* delay before next transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP280_CMD_DELAY_MS));
@@ -702,7 +548,7 @@ esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp2
     /* set output parameter */
     *bmp280_handle = (bmp280_handle_t)device;
 
-    /* delay task before i2c transaction */
+    /* delay task before transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP280_APPSTART_DELAY_MS));
 
     return ESP_OK;
@@ -710,7 +556,9 @@ esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp2
     /* something went wrong - after device descriptor instantiation */
     err_handle:
         /* remove device from hal master communication bus */
-        ret = hal_master_remove(device->hal_handle);
+        if (device->hal_handle) {
+            hal_master_delete(device->hal_handle);
+        }
 
         /* free device handle */
         free(device);
@@ -729,8 +577,8 @@ esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperatu
     ESP_RETURN_ON_ERROR( hal_get_adc_signals(device, &adc_temp, &adc_press), TAG, "read temperature and pressure adc signals failed" );
 
     /* compensate adc temperature & pressure and set output parameters */
-    *temperature = compensate_temperature(device, adc_temp);
-    *pressure    = compensate_pressure(device, adc_press);
+    *temperature = convert_adc_signal_to_temperature(device, adc_temp);
+    *pressure    = convert_adc_signal_to_pressure(device, adc_press);
 
     return ESP_OK;
 }
@@ -952,16 +800,18 @@ esp_err_t bmp280_remove(bmp280_handle_t handle) {
 }
 
 esp_err_t bmp280_delete(bmp280_handle_t handle){
+    bmp280_device_t* device = (bmp280_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    /* remove device from master bus */
-    esp_err_t ret = bmp280_remove(handle);
+    /* delete device handle */
+    if (device->hal_handle) {
+        hal_master_delete(device->hal_handle);
+    }
 
-    /* free handles */
-    free(handle);
-
-    return ret;
+    free(device);
+    return ESP_OK;
 }
 
 const char* bmp280_get_fw_version(void) {

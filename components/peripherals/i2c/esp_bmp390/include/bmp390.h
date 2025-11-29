@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
-#include <driver/i2c_master.h>
+#include <hal_master.h>
 #include <type_utils.h>
 #include "bmp390_version.h"
 
@@ -58,16 +58,19 @@ extern "C" {
 #define I2C_BMP390_DEV_ADDR_HI      UINT8_C(0x77) //!< bmp390 I2C address when ADDR pin high
 
 /*
- * BMP390 macros
+ * Macro that initializes `bmp390_config_t` to default configuration settings that implements the I2C bus interface.
 */
 #define BMP390_CONFIG_DEFAULT {                                          \
-        .i2c_address                = I2C_BMP390_DEV_ADDR_HI,                \
-        .i2c_clock_speed            = I2C_BMP390_DEV_CLK_SPD,                \
-        .power_mode                 = BMP390_POWER_MODE_FORCED,              \
-        .iir_filter                 = BMP390_IIR_FILTER_OFF,                 \
-        .pressure_oversampling      = BMP390_PRESSURE_OVERSAMPLING_8X,       \
-        .temperature_oversampling   = BMP390_TEMPERATURE_OVERSAMPLING_8X,    \
-        .output_data_rate           = BMP390_ODR_40MS }
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_BMP390_DEV_ADDR_HI,  \
+        .scl_speed_hz   = I2C_BMP390_DEV_CLK_SPD   \
+    },                                             \
+    .power_mode                 = BMP390_POWER_MODE_FORCED,              \
+    .iir_filter                 = BMP390_IIR_FILTER_OFF,                 \
+    .pressure_oversampling      = BMP390_PRESSURE_OVERSAMPLING_8X,       \
+    .temperature_oversampling   = BMP390_TEMPERATURE_OVERSAMPLING_8X,    \
+    .output_data_rate           = BMP390_ODR_40MS }
 
 /*
  * BMP390 enumerator and structure declarations
@@ -141,8 +144,8 @@ typedef enum bmp390_temperature_oversampling_e {
  * @brief BMP390 configuration structure.
  */
 typedef struct bmp390_config_s {
-    uint16_t                                i2c_address;                /*!< bmp390 i2c device address */
-    uint32_t                                i2c_clock_speed;            /*!< bmp390 i2c device scl clock speed  */
+    hal_master_interfaces_t                 hal_bif;                    /*!< HAL master bus interface type */
+    void                                   *hal_config;                 /*!< HAL master bus interface configuration, the type (i.e. i2c_device_config_t) depends on the bus interface */
     bmp390_iir_filters_t                    iir_filter;                 /*!< bmp390 IIR filter setting */
     bmp390_pressure_oversampling_t          pressure_oversampling;      /*!< bmp390 pressure oversampling setting */
     bmp390_temperature_oversampling_t       temperature_oversampling;   /*!< bmp390 temperature oversampling setting */
@@ -158,14 +161,14 @@ typedef void* bmp390_handle_t;
 
 
 /**
- * @brief Initializes an BMP390 device onto the master bus.
+ * @brief Initializes an BMP390 device onto the HAL master communication bus.
  *
- * @param[in] master_handle I2C master bus handle.
+ * @param[in] master_handle HAL master bus handle.
  * @param[in] bmp390_config BMP390 device configuration.
  * @param[out] bmp390_handle BMP390 device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t bmp390_init(i2c_master_bus_handle_t master_handle, const bmp390_config_t *bmp390_config, bmp390_handle_t *bmp280_handle);
+esp_err_t bmp390_init(const void* master_handle, const bmp390_config_t *bmp390_config, bmp390_handle_t *bmp280_handle);
 
 /**
  * @brief Reads high-level measurements (temperature & pressure) from BMP390.

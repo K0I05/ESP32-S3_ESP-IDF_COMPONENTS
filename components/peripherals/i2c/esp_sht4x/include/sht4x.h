@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
-#include <driver/i2c_master.h>
+#include <hal_master.h>
 #include <type_utils.h>
 #include "sht4x_version.h"
 
@@ -64,36 +64,22 @@ extern "C" {
  */
 
 /**
- * @brief Macro that initializes `sht4x_config_t` to default configuration settings.
+ * @brief Macro that initializes `sht4x_config_t` to default configuration settings 
+ * that implements the I2C bus interface.
  */
-#define SHT4X_CONFIG_DEFAULT {                      \
-        .i2c_address    = I2C_SHT4X_DEV_ADDR_LO,        \
-        .i2c_clock_speed= I2C_SHT4X_DEV_CLK_SPD,        \
-        .repeat_mode    = SHT4X_REPEAT_HIGH,            \
-        .heater_mode    = SHT4X_HEATER_OFF }
+#define SHT4X_CONFIG_DEFAULT { \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_SHT4X_DEV_ADDR_LO,    \
+        .scl_speed_hz   = I2C_SHT4X_DEV_CLK_SPD     \
+    },                                              \
+    .repeat_mode    = SHT4X_REPEAT_HIGH,            \
+    .heater_mode    = SHT4X_HEATER_OFF }
 
 /**
  * public enumerator, union, and structure definitions
  */
 
-/* sht4x i2c measurement response packet prototyping */
-typedef union {
-    uint8_t  bytes[6];
-    struct temperature_tag {
-        union temperature_data_tag {
-            uint8_t  bytes[3];
-            uint16_t value;
-            uint8_t  crc;
-        } temperature_data;
-    } temperature;
-    struct humidity_tag {
-        union humidity_data_tag {
-            uint8_t  bytes[3];
-            uint16_t value;
-            uint8_t  crc;
-        } humidity_data;
-    } humidity;
-} i2c_sht4x_data___t; 
 
 /** 
  * @brief SHT4X measurement heater modes enumerator definition.
@@ -121,10 +107,10 @@ typedef enum sht4x_repeat_modes_e {
  * @brief SHT4X configuration structure definition.
  */
 typedef struct sht4x_config_s {
-    uint16_t             i2c_address;       /*!< sht4x i2c device address */
-    uint32_t             i2c_clock_speed;   /*!< sht4x i2c device scl clock speed  */
-    sht4x_repeat_modes_t repeat_mode;       /*!< sht4x measurement repeatability mode setting */
-    sht4x_heater_modes_t heater_mode;       /*!< sht4x measurement heater mode setting */
+    hal_master_interfaces_t hal_bif;           /*!< HAL master bus interface type */
+    void                   *hal_config;        /*!< HAL master bus interface configuration, the type (i2c_device_config_t) depends on the bus interface */
+    sht4x_repeat_modes_t    repeat_mode;       /*!< sht4x measurement repeatability mode setting */
+    sht4x_heater_modes_t    heater_mode;       /*!< sht4x measurement heater mode setting */
 } sht4x_config_t;
 
 /**
@@ -148,12 +134,13 @@ typedef void* sht4x_handle_t;
 /**
  * @brief Initializes an SHT4X device onto the HAL master communication bus.
  *
- * @param[in] hal_master_handle HAL master communication bus handle.
+ * @param[in] master_handle HAL master bus handle.  The SHT4X device supports I2C bus interface only.
+ * The bus handle must be of type `i2c_master_bus_handle_t` and initialized.
  * @param[in] sht4x_config SHT4X device configuration.
  * @param[out] sht4x_handle SHT4X device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t sht4x_init(const void* hal_master_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
+esp_err_t sht4x_init(const void* master_handle, const sht4x_config_t *sht4x_config, sht4x_handle_t *const sht4x_handle);
 
 /**
  * @brief Reads high-level measurements from SHT4X.  This is a blocking function.

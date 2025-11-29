@@ -38,7 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
-#include <driver/i2c_master.h>
+#include <hal_master.h>
 #include <type_utils.h>
 #include "hdc1080_version.h"
 
@@ -61,13 +61,18 @@ extern "C" {
 */
 
 /**
- * @brief Macro that initializes `hdc1080_config_t` to default configuration settings.
+ * @brief Macro that initializes `hdc1080_config_t` to default configuration settings that implements the I2C bus interface.
  */
-#define HDC1080_CONFIG_DEFAULT {                                            \
-        .i2c_address                = I2C_HDC1080_DEV_ADDR_0,                   \
-        .i2c_clock_speed            = I2C_HDC1080_DEV_CLK_SPD,                  \
-        .temperature_resolution     = HDC1080_TEMPERATURE_RESOLUTION_14BIT,     \
-        .humidity_resolution        = HDC1080_HUMIDITY_RESOLUTION_14BIT,    }
+#define HDC1080_CONFIG_DEFAULT {          \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_HDC1080_DEV_ADDR_0,   \
+        .scl_speed_hz   = I2C_HDC1080_DEV_CLK_SPD   \
+    },                                              \
+    .temperature_resolution     = HDC1080_TEMPERATURE_RESOLUTION_14BIT, \
+    .humidity_resolution        = HDC1080_HUMIDITY_RESOLUTION_14BIT,    \
+    .heater_enabled             = false                                 \
+}
 
 
 /*
@@ -112,10 +117,11 @@ typedef enum hdc1080_humidity_resolutions_e {
  * @brief HDC1080 configuration structure definition.
  */
 typedef struct hdc1080_config_s {
-    uint16_t                            i2c_address;            /*!< hdc1080 i2c device address */
-    uint32_t                            i2c_clock_speed;        /*!< hdc1080 i2c device scl clock speed  */
+    hal_master_interfaces_t             hal_bif;                /*!< HAL master bus interface type */
+    void                               *hal_config;             /*!< HAL master bus interface configuration, the type (i.e. i2c_device_config_t) depends on the bus interface */
     hdc1080_temperature_resolutions_t   temperature_resolution; /*!< hdc1080 device temperature resolution */
     hdc1080_humidity_resolutions_t      humidity_resolution;    /*!< hdc1080 device humidity resolution */
+    bool                                heater_enabled;         /*!< hdc1080 device heater enabled/disabled */
 } hdc1080_config_t;
 
 /**
@@ -136,12 +142,12 @@ typedef void* hdc1080_handle_t;
 /**
  * @brief Initializes an HDC1080 device onto the HAL master communication bus.
  *
- * @param[in] hal_master_handle HAL master communication bus handle.
+ * @param[in] master_handle HAL master communication bus handle.
  * @param[in] hdc1080_config HDC1080 device configuration.
  * @param[out] hdc1080_handle HDC1080 device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle);
+esp_err_t hdc1080_init(const void* master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle);
 
 /**
  * @brief Reads temperature and relative humidity from HDC1080.
@@ -157,13 +163,13 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
  * @brief Reads temperature, relative humidity, dew-point and wet-bulb temperatures from HDC1080.
  * 
  * @param[in] handle HDC1080 device handle.
- * @param[out] temperature Temperature measurement in degrees Celsius.
+ * @param[out] drybulb Dry-bulb temperature measurement in degrees Celsius.
  * @param[out] humidity Relative humidity measurement in percentage.
- * @param[out] dewpoint Calculated dew-point in degrees Celsius.
+ * @param[out] dewpoint Calculated dew-point temperature in degrees Celsius.
  * @param[out] wetbulb Calculated wet-bulb temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
+esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const drybulb, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
  * @brief Reads temperature, relative humidity, dew-point and wet-bulb temperatures from HDC1080 and stores them in a data record structure.

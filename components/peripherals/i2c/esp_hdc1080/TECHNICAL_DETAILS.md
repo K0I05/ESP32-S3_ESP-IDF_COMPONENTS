@@ -11,15 +11,31 @@
 
 ## Overview
 
-The `esp_hdc1080` component is an ESP-IDF compatible driver for the Texas Instruments HDC1080 digital humidity and temperature sensor. It utilizes the I2C bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.
+The `esp_hdc1080` component is an espressif IoT development framework (ESP-IDF) compatible driver for the Texas Instruments HDC1080 digital humidity and temperature sensor. It utilizes the I2C bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.  It is designed for portability, maintainability, and hardware abstraction, supporting I2C and SPI communication via a generic Hardware Abstraction Layer (HAL).
+
+```text
+components
+└── esp_hdc1080
+    ├── CMakeLists.txt
+    ├── README.md
+    ├── LICENSE
+    ├── idf_component.yml
+    ├── library.json
+    ├── documentation
+    │   └── datasheets, etc.
+    ├── include
+    │   └── hdc1080_version.h
+    │   └── hdc1080.h
+    └── hdc1080.c
+```
 
 ## Architecture & Dependencies
 
-This driver is built upon the ESP-IDF I2C Master driver (`driver/i2c_master.h`). It handles the low-level I2C transactions, including command transmission, data reception, and configuration management, abstracting these details from the user.
+This driver is built on a Hardware Abstraction Layer (HAL) architecture. All low-level bus operations (such as I2C or SPI transactions) are performed through a generic `hal_master` interface, which abstracts the underlying hardware implementation. This allows the driver to be hardware-agnostic and portable across different platforms or bus implementations.
 
 **Dependencies:**
 
-- `driver/i2c_master.h`: For I2C bus communication.
+- `hal_master.h`: For all bus communication (I2C and SPI buses are supported).
 - `esp_err.h`: For standard error handling.
 - `esp_log.h`: For logging.
 - `freertos/FreeRTOS.h`, `freertos/task.h`: For delays and task management.
@@ -29,16 +45,32 @@ This driver is built upon the ESP-IDF I2C Master driver (`driver/i2c_master.h`).
 
 ### Configuration: `hdc1080_config_t`
 
-This structure defines the initial state of the HDC1080 device.
+This structure defines the configuration parameters required to initialize the HDC1080 device and its communication interface via the HAL. It encapsulates both sensor-specific and bus/HAL-specific settings.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `i2c_address` | `uint16_t` | I2C device address (Default: `0x40`). |
-| `i2c_clock_speed` | `uint32_t` | I2C SCL clock frequency (Default: `100000` Hz). |
-| `temperature_resolution` | `hdc1080_temperature_resolutions_t` | Temperature measurement resolution. |
-| `humidity_resolution` | `hdc1080_humidity_resolutions_t` | Humidity measurement resolution. |
+| Field                    | Type                                 | Description                                                                                 |
+|--------------------------|--------------------------------------|---------------------------------------------------------------------------------------------|
+| `hal_config`             | `void*`                              | Pointer to the HAL master bus configuration instance (required for all communication).      |
+| `hal_bif`                | `hal_master_interfaces_t`            | HAL master bus interface type.                                                              |
+| `temperature_resolution` | `hdc1080_temperature_resolutions_t`  | Temperature measurement resolution (see enum below).                                        |
+| `humidity_resolution`    | `hdc1080_humidity_resolutions_t`     | Humidity measurement resolution (see enum below).                                           |
+| `heater_enabled`         | `bool`                               | Enables or disables the on-chip heater (default: `false`).                                  |
 
 **Default Configuration Macro:** `HDC1080_CONFIG_DEFAULT`
+
+The default macro initializes all fields to recommended values for typical operation. The `hal_master` pointer must be set by the user before initialization.
+
+```c
+#define HDC1080_CONFIG_DEFAULT {          \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){\
+        .device_address = I2C_HDC1080_DEV_ADDR_0,   \
+        .scl_speed_hz   = I2C_HDC1080_DEV_CLK_SPD   \
+    },                                              \
+    .temperature_resolution     = HDC1080_TEMPERATURE_RESOLUTION_14BIT, \
+    .humidity_resolution        = HDC1080_HUMIDITY_RESOLUTION_14BIT,    \
+    .heater_enabled             = false                                 \
+}
+```
 
 ### Enumerations
 
@@ -94,12 +126,12 @@ A container for all measurement outputs.
 
 ## Implementation Details
 
-### I2C Communication
+### HAL-Based Communication
 
-The driver uses standard I2C read/write operations.
+All communication with the HDC1080 sensor is performed through the HAL interface. The driver does not make any direct calls to ESP-IDF I2C or SPI functions. Instead, it uses the `hal_master` API to perform device probing, configuration, reading, and writing. This ensures that the driver logic is decoupled from the hardware layer and can be adapted to other platforms by providing a compatible HAL implementation.
 
-- **Configuration**: 16-bit configuration register is written/read to control settings.
-- **Measurement**: Triggered by writing to the temperature or humidity register pointer, followed by a delay and a read operation.
+- **Configuration**: The HAL is used to write/read the 16-bit configuration register.
+- **Measurement**: The HAL is used to trigger measurements and read results, with appropriate delays handled at the driver level.
 
 ### Signal Conversion
 
@@ -123,23 +155,38 @@ The driver handles necessary delays:
 
 ## Hardware Abstraction Layer (HAL)
 
-The driver implements a Hardware Abstraction Layer (HAL) to isolate the core driver logic from the specific ESP-IDF I2C driver implementation. This is achieved through a set of `static inline` functions prefixed with `hal_`.
+The driver is fully decoupled from any specific hardware or SDK by using a Hardware Abstraction Layer (HAL). All bus operations are performed through the `hal_master` interface, which is injected into the driver at initialization. The HAL provides a set of function pointers or API calls for device creation, configuration, read/write, and removal, allowing the driver to be reused with different hardware or bus implementations by simply swapping out the HAL implementation.
 
-### HAL Implementation Strategy
+### HAL Integration and Device Handle
 
-- **Encapsulation**: All direct calls to `i2c_master_*` functions are contained within `hal_*` functions.
-- **Error Propagation**: HAL functions return `esp_err_t` to propagate low-level I2C errors up to the public API.
-- **Device Handle**: The `hdc1080_device_t` structure holds a `void*` handle (abstracting the underlying `i2c_master_dev_handle_t`), which is passed to HAL functions to identify the target device.
+- The driver expects a valid HAL master bus handle (e.g., I2C) and a device configuration structure (such as `i2c_device_config_t`) to be provided at initialization.
+- The driver creates a device handle (`hal_handle`) using the HAL's device creation function (e.g., `hal_master_new_i2c_device`).
+- All subsequent communication (read, write, probe, remove) is performed using this device handle.
+- The `hdc1080_device_t` structure contains both the sensor configuration and the HAL device handle.
 
-### HAL Functions
+### HAL Function Usage in Driver
 
-- **`hal_master_probe`**: Checks if the device exists on the I2C bus using `i2c_master_probe`. Accepts a `void*` master handle.
-- **`hal_master_init`**: Configures the I2C device (address, clock speed) and adds it to the master bus using `i2c_master_bus_add_device`. Accepts a `void*` master handle.
-- **`hal_master_read`**: Wraps `i2c_master_receive` to read data from the sensor. Accepts a `void*` device handle.
-- **`hal_master_write_command`**: A specialized write function for sending single-byte commands (register pointers). Accepts a `void*` device handle.
-- **`hal_master_write_word_to`**: Writes a 16-bit word to a specific register address. Accepts a `void*` device handle.
-- **`hal_master_read_word_from`**: Reads a 16-bit word from a specific register address. Accepts a `void*` device handle.
-- **`hal_master_remove`**: Removes the device from the I2C bus using `i2c_master_bus_rm_device`. Accepts a `void*` device handle.
+The following HAL functions are used by the driver (actual signatures may vary by HAL implementation):
+
+- `hal_master_new_i2c_device(i2c_master_handle, i2c_device_config_t*, hal_master_dev_handle_t*)`: Creates a new device on the bus.
+- `hal_master_probe(hal_master_dev_handle_t, uint16_t device_address)`: Probes for device presence.
+- `hal_master_read(hal_master_dev_handle_t, uint8_t* data, size_t len)`: Reads data from the device.
+- `hal_master_write_command(hal_master_dev_handle_t, uint8_t command)`: Writes a command byte to the device.
+- `hal_master_write_word_to(hal_master_dev_handle_t, uint8_t reg, uint16_t value)`: Writes a 16-bit word to a register.
+- `hal_master_read_word_from(hal_master_dev_handle_t, uint8_t reg, uint16_t* value)`: Reads a 16-bit word from a register.
+- `hal_master_remove(hal_master_dev_handle_t)`: Removes the device from the bus.
+- `hal_master_delete(hal_master_dev_handle_t)`: Deletes and frees the device handle.
+
+### HAL-Related Driver Functions
+
+The driver implements several static inline functions that wrap HAL calls for specific sensor operations, such as:
+
+- `hal_get_config_register`, `hal_set_config_register`: Read/write the sensor's configuration register via HAL.
+- `hal_get_adc_signals`: Read raw ADC values for temperature and humidity via HAL.
+- `hal_set_reset_register`: Issue a soft reset via HAL.
+- `hal_setup_registers`: Configure the sensor using HAL calls.
+
+All error handling and device state management is performed at the driver level, with HAL errors propagated up to the public API.
 
 ## Internal Helper Functions
 
@@ -149,8 +196,6 @@ These `static inline` functions perform utility tasks, calculations, and logic m
 
 - **`get_humidity_duration`**: Returns the required measurement duration (in ms) based on the selected humidity resolution.
 - **`get_temperature_duration`**: Returns the required measurement duration (in ms) based on the selected temperature resolution.
-- **`get_humidity_tick_duration`**: Converts the humidity measurement duration to FreeRTOS ticks.
-- **`get_temperature_tick_duration`**: Converts the temperature measurement duration to FreeRTOS ticks.
 
 ### Range Validation
 
@@ -160,12 +205,56 @@ These `static inline` functions perform utility tasks, calculations, and logic m
 
 ### Helper: Derived Calculations
 
-- **`get_dewpoint`**: Calculates dew point temperature using the Magnus formula. Includes input validation.
-- **`get_wetbulb`**: Calculates wet bulb temperature using the Stull formula. Includes input validation.
+- **`get_dewpoint_temperature`**: Calculates dew point temperature using the Magnus formula. Includes input validation.
+- **`get_wetbulb_temperature`**: Calculates wet bulb temperature using the Stull formula. Includes input validation.
 
 ### Helper: Signal Conversion
 
 - **`convert_adc_signal_to_temperature`**: Converts the raw 16-bit ADC temperature value to degrees Celsius.
 - **`convert_adc_signal_to_humidity`**: Converts the raw 16-bit ADC humidity value to relative humidity percentage.
+
+## Example Usage
+
+```c
+#include "hdc1080.h"
+
+#define I2C0_MASTER_CONFIG_DEFAULT {                                \
+        .clk_source                     = I2C_CLK_SRC_DEFAULT,      \
+        .i2c_port                       = I2C0_MASTER_PORT,         \
+        .scl_io_num                     = I2C0_MASTER_SCL_IO,       \
+        .sda_io_num                     = I2C0_MASTER_SDA_IO,       \
+        .glitch_ignore_cnt              = 7,                        \
+        .flags.enable_internal_pullup   = true, }
+
+esp_err_t err = ESP_OK;
+
+i2c_master_bus_config_t  i2c0_bus_config = I2C0_MASTER_CONFIG_DEFAULT;
+i2c_master_bus_handle_t  i2c0_bus_handle = NULL;
+
+err = i2c_new_master_bus(&i2c0_bus_config, &i2c0_bus_handle);
+if (err != ESP_OK) assert(i2c0_bus_handle);
+
+hdc1080_config_t config = HDC1080_CONFIG_DEFAULT;
+hdc1080_handle_t handle = NULL;
+
+err = hdc1080_init(i2c0_bus_handle, &config, &handle);
+if (err == ESP_OK) {
+    float temp, rh;
+    hdc1080_get_measurement(handle, &temp, &rh);
+}
+```
+
+## Notes
+
+- The driver is designed for extensibility and portability.
+- The HAL interface allows for future support of other bus types.
+- All configuration and state are encapsulated in the device handle.
+- The driver is C99-compliant and safe for use in C projects.
+
+## References
+
+- [HDC1080 Repository](https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_hdc1080)
+- [HDC1080 Datasheet](https://www.ti.com/lit/ds/symlink/hdc1080.pdf?ts=1764315106676&ref_url=https%253A%252F%252Fwww.google.com%252F)
+- [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/index.html)
 
 Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

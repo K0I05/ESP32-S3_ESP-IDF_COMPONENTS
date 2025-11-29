@@ -69,7 +69,6 @@
 #define HDC1080_RETRY_DELAY_MS          UINT16_C(2)
 #define HDC1080_TX_RX_DELAY_MS          UINT16_C(10)
 
-#define I2C_XFR_TIMEOUT_MS              UINT16_C(500)          //!< I2C transaction timeout in milliseconds
 
 /*
  * macro definitions
@@ -122,7 +121,7 @@ typedef union __attribute__((packed)) hdc1080_serial_number_register_u {
  */
 typedef struct hdc1080_device_s {
     hdc1080_config_t                    config;                 /*!< hdc1080 device configuration */ 
-    void*                               hal_handle;             /*!< hdc1080 HAL device communication handle */
+    hal_master_dev_handle_t             hal_handle;             /*!< hdc1080 HAL device communication handle */
     uint64_t                            serial_number;          /*!< hdc1080 device serial number */
     uint16_t                            manufacturer_id;        /*!< hdc1080 device manufacturer identifier */
     uint16_t                            id;                     /*!< hdc1080 device device identifier */
@@ -139,181 +138,6 @@ static const char *TAG = "hdc1080";
 
 
 
-/**
- * @brief HAL device probe on master communication bus.
- * 
- * @param master_handle Pointer to HAL master communication bus handle.
- * @param device Pointer to HDC1080 device descriptor.
- * @return esp_err_t ESP_OK on success.  ESP_ERR_NOT_FOUND: probe failed, 
- * doesn't find the device with specific address you gave.  ESP_ERR_TIMEOUT: 
- * Operation timeout(larger than xfer_timeout_ms) because the bus is busy or 
- * hardware crash.
- */
-static inline esp_err_t hal_master_probe(const void* master_handle, hdc1080_device_t *const device) {
-    /* cast to i2c master bus handle */
-    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK(hal_master && device );
-
-    /* attempt to probe device on i2c master bus */
-    esp_err_t ret = i2c_master_probe(hal_master, device->config.i2c_address, I2C_XFR_TIMEOUT_MS);
-    ESP_RETURN_ON_ERROR(ret, TAG, "device does not exist at address 0x%02x, device probe on HAL master communication bus failed", device->config.i2c_address);
-
-    return ESP_OK;
-}
-
-/**
- * @brief HAL device initialization on master communication bus.
- * 
- * @param master_handle Pointer to HAL master communication bus handle.
- * @param device Pointer to HDC1080 device descriptor.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_init(const void* master_handle, hdc1080_device_t *const device) {
-    /* cast to i2c master bus handle */
-    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_master && device );
-
-    /* set i2c device configuration */
-    const i2c_device_config_t i2c_dev_conf = {
-        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = device->config.i2c_address,
-        .scl_speed_hz       = device->config.i2c_clock_speed
-    };
-
-    /* attempt to add device to i2c master bus */
-    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
-
-    return ESP_OK;
-}
-
-/**
- * @brief Remove device from HAL master communication bus and free resources.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_remove(const void* device_handle) {
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* remove device from i2c master bus */
-    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-        return ret;
-    }
-    hal_device = NULL;
-
-    return ESP_OK;
-}
-
-/**
- * @brief HAL write command to register address transaction.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @param reg_addr HDC1080 command register address to write to.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_write_command(const void* device_handle, const uint8_t reg_addr) {
-    const bit8_uint8_buffer_t tx = { reg_addr }; // lsb, msb
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, hal device write failed" );
-                        
-    return ESP_OK;
-}
-
-/**
- * @brief HAL write word to register address transaction.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @param reg_addr HDC1080 register address to write to.
- * @param word HDC1080 write transaction input word.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_write_word_to(const void* device_handle, const uint8_t reg_addr, const uint16_t word) {
-    const bit24_uint8_buffer_t tx = { reg_addr, (uint8_t)(word & 0xff), (uint8_t)((word >> 8) & 0xff) };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(hal_device, tx, BIT24_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, hal device write failed" );
-                        
-    return ESP_OK;
-}
-
-/**
- * @brief HAL read word from register address transaction.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @param reg_addr HDC1080 register address to read from.
- * @param word HDC1080 read transaction return word.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_read_word_from(const void* device_handle, const uint8_t reg_addr, uint16_t *const word) {
-    const bit8_uint8_buffer_t tx = { reg_addr };
-    bit16_uint8_buffer_t rx = { 0 };
-
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c write transaction */
-    //ESP_RETURN_ON_ERROR( i2c_master_transmit(handle->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c read from failed" );
-
-    /* delay task before next i2c transaction */
-    //vTaskDelay(pdMS_TO_TICKS(HDC1080_TX_RX_DELAY_MS));
-
-    /* attempt i2c read transaction */
-    //ESP_RETURN_ON_ERROR( i2c_master_receive(handle->i2c_handle, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, i2c read from failed" );
-
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, hal device read word from failed" );
-
-    /* set output parameter */
-    *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
-
-    return ESP_OK;
-}
-
-/**
- * @brief HAL read transaction.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @param buffer Buffer to store results from read transaction.
- * @param size Length of buffer to store results from read transaction.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_read(const void* device_handle, uint8_t *buffer, const uint8_t size) {
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_receive(hal_device, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, HAL device read failed" );
-
-    return ESP_OK;
-}
 
 
 /**
@@ -336,17 +160,6 @@ static inline uint8_t get_humidity_duration(const hdc1080_humidity_resolutions_t
 }
 
 /**
- * @brief Gets HDC1080 tick duration from humidity measurement resolution.
- *
- * @param[in] resolution HDC1080 humidity measurement resolution.
- * @return uint16_t Measurement duration in ticks.
- */
-static inline uint16_t get_humidity_tick_duration(const hdc1080_humidity_resolutions_t resolution) {
-    uint16_t res = pdMS_TO_TICKS(get_humidity_duration(resolution));
-    return res == 0 ? 1 : res;
-}
-
-/**
  * @brief Gets HDC1080 millisecond duration from temperature measurement resolution.  See datasheet for details.
  *
  * @param[in] resolution HDC1080 temperature measurement resolution.
@@ -361,17 +174,6 @@ static inline uint8_t get_temperature_duration(const hdc1080_temperature_resolut
         default:
             return 7;
     }
-}
-
-/**
- * @brief Gets HDC1080 tick duration from temperature measurement resolution.
- *
- * @param[in] resolution HDC1080 temperature measurement resolution.
- * @return uint16_t Measurement duration in ticks.
- */
-static inline uint16_t get_temperature_tick_duration(const hdc1080_temperature_resolutions_t resolution) {
-    uint16_t res = pdMS_TO_TICKS(get_temperature_duration(resolution));
-    return res == 0 ? 1 : res;
 }
 
 /**
@@ -412,7 +214,7 @@ static inline bool is_value_in_range(const float value, const float min, const f
  * @param drybulb dry-bulb temperature in degrees Celsius.
  * @return true if dry-bulb temperature is in range, false otherwise.
  */
-static inline bool is_drybulb_in_range(const float drybulb) {
+static inline bool is_drybulb_temperature_in_range(const float drybulb) {
     return is_value_in_range(drybulb, HDC1080_DRYBULB_MIN, HDC1080_DRYBULB_MAX);
 }
 
@@ -422,7 +224,7 @@ static inline bool is_drybulb_in_range(const float drybulb) {
  * @param humidity relative humidity in percent.
  * @return true if relative humidity is in range, false otherwise.
  */
-static inline bool is_humidity_in_range(const float humidity) {
+static inline bool is_relative_humidity_in_range(const float humidity) {
     return is_value_in_range(humidity, HDC1080_HUMIDITY_MIN, HDC1080_HUMIDITY_MAX);
 }
 
@@ -434,15 +236,15 @@ static inline bool is_humidity_in_range(const float humidity) {
  * @param[out] dewpoint Calculated dew-point temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t get_dewpoint(const float drybulb, const float humidity, float *const dewpoint) {
+static inline esp_err_t get_dewpoint_temperature(const float drybulb, const float humidity, float *const dewpoint) {
     /* validate arguments */
     ESP_ARG_CHECK( dewpoint );
 
     /* validate temperature argument */
-    ESP_RETURN_ON_FALSE( is_drybulb_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "dry-bulb temperature is out of range, get calculated dew-point failed");
+    ESP_RETURN_ON_FALSE( is_drybulb_temperature_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "dry-bulb temperature is out of range, get calculated dew-point temperature failed");
 
     /* validate humidity argument */
-    ESP_RETURN_ON_FALSE( is_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated dew-point failed");
+    ESP_RETURN_ON_FALSE( is_relative_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated dew-point temperature failed");
     
     // calculate dew-point temperature
     const double H = (log10(humidity)-2)/0.4343 + (17.62*drybulb)/(243.12+drybulb);
@@ -459,15 +261,15 @@ static inline esp_err_t get_dewpoint(const float drybulb, const float humidity, 
  * @param[out] wetbulb Calculated wet-bulb temperature in degrees Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t get_wetbulb(const float drybulb, const float humidity, float *const wetbulb) {
+static inline esp_err_t get_wetbulb_temperature(const float drybulb, const float humidity, float *const wetbulb) {
     /* validate arguments */
     ESP_ARG_CHECK(wetbulb);
 
     // validate range of temperature parameter
-    ESP_RETURN_ON_FALSE( is_drybulb_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "dry-bulb temperature is out of range, get calculated wet-bulb failed");
+    ESP_RETURN_ON_FALSE( is_drybulb_temperature_in_range(drybulb), ESP_ERR_INVALID_ARG, TAG, "dry-bulb temperature is out of range, get calculated wet-bulb temperature failed");
 
     // validate range of humidity parameter
-    ESP_RETURN_ON_FALSE( is_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated wet-bulb failed");
+    ESP_RETURN_ON_FALSE( is_relative_humidity_in_range(humidity), ESP_ERR_INVALID_ARG, TAG, "relative humidity is out of range, get calculated wet-bulb temperature failed");
     
     // calculate wet-bulb temperature
     *wetbulb = drybulb * atanf( 0.151977f * powf( (humidity + 8.313659f), 1.0f/2.0f ) ) + atanf(drybulb + humidity) - atanf(humidity - 1.676331f) + 0.00391838f * powf(humidity, 3.0f/2.0f) * atanf(0.023101f * humidity) - 4.686035f;
@@ -585,7 +387,7 @@ static inline esp_err_t hal_setup_registers(hdc1080_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_handle, &config_reg), TAG, "unable to read configuration register, setup failed");
+    ESP_RETURN_ON_ERROR(hal_get_config_register(device, &config_reg), TAG, "unable to read configuration register, setup failed");
 
     /* configure device */
     config_reg.bits.acquisition_mode       = HDC1080_ACQUISITION_SEQUENCED;
@@ -593,7 +395,7 @@ static inline esp_err_t hal_setup_registers(hdc1080_device_t *const device) {
     config_reg.bits.humidity_resolution    = device->config.humidity_resolution;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR(hal_set_config_register(device->hal_handle, config_reg), TAG, "unable to write configuration register, setup failed");
+    ESP_RETURN_ON_ERROR(hal_set_config_register(device, config_reg), TAG, "unable to write configuration register, setup failed");
 
     return ESP_OK;
 }
@@ -611,13 +413,13 @@ static inline esp_err_t hal_set_reset_register(hdc1080_device_t *const device) {
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR(hal_get_config_register(device->hal_handle, &config_reg), TAG, "unable to read configuration register, write reset register failed");
+    ESP_RETURN_ON_ERROR(hal_get_config_register(device, &config_reg), TAG, "unable to read configuration register, write reset register failed");
 
     /* set soft-reset bit */
     config_reg.bits.reset_enabled = true;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( hal_set_config_register(device->hal_handle, config_reg), TAG, "unable to write configuration register, write reset register failed" );
+    ESP_RETURN_ON_ERROR( hal_set_config_register(device, config_reg), TAG, "unable to write configuration register, write reset register failed" );
 
     /* delay task before next i2c transaction */
     vTaskDelay( pdMS_TO_TICKS(HDC1080_RESET_DELAY_MS) );
@@ -646,7 +448,7 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     ESP_RETURN_ON_ERROR( hal_master_write_command(device->hal_handle, HDC1080_REG_TEMPERATURE), TAG, "unable to write to device handle, write to trigger temperature measurement failed");
 
     /* delay before next transaction */
-    vTaskDelay(get_temperature_tick_duration(device->config.temperature_resolution));
+    vTaskDelay(pdMS_TO_TICKS(get_temperature_duration(device->config.temperature_resolution) + 20)); // add 20 ms margin
 
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     do {
@@ -660,14 +462,17 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     /* attempt read transaction */
     ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to device handle, read temperature failed" );
 
-    /* concat temperature bytes */
+    /* concat temperature bytes(big-endian) */
     *temperature = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
+
+    /* delay before next transaction */
+    vTaskDelay(pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS));
 
     /* attempt write transaction */
     ESP_RETURN_ON_ERROR( hal_master_write_command(device->hal_handle, HDC1080_REG_HUMIDITY), TAG, "unable to write to device handle, write to trigger humidity measurement failed");
 
     /* delay before next transaction */
-    vTaskDelay(get_humidity_tick_duration(device->config.humidity_resolution));
+    vTaskDelay(pdMS_TO_TICKS(get_humidity_duration(device->config.humidity_resolution) + 20)); // add 20 ms margin
 
     /* retry needed - unexpected nack indicates that the sensor is still busy */
     rx_retry_count = 0;
@@ -682,21 +487,18 @@ static inline esp_err_t hal_get_adc_signals(hdc1080_device_t *const device, uint
     /* attempt read transaction */
     ESP_RETURN_ON_ERROR( ret, TAG, "unable to read to device handle, read humidity failed" );
 
-    /* concat humidity bytes */
+    /* concat humidity bytes (big-endian) */
     *humidity = ((uint16_t)rx[0] << 8) | (uint16_t)rx[1];
 
     return ESP_OK;
 }
 
 
-esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle) {
+esp_err_t hdc1080_init(const void* master_handle, const hdc1080_config_t *hdc1080_config, hdc1080_handle_t *hdc1080_handle) {
     /* validate arguments */
-    ESP_ARG_CHECK( hal_master_handle && hdc1080_config );
+    ESP_ARG_CHECK( master_handle && hdc1080_config );
 
-    /* power-up delay */
-    vTaskDelay(pdMS_TO_TICKS(HDC1080_POWERUP_DELAY_MS));
-
-    /* validate memory availability for handle */
+    /* instantiate and validate memory availability for handle */
     esp_err_t ret = ESP_OK;
     hdc1080_device_t* device = (hdc1080_device_t*)calloc(1, sizeof(hdc1080_device_t));
     ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c hdc1080 device");
@@ -704,13 +506,41 @@ esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hd
     /* copy configuration */
     device->config = *hdc1080_config;
 
-    /* validate device exists on the hal master communication bus */
-    ret = hal_master_probe(hal_master_handle, device);
-    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal device does not exist, device handle initialization failed");
+    /* validate hal master bus interface */
+    ESP_GOTO_ON_FALSE( hdc1080_config->hal_bif == HAL_MASTER_BIF_I2C, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid HAL master bus interface, device handle initialization failed");
 
-    /* initialize device onto the hal master communication bus */
-    ret = hal_master_init(hal_master_handle, device);
-    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal initialization failed, device handle initialization failed");
+    /* cast i2c_master_bus_handle_t to void pointer */
+    i2c_master_bus_handle_t i2c_master_handle = (i2c_master_bus_handle_t)master_handle;
+
+    /* validate i2c master bus handle */
+    ESP_GOTO_ON_FALSE( i2c_master_handle, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid master bus handle, device handle initialization failed");
+
+    /* cast hal_config to i2c_device_config_t pointer */
+    const i2c_device_config_t* i2c_dev_conf_ptr = (const i2c_device_config_t*)device->config.hal_config;
+
+    /* validate i2c device configuration */
+    ESP_GOTO_ON_FALSE(i2c_dev_conf_ptr, ESP_ERR_INVALID_ARG, err_handle, TAG, "invalid i2c device configuration, device handle initialization failed");
+    
+    /* set i2c device configuration */
+    const i2c_device_config_t i2c_dev_conf = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address  = i2c_dev_conf_ptr->device_address,
+        .scl_speed_hz    = i2c_dev_conf_ptr->scl_speed_hz
+    };
+
+    /* power-up delay */
+    vTaskDelay(pdMS_TO_TICKS(HDC1080_POWERUP_DELAY_MS));
+
+    /* create hal master device */
+    ret = hal_master_new_i2c_device(i2c_master_handle, &i2c_dev_conf, &device->hal_handle);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal_master_new_i2c_device failed, device handle initialization failed");
+
+    /* validate device exists on the hal master communication bus */
+    ret = hal_master_probe(device->hal_handle, i2c_dev_conf_ptr->device_address);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "device does not exist on the hal master communication bus, device handle initialization failed");
+
+    /* delay before next transaction */
+    vTaskDelay(pdMS_TO_TICKS(HDC1080_CMD_DELAY_MS));
 
     /* attempt to reset the device */
     ESP_GOTO_ON_ERROR(hal_set_reset_register(device), err_handle, TAG, "hdc1080 soft-reset device failed");
@@ -737,7 +567,9 @@ esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hd
     /* something went wrong - after device descriptor instantiation */
     err_handle:
         /* remove device from hal master communication bus */
-        ret = hal_master_remove(device->hal_handle);
+        if (device->hal_handle) {
+            hal_master_delete(device->hal_handle);
+        }
 
         /* free device handle */
         free(device);
@@ -766,18 +598,18 @@ esp_err_t hdc1080_get_measurement(hdc1080_handle_t handle, float *const temperat
     return ESP_OK;
 }
 
-esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb) {
+esp_err_t hdc1080_get_measurements(hdc1080_handle_t handle, float *const drybulb, float *const humidity, float *const dewpoint, float *const wetbulb) {
     /* validate arguments */
-    ESP_ARG_CHECK( handle && temperature && humidity && dewpoint && wetbulb );
+    ESP_ARG_CHECK( handle && drybulb && humidity && dewpoint && wetbulb );
 
     /* attempt to read measurements */
-    ESP_RETURN_ON_ERROR( hdc1080_get_measurement(handle, temperature, humidity), TAG, "unable to read to i2c device handle, read measurements failed" );
+    ESP_RETURN_ON_ERROR( hdc1080_get_measurement(handle, drybulb, humidity), TAG, "unable to read to device handle, read measurements failed" );
 
     /* calculate dew-point */
-    ESP_RETURN_ON_ERROR( get_dewpoint(*temperature, *humidity, dewpoint), TAG, "unable to get calculated dew-point, read measurements failed");
+    ESP_RETURN_ON_ERROR( get_dewpoint_temperature(*drybulb, *humidity, dewpoint), TAG, "unable to get calculated dew-point temperature, read measurements failed");
 
     /* calculate wet-bulb */
-    ESP_RETURN_ON_ERROR( get_wetbulb(*temperature, *humidity, wetbulb), TAG, "unable to get calculated wet-bulb, read measurements failed");
+    ESP_RETURN_ON_ERROR( get_wetbulb_temperature(*drybulb, *humidity, wetbulb), TAG, "unable to get calculated wet-bulb temperature, read measurements failed");
 
     return ESP_OK;
 }
@@ -930,16 +762,18 @@ esp_err_t hdc1080_remove(hdc1080_handle_t handle) {
 }
 
 esp_err_t hdc1080_delete(hdc1080_handle_t handle) {
+    hdc1080_device_t* device = (hdc1080_device_t*)handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( handle );
+    ESP_ARG_CHECK( device );
 
-    /* remove device from master bus */
-    esp_err_t ret = hdc1080_remove(handle);
+    /* delete device handle */
+    if (device->hal_handle) {
+        hal_master_delete(device->hal_handle);
+    }
 
-    /* free handles */
-    free(handle);
-
-    return ret;
+    free(device);
+    return ESP_OK;
 }
 
 const char* hdc1080_get_fw_version(void) {

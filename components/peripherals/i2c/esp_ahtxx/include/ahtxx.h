@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <esp_err.h>
-#include <driver/i2c_master.h>
+#include <hal_master.h>
 #include <type_utils.h>
 #include "ahtxx_version.h"
 
@@ -63,43 +63,58 @@ extern "C" {
  */
 
 /**
- * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht30 sensor type.
+ * @brief Macro that initializes `ahtxx_config_t` to default configuration settings that implements the I2C bus interface for the aht30 sensor type.
  */
 #define AHT30_CONFIG_DEFAULT {                  \
-    .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_AHTXX_DEV_ADDR,       \
+        .scl_speed_hz   = I2C_AHTXX_DEV_CLK_SPD     \
+    },                                              \
     .sensor_type     = AHTXX_AHT30 }
 
 /**
- * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht25 sensor type.
+ * @brief Macro that initializes `ahtxx_config_t` to default configuration settings that implements the I2C bus interface for the aht25 sensor type.
  */
 #define AHT25_CONFIG_DEFAULT {                  \
-    .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_AHTXX_DEV_ADDR,       \
+        .scl_speed_hz   = I2C_AHTXX_DEV_CLK_SPD     \
+    },                                              \
     .sensor_type     = AHTXX_AHT25 }
 
 /**
- * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht21 sensor type.
+ * @brief Macro that initializes `ahtxx_config_t` to default configuration settings that implements the I2C bus interface for the aht21 sensor type.
  */
 #define AHT21_CONFIG_DEFAULT {                  \
-    .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_AHTXX_DEV_ADDR,       \
+        .scl_speed_hz   = I2C_AHTXX_DEV_CLK_SPD     \
+    },                                              \
     .sensor_type     = AHTXX_AHT21 }
 
 /**
- * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht20 sensor type.
+ * @brief Macro that initializes `ahtxx_config_t` to default configuration settings that implements the I2C bus interface for the aht20 sensor type.
  */
 #define AHT20_CONFIG_DEFAULT {                  \
-    .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_AHTXX_DEV_ADDR,       \
+        .scl_speed_hz   = I2C_AHTXX_DEV_CLK_SPD     \
+    },                                              \
     .sensor_type     = AHTXX_AHT20 }
 
 /**
- * @brief Macro that initializes `ahtxx_config_t` to default configuration settings for the aht10 sensor type.
+ * @brief Macro that initializes `ahtxx_config_t` to default configuration settings that implements the I2C bus interface for the aht10 sensor type.
  */
 #define AHT10_CONFIG_DEFAULT {                  \
-    .i2c_address     = I2C_AHTXX_DEV_ADDR,          \
-    .i2c_clock_speed = I2C_AHTXX_DEV_CLK_SPD,       \
+    .hal_bif        = HAL_MASTER_BIF_I2C, \
+    .hal_config     = (void*)&(i2c_device_config_t){ \
+        .device_address = I2C_AHTXX_DEV_ADDR,       \
+        .scl_speed_hz   = I2C_AHTXX_DEV_CLK_SPD     \
+    },                                              \
     .sensor_type     = AHTXX_AHT10 }
 
 
@@ -127,9 +142,9 @@ typedef enum ahtxx_sensor_types_e {
  * @brief AHTXX configuration structure definition.
  */
 typedef struct ahtxx_config_s {
-    uint16_t          i2c_address;          /*!< ahtxx i2c device address */
-    uint32_t          i2c_clock_speed;      /*!< ahtxx i2c device scl clock speed in hz */
-    ahtxx_sensor_types_t sensor_type;   /*!< aht sensor type, see `ahtxx_sensor_types_t` enumerator for support sensor types */
+    hal_master_interfaces_t hal_bif;     /*!< HAL master bus interface type */
+    void                   *hal_config;  /*!< HAL master bus interface configuration, the type (i2c_device_config_t) depends on the bus interface */
+    ahtxx_sensor_types_t    sensor_type; /*!< aht sensor type, see `ahtxx_sensor_types_t` enumerator for support sensor types */
 } ahtxx_config_t;
 
 /**
@@ -145,12 +160,13 @@ typedef void* ahtxx_handle_t;
 /**
  * @brief Initializes an AHTXX device onto the I2C master bus.
  *
- * @param[in] master_handle I2C master bus handle.
+ * @param[in] master_handle HAL master bus handle.  The AHTXX device supports I2C bus interface only.
+ * The bus handle must be of type `i2c_master_bus_handle_t` and initialized.
  * @param[in] ahtxx_config AHTXX device configuration.
  * @param[out] ahtxx_handle AHTXX device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ahtxx_init(const i2c_master_bus_handle_t master_handle, const ahtxx_config_t *ahtxx_config, ahtxx_handle_t *const ahtxx_handle);
+esp_err_t ahtxx_init(const void* master_handle, const ahtxx_config_t *ahtxx_config, ahtxx_handle_t *const ahtxx_handle);
 
 /**
  * @brief Reads temperature and relative humidity from AHTXX.
@@ -166,13 +182,13 @@ esp_err_t ahtxx_get_measurement(ahtxx_handle_t handle, float *const temperature,
  * @brief Similar to the `ahtxx_get_measurement` function but it includes dew-point and wet-bulb temperatures in the results.
  *
  * @param[in] handle AHTXX device handle.
- * @param[out] temperature Temperature in degree Celsius.
+ * @param[out] drybulb Dry-bulb temperature in degree Celsius.
  * @param[out] humidity Relative humidity in percentage.
  * @param[out] dewpoint Calculated dew-point temperature in degree Celsius.
  * @param[out] wetbulb Calculated wet-bulb temperature in degree Celsius.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const temperature, float *const humidity, float *const dewpoint, float *const wetbulb);
+esp_err_t ahtxx_get_measurements(ahtxx_handle_t handle, float *const drybulb, float *const humidity, float *const dewpoint, float *const wetbulb);
 
 /**
  * @brief Reads busy status flag from AHTXX.
