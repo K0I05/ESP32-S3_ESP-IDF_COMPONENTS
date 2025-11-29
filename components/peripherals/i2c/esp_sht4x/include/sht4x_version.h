@@ -49,7 +49,7 @@ extern "C" {
 
 #define SHT4X_COMPONENT_NAME              "esp_sht4x"
 /** Version release date  */
-#define SHT4X_FW_VERSION_DATE             "2025-11-22"
+#define SHT4X_FW_VERSION_DATE             "2025-11-29"
 /** Major version number (X.x.x) */
 #define SHT4X_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define SHT4X_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define SHT4X_FW_SEMANTIC_VERSION         "1.2.8-94"
+#define SHT4X_FW_SEMANTIC_VERSION         "1.2.8-hal-bif.1+104"
 /** Git version hash */
-#define SHT4X_FW_GIT_SHORT_SHA            "3f3b207"
+#define SHT4X_FW_GIT_SHORT_SHA            "0d9ba02"
 
 
 /**

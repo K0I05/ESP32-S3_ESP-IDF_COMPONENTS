@@ -49,7 +49,7 @@ extern "C" {
 
 #define AS7341_COMPONENT_NAME              "esp_as7341"
 /** Version release date  */
-#define AS7341_FW_VERSION_DATE             "2025-11-22"
+#define AS7341_FW_VERSION_DATE             "2025-11-29"
 /** Major version number (X.x.x) */
 #define AS7341_FW_VERSION_MAJOR            1
 /** Minor version number (x.X.x) */
@@ -57,9 +57,9 @@ extern "C" {
 /** Patch version number (x.x.X) */
 #define AS7341_FW_VERSION_PATCH            8
 /** Semantic version number (X.X.X-X) */
-#define AS7341_FW_SEMANTIC_VERSION         "1.2.8-94"
+#define AS7341_FW_SEMANTIC_VERSION         "1.2.8-hal-bif.1+104"
 /** Git version hash */
-#define AS7341_FW_GIT_SHORT_SHA            "3f3b207"
+#define AS7341_FW_GIT_SHORT_SHA            "0d9ba02"
 
 
 /**
