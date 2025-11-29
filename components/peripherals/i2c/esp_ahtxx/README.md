@@ -1,4 +1,4 @@
-# Asair AHTXX Series of Sensors
+# Technical Documentation: ESP-IDF Driver for Aosong AHTxx (AHT10/AHT20/AHT21/AHT25/AHT30)
 
 [![K0I05](https://img.shields.io/badge/K0I05-a9a9a9?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODgiIGhlaWdodD0iMTg3Ij48cGF0aCBmaWxsPSIjNDU0QjU0IiBkPSJNMTU1LjU1NSAyMS45M2MxOS4yNzMgMTUuOTggMjkuNDcyIDM5LjM0NSAzMi4xNjggNjMuNzg5IDEuOTM3IDIyLjkxOC00LjU1MyA0Ni42Ni0xOC44NDggNjQuNzgxQTUwOS40NzggNTA5LjQ3OCAwIDAgMSAxNjUgMTU1bC0xLjQ4NCAxLjg4M2MtMTMuMTk2IDE2LjUzMS0zNS41NTUgMjcuMjE1LTU2LjMzOSAyOS45MDItMjguMzEyIDIuOC01Mi4yNTUtNC43MzctNzQuNzMyLTIxLjcxNUMxMy4xNzIgMTQ5LjA5IDIuOTczIDEyNS43MjUuMjc3IDEwMS4yODEtMS42NiA3OC4zNjMgNC44MyA1NC42MjEgMTkuMTI1IDM2LjVBNTA5LjQ3OCA1MDkuNDc4IDAgMCAxIDIzIDMybDEuNDg0LTEuODgzQzM3LjY4IDEzLjU4NiA2MC4wNCAyLjkwMiA4MC44MjMuMjE1YzI4LjMxMi0yLjggNTIuMjU1IDQuNzM3IDc0LjczMiAyMS43MTVaIi8+PHBhdGggZmlsbD0iI0ZERkRGRCIgZD0iTTExOS44NjcgNDUuMjdDMTI4LjkzMiA1Mi4yNiAxMzMuODIgNjMgMTM2IDc0Yy42MyA0Ljk3Mi44NDIgOS45NTMuOTUzIDE0Ljk2LjA0NCAxLjkxMS4xMjIgMy44MjIuMjAzIDUuNzMxLjM0IDEyLjIxLjM0IDEyLjIxLTMuMTU2IDE3LjMwOWE5NS42MDQgOTUuNjA0IDAgMCAxLTQuMTg4IDMuNjI1Yy00LjUgMy43MTctNi45NzQgNy42ODgtOS43MTcgMTIuODAzQzEwNi45NCAxNTIuNzkyIDEwNi45NCAxNTIuNzkyIDk3IDE1N2MtMy40MjMuNTkyLTUuODAxLjY4NS04Ljg3OS0xLjA3NC05LjgyNi03Ljg4LTE2LjAzNi0xOS41OS0yMS44NTgtMzAuNTEyLTIuNTM0LTQuNTc1LTUuMDA2LTcuMjEtOS40NjYtMTAuMDItMy43MTQtMi44ODItNS40NS02Ljk4Ni02Ljc5Ny0xMS4zOTQtLjU1LTQuODg5LS41NjEtOS4zMTYgMS0xNCAuMDkzLTEuNzYzLjE4Mi0zLjUyNy4yMzktNS4yOTIuNDkxLTEzLjg4NCAzLjg2Ni0yNy4wNTcgMTQuMTU2LTM3LjAyOCAxNy4yMTgtMTQuMzM2IDM1Ljg1OC0xNS4wNjYgNTQuNDcyLTIuNDFaIi8+PHBhdGggZmlsbD0iI0M2RDVFMCIgZD0iTTEwOSAzOWMxMS43MDMgNS4yNTUgMTkuMjA2IDEzLjE4NiAyNC4yOTMgMjUuMDA0IDIuODU3IDguMjQgMy40NyAxNi4zMTYgMy42NiAyNC45NTYuMDQ0IDEuOTExLjEyMiAzLjgyMi4yMDMgNS43MzEuMzQgMTIuMjEuMzQgMTIuMjEtMy4xNTYgMTcuMzA5YTk1LjYwNCA5NS42MDQgMCAwIDEtNC4xODggMy42MjVjLTQuNSAzLjcxNy02Ljk3NCA3LjY4OC05LjcxNyAxMi44MDNDMTA2LjgwNCAxNTMuMDQxIDEwNi44MDQgMTUzLjA0MSA5NyAxNTdjLTIuMzMyLjA3OC00LjY2OC4wOS03IDBsMi4xMjUtMS44NzVjNS40My01LjQ0NSA4Ljc0NC0xMi41NzcgMTEuNzU0LTE5LjU1OWEzNDkuNzc1IDM0OS43NzUgMCAwIDEgNC40OTYtOS44NzlsMS42NDgtMy41NWMyLjI0LTMuNTU1IDQuNDEtNC45OTYgNy45NzctNy4xMzcgMi4zMjMtMi42MSAyLjMyMy0yLjYxIDQtNWwtMyAxYy0yLjY4LjE0OC01LjMxOS4yMy04IC4yNWwtMi4xOTUuMDYzYy01LjI4Ny4wMzktNS4yODcuMDM5LTcuNzc4LTEuNjUzLTEuNjY2LTIuNjkyLTEuNDUzLTQuNTYtMS4wMjctNy42NiAyLjM5NS00LjM2MiA0LjkyNC04LjA0IDkuODI4LTkuNTcgMi4zNjQtLjQ2OCA0LjUxNC0uNTI4IDYuOTIyLS40OTNsMi40MjIuMDI4TDEyMSA5MmwtMS0yYTkyLjc1OCA5Mi43NTggMCAwIDEtLjM2LTQuNTg2QzExOC42IDY5LjYzMiAxMTYuNTE3IDU2LjA5NCAxMDQgNDVjLTUuOTA0LTQuNjY0LTExLjYtNi4wODgtMTktNyA3LjU5NC00LjI2NCAxNi4yMjMtMS44MSAyNCAxWiIvPjxwYXRoIGZpbGw9IiM0OTUwNTgiIGQ9Ik03NyA5MmM0LjYxMyAxLjY3MSA3LjI2IDMuOTQ1IDEwLjA2MyA3LjkzOCAxLjA3OCAzLjUyMy45NzYgNS41NDYtLjA2MyA5LjA2Mi0yLjk4NCAyLjk4NC02LjI1NiAyLjM2OC0xMC4yNSAyLjM3NWwtMi4yNzcuMDc0Yy01LjI5OC4wMjgtOC4yNTQtLjk4My0xMi40NzMtNC40NDktMi44MjYtMy41OTctMi40MTYtNy42MzQtMi0xMiA0LjUwMi00LjcyOCAxMC45OS0zLjc2IDE3LTNaIi8+PHBhdGggZmlsbD0iIzQ4NEY1NyIgZD0ibTExOCA5MS43NSAzLjEyNS0uMDc4YzMuMjU0LjM3MSA0LjU5NyAxLjAwMiA2Ljg3NSAzLjMyOC42MzkgNC4yMzEuMjkgNi40NDItMS42ODggMTAuMjUtMy40MjggNC4wNzgtNS44MjcgNS41OTgtMTEuMTk1IDYuMTQ4LTEuNDE0LjAwOC0yLjgyOCAwLTQuMjQyLS4wMjNsLTIuMTY4LjAzNWMtMi45OTgtLjAxNy01LjE1Ny0uMDMzLTcuNjcyLTEuNzU4LTEuNjgxLTIuNjg0LTEuNDYtNC41NTItMS4wMzUtNy42NTIgMi4zNzUtNC4zMjUgNC44OTQtOC4wMDkgOS43NS05LjU1OSAyLjc3Ny0uNTQ0IDUuNDItLjY0OSA4LjI1LS42OTFaIi8+PHBhdGggZmlsbD0iIzUyNTg2MCIgZD0iTTg2IDEzNGgxNmwxIDRjLTIgMi0yIDItNS4xODggMi4yNjZMOTQgMTQwLjI1bC0zLjgxMy4wMTZDODcgMTQwIDg3IDE0MCA4NSAxMzhsMS00WiIvPjwvc3ZnPg==)](https://github.com/K0I05)
 [![License: MIT](https://cdn.prod.website-files.com/5e0f1144930a8bc8aace526c/65dd9eb5aaca434fac4f1c34_License-MIT-blue.svg)](/LICENSE)
@@ -9,15 +9,9 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_ahtxx.svg)](https://registry.platformio.org/libraries/k0i05/esp_ahtxx)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_ahtxx/badge.svg)](https://components.espressif.com/components/k0i05/esp_ahtxx)
 
-This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the Asair AHTXX series of temperature and humidity sensors (AHT10, AHT20, AHT21, AHT25, AND AHT30).  Information on features and functionality are documented and can be found in the `ahtxx.h` header file and in the `documentation` folder.
+## Overview
 
-## Repository
-
-The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ahtxx>
-
-## General Usage
-
-To get started, simply copy the component to your project's `components` folder and reference the `ahtxx.h` header file as an include.  The component includes documentation for the peripheral such as the datasheet, application notes, and/or user manual where applicable.
+The `esp_ahtxx` component is an espressif IoT development framework (ESP-IDF) compatible driver for the Aosong AHTxx family of digital humidity and temperature sensors (AHT10, AHT20, AHT21, AHT25, AHT30). It supports I2C communication and provides a high-level API for sensor configuration, measurement, and data conversion, with support for dew-point and wet-bulb calculations.
 
 ```text
 components
@@ -35,53 +29,157 @@ components
     └── ahtxx.c
 ```
 
-## Basic Example
+## Architecture & Design
 
-Once a driver instance is instantiated the sensor is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings for the AHT10, AHT20, AHT21, AHT25, AND AHT30 sensor types and makes a measurement request from the sensor at user defined interval and prints the results.
+This driver is built on a Hardware Abstraction Layer (HAL) using the `hal_master` interface, which decouples the driver from any specific hardware or SDK. All bus operations (I2C) are performed through the HAL, allowing for portability and testability.
+
+**Dependencies:**
+
+- `hal_master.h`: For all bus communication (I2C bus supported).
+- `esp_err.h`: For standard error handling.
+- `esp_log.h`: For logging.
+- `freertos/FreeRTOS.h`, `freertos/task.h`: For delays and task management.
+- `math.h`: For dew-point and wet-bulb calculations.
+
+## Hardware Abstraction Layer (HAL)
+
+The driver uses the `hal_master_interfaces_t` type and a `void *hal_config` pointer for bus operations, supporting I2C. The user must provide a valid HAL master device handle and configuration struct during initialization. All bus operations (read/write) are performed via the HAL interface, and errors are propagated as `esp_err_t`.
+
+### HAL Integration and Device Handle
+
+- The device handle is an opaque pointer (`ahtxx_handle_t`), internally referencing a structure containing the configuration and HAL device handle.
+- The configuration struct includes the bus interface type and configuration pointer, as well as the sensor type.
+
+### HAL-Related Driver Functions
+
+- All low-level I2C operations (read, write, device creation/removal) are performed via the HAL.
+- HAL functions are used for device initialization, register access, measurement triggering, and device removal.
+
+## Configuration Structure
+
+### Configuration: `ahtxx_config_t`
+
+| Field         | Type                      | Description                                      |
+|--------------|---------------------------|--------------------------------------------------|
+| `hal_bif`    | `hal_master_interfaces_t`  | HAL master bus interface type (I2C)              |
+| `hal_config` | `void*`                   | HAL bus configuration (e.g., `i2c_device_config_t`) |
+| `sensor_type`| `ahtxx_sensor_types_t`     | Sensor type (AHT10, AHT20, AHT21, AHT25, AHT30)  |
+
+### Default Configuration Macros
+
+- `AHT10_CONFIG_DEFAULT`, `AHT20_CONFIG_DEFAULT`, `AHT21_CONFIG_DEFAULT`, `AHT25_CONFIG_DEFAULT`, `AHT30_CONFIG_DEFAULT`: Macros for initializing the configuration struct for each supported sensor type.
+
+## Data Structures
+
+### Enumerations
+
+- `ahtxx_sensor_types_t`: Enumerates supported sensor types (AHT10, AHT20, AHT21, AHT25, AHT30).
+
+## API Reference
+
+### Initialization & Device Management
+
+- `ahtxx_init`: Initializes the sensor on the I2C bus using the provided HAL handle and configuration.
+- `ahtxx_remove`: Removes the device from the bus (does not free memory).
+- `ahtxx_delete`: Removes the device and frees the handle memory.
+
+### Measurement
+
+- `ahtxx_get_measurement`: Reads temperature and humidity.
+- `ahtxx_get_measurements`: Reads temperature, humidity, and calculates dew-point and wet-bulb temperatures.
+
+### Configuration
+
+- `ahtxx_get_busy_status`: Reads the busy status flag.
+- `ahtxx_get_calibration_status`: Reads the calibration status flag.
+- `ahtxx_get_status`: Reads both busy and calibration status flags.
+
+### System & Maintenance
+
+- `ahtxx_reset`: Issues a soft-reset and re-initializes the sensor.
+- `ahtxx_get_fw_version`: Returns the driver version string.
+- `ahtxx_get_fw_version_number`: Returns the driver version as an integer.
+
+## Error Handling & Validation
+
+- All public API functions return `esp_err_t`.
+- Arguments are validated with macros; invalid arguments return `ESP_ERR_INVALID_ARG`.
+- All bus and HAL errors are propagated up to the API.
+
+## Implementation Details
+
+### HAL-Based Communication
+
+- All I2C transactions are performed via the HAL interface, using the configuration provided at initialization.
+- The driver supports only I2C for AHTxx sensors.
+
+### Device Structure
+
+- The internal device structure contains the configuration and the HAL device handle.
+
+### Measurement Timing & Command Mapping
+
+- The driver handles all required delays for power-up, reset, initialization, and measurement as specified in the datasheet.
+- Measurement is triggered by sending a command, followed by a delay and a read operation.
+
+### Signal Conversion
+
+- Raw ADC values are converted to engineering units:
+    - **Temperature:** `T = ((signal / 2^20) * 200) - 50` (°C)
+    - **Humidity:** `RH = (signal / 2^20) * 100` (%)
+
+### Derived Calculations
+
+- **Dew Point:** Calculated using the Magnus formula.
+- **Wet Bulb:** Calculated using the Stull formula.
+
+### Timing
+
+- **Power-up:** Waits 120ms.
+- **Reset:** Waits 25ms.
+- **Initialization:** Waits 15ms.
+- **Measurement:** Waits ~80ms (typical).
+
+### Register Access
+
+- Register access is performed via HAL functions for reading/writing device registers and status.
+- CRC8 validation is performed for data integrity (AHT20/21/25/30).
+
+### Thread Safety & Blocking Behavior
+
+- All API functions are blocking and not thread-safe by default.
+- Delays are implemented using FreeRTOS `vTaskDelay`.
+
+## Example Usage
 
 ```c
-#include <ahtxx.h>
+#include "ahtxx.h"
 
-void i2c0_ahtxx_task( void *pvParameters ) {
-    // initialize the xLastWakeTime variable with the current time.
-    TickType_t         last_wake_time   = xTaskGetTickCount ();
-    //
-    // initialize i2c device configuration
-    ahtxx_config_t dev_cfg          = AHT20_CONFIG_DEFAULT;
-    ahtxx_handle_t dev_hdl;
-    //
-    // init device
-    ahtxx_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
-    if (dev_hdl == NULL) {
-        ESP_LOGE(APP_TAG, "ahtxx handle init failed");
-        assert(dev_hdl);
-    }
-    //
-    // task loop entry point
-    for ( ;; ) {
-        ESP_LOGI(APP_TAG, "######################## AHTXX - START #########################");
-        //
-        // handle sensor
-        float temperature, humidity;
-        esp_err_t result = ahtxx_get_measurement(dev_hdl, &temperature, &humidity);
-        if(result != ESP_OK) {
-            ESP_LOGE(APP_TAG, "ahtxx device read failed (%s)", esp_err_to_name(result));
-        } else {
-            ESP_LOGI(APP_TAG, "air temperature:     %.2f °C", temperature);
-            ESP_LOGI(APP_TAG, "relative humidity:   %.2f %s", humidity, '%');
-        }
-        //
-        ESP_LOGI(APP_TAG, "######################## AHTXX - END ###########################");
-        //
-        //
-        // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
-    }
-    //
-    // free resources
-    ahtxx_delete( dev_hdl );
-    vTaskDelete( NULL );
-}
+// Configure for AHT20
+static ahtxx_config_t config = AHT20_CONFIG_DEFAULT;
+ahtxx_handle_t handle;
+
+// Initialize (assuming i2c_master_bus_handle_t i2c_bus is already created)
+ahtxx_init(i2c_bus, &config, &handle);
+
+float temperature, humidity;
+ahtxx_get_measurement(handle, &temperature, &humidity);
+
+// Clean up
+ahtxx_delete(handle);
 ```
+
+## Notes
+
+- The driver is designed for extensibility and portability.
+- The HAL interface allows for future support of other bus types.
+- All configuration and state are encapsulated in the device handle.
+- The driver is C99-compliant and safe for use in C projects.
+
+## References
+
+- [AHTxx Repository](https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_ahtxx)
+- [AHTxx Datasheet](https://aosong.com/en/products/details/AHT20.html)
+- [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/index.html)
 
 Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)

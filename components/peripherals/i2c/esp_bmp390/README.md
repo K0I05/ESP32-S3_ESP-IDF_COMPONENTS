@@ -1,4 +1,4 @@
-# Bosch BMP390 Sensor
+# Technical Documentation: ESP-IDF Driver for Bosch BMP390 Sensor
 
 [![K0I05](https://img.shields.io/badge/K0I05-a9a9a9?logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxODgiIGhlaWdodD0iMTg3Ij48cGF0aCBmaWxsPSIjNDU0QjU0IiBkPSJNMTU1LjU1NSAyMS45M2MxOS4yNzMgMTUuOTggMjkuNDcyIDM5LjM0NSAzMi4xNjggNjMuNzg5IDEuOTM3IDIyLjkxOC00LjU1MyA0Ni42Ni0xOC44NDggNjQuNzgxQTUwOS40NzggNTA5LjQ3OCAwIDAgMSAxNjUgMTU1bC0xLjQ4NCAxLjg4M2MtMTMuMTk2IDE2LjUzMS0zNS41NTUgMjcuMjE1LTU2LjMzOSAyOS45MDItMjguMzEyIDIuOC01Mi4yNTUtNC43MzctNzQuNzMyLTIxLjcxNUMxMy4xNzIgMTQ5LjA5IDIuOTczIDEyNS43MjUuMjc3IDEwMS4yODEtMS42NiA3OC4zNjMgNC44MyA1NC42MjEgMTkuMTI1IDM2LjVBNTA5LjQ3OCA1MDkuNDc4IDAgMCAxIDIzIDMybDEuNDg0LTEuODgzQzM3LjY4IDEzLjU4NiA2MC4wNCAyLjkwMiA4MC44MjMuMjE1YzI4LjMxMi0yLjggNTIuMjU1IDQuNzM3IDc0LjczMiAyMS43MTVaIi8+PHBhdGggZmlsbD0iI0ZERkRGRCIgZD0iTTExOS44NjcgNDUuMjdDMTI4LjkzMiA1Mi4yNiAxMzMuODIgNjMgMTM2IDc0Yy42MyA0Ljk3Mi44NDIgOS45NTMuOTUzIDE0Ljk2LjA0NCAxLjkxMS4xMjIgMy44MjIuMjAzIDUuNzMxLjM0IDEyLjIxLjM0IDEyLjIxLTMuMTU2IDE3LjMwOWE5NS42MDQgOTUuNjA0IDAgMCAxLTQuMTg4IDMuNjI1Yy00LjUgMy43MTctNi45NzQgNy42ODgtOS43MTcgMTIuODAzQzEwNi45NCAxNTIuNzkyIDEwNi45NCAxNTIuNzkyIDk3IDE1N2MtMy40MjMuNTkyLTUuODAxLjY4NS04Ljg3OS0xLjA3NC05LjgyNi03Ljg4LTE2LjAzNi0xOS41OS0yMS44NTgtMzAuNTEyLTIuNTM0LTQuNTc1LTUuMDA2LTcuMjEtOS40NjYtMTAuMDItMy43MTQtMi44ODItNS40NS02Ljk4Ni02Ljc5Ny0xMS4zOTQtLjU1LTQuODg5LS41NjEtOS4zMTYgMS0xNCAuMDkzLTEuNzYzLjE4Mi0zLjUyNy4yMzktNS4yOTIuNDkxLTEzLjg4NCAzLjg2Ni0yNy4wNTcgMTQuMTU2LTM3LjAyOCAxNy4yMTgtMTQuMzM2IDM1Ljg1OC0xNS4wNjYgNTQuNDcyLTIuNDFaIi8+PHBhdGggZmlsbD0iI0M2RDVFMCIgZD0iTTEwOSAzOWMxMS43MDMgNS4yNTUgMTkuMjA2IDEzLjE4NiAyNC4yOTMgMjUuMDA0IDIuODU3IDguMjQgMy40NyAxNi4zMTYgMy42NiAyNC45NTYuMDQ0IDEuOTExLjEyMiAzLjgyMi4yMDMgNS43MzEuMzQgMTIuMjEuMzQgMTIuMjEtMy4xNTYgMTcuMzA5YTk1LjYwNCA5NS42MDQgMCAwIDEtNC4xODggMy42MjVjLTQuNSAzLjcxNy02Ljk3NCA3LjY4OC05LjcxNyAxMi44MDNDMTA2LjgwNCAxNTMuMDQxIDEwNi44MDQgMTUzLjA0MSA5NyAxNTdjLTIuMzMyLjA3OC00LjY2OC4wOS03IDBsMi4xMjUtMS44NzVjNS40My01LjQ0NSA4Ljc0NC0xMi41NzcgMTEuNzU0LTE5LjU1OWEzNDkuNzc1IDM0OS43NzUgMCAwIDEgNC40OTYtOS44NzlsMS42NDgtMy41NWMyLjI0LTMuNTU1IDQuNDEtNC45OTYgNy45NzctNy4xMzcgMi4zMjMtMi42MSAyLjMyMy0yLjYxIDQtNWwtMyAxYy0yLjY4LjE0OC01LjMxOS4yMy04IC4yNWwtMi4xOTUuMDYzYy01LjI4Ny4wMzktNS4yODcuMDM5LTcuNzc4LTEuNjUzLTEuNjY2LTIuNjkyLTEuNDUzLTQuNTYtMS4wMjctNy42NiAyLjM5NS00LjM2MiA0LjkyNC04LjA0IDkuODI4LTkuNTcgMi4zNjQtLjQ2OCA0LjUxNC0uNTI4IDYuOTIyLS40OTNsMi40MjIuMDI4TDEyMSA5MmwtMS0yYTkyLjc1OCA5Mi43NTggMCAwIDEtLjM2LTQuNTg2QzExOC42IDY5LjYzMiAxMTYuNTE3IDU2LjA5NCAxMDQgNDVjLTUuOTA0LTQuNjY0LTExLjYtNi4wODgtMTktNyA3LjU5NC00LjI2NCAxNi4yMjMtMS44MSAyNCAxWiIvPjxwYXRoIGZpbGw9IiM0OTUwNTgiIGQ9Ik03NyA5MmM0LjYxMyAxLjY3MSA3LjI2IDMuOTQ1IDEwLjA2MyA3LjkzOCAxLjA3OCAzLjUyMy45NzYgNS41NDYtLjA2MyA5LjA2Mi0yLjk4NCAyLjk4NC02LjI1NiAyLjM2OC0xMC4yNSAyLjM3NWwtMi4yNzcuMDc0Yy01LjI5OC4wMjgtOC4yNTQtLjk4My0xMi40NzMtNC40NDktMi44MjYtMy41OTctMi40MTYtNy42MzQtMi0xMiA0LjUwMi00LjcyOCAxMC45OS0zLjc2IDE3LTNaIi8+PHBhdGggZmlsbD0iIzQ4NEY1NyIgZD0ibTExOCA5MS43NSAzLjEyNS0uMDc4YzMuMjU0LjM3MSA0LjU5NyAxLjAwMiA2Ljg3NSAzLjMyOC42MzkgNC4yMzEuMjkgNi40NDItMS42ODggMTAuMjUtMy40MjggNC4wNzgtNS44MjcgNS41OTgtMTEuMTk1IDYuMTQ4LTEuNDE0LjAwOC0yLjgyOCAwLTQuMjQyLS4wMjNsLTIuMTY4LjAzNWMtMi45OTgtLjAxNy01LjE1Ny0uMDMzLTcuNjcyLTEuNzU4LTEuNjgxLTIuNjg0LTEuNDYtNC41NTItMS4wMzUtNy42NTIgMi4zNzUtNC4zMjUgNC44OTQtOC4wMDkgOS43NS05LjU1OSAyLjc3Ny0uNTQ0IDUuNDItLjY0OSA4LjI1LS42OTFaIi8+PHBhdGggZmlsbD0iIzUyNTg2MCIgZD0iTTg2IDEzNGgxNmwxIDRjLTIgMi0yIDItNS4xODggMi4yNjZMOTQgMTQwLjI1bC0zLjgxMy4wMTZDODcgMTQwIDg3IDE0MCA4NSAxMzhsMS00WiIvPjwvc3ZnPg==)](https://github.com/K0I05)
 [![License: MIT](https://cdn.prod.website-files.com/5e0f1144930a8bc8aace526c/65dd9eb5aaca434fac4f1c34_License-MIT-blue.svg)](/LICENSE)
@@ -9,15 +9,9 @@
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/k0i05/library/esp_bmp390.svg)](https://registry.platformio.org/libraries/k0i05/esp_bmp390)
 [![ESP Component Registry](https://components.espressif.com/components/k0i05/esp_bmp390/badge.svg)](https://components.espressif.com/components/k0i05/esp_bmp390)
 
-This ESP32 espressif IoT development framework (esp-idf) i2c peripheral driver was developed for the Bosch BMP390 pressure and temperature sensor.  Information on features and functionality are documented and can be found in the `bmp290.h` header file and in the `documentation` folder.
+## Overview
 
-## Repository
-
-The component is hosted on github and is located here: <https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_bmp390>
-
-## General Usage
-
-To get started, simply copy the component to your project's `components` folder and reference the `bmp390.h` header file as an include.  The component includes documentation for the peripheral such as the datasheet, application notes, and/or user manual where applicable.
+The `esp_bmp390` component is an an espressif IoT development framework (ESP-IDF) compatible driver for the Bosch BMP390 digital pressure and temperature sensor. It utilizes the I2C or SPI bus for communication and provides a high-level API for sensor configuration, measurement, and data conversion.  It is designed for portability, maintainability, and hardware abstraction, supporting I2C and SPI communication via a generic Hardware Abstraction Layer (HAL).
 
 ```text
 components
@@ -35,55 +29,118 @@ components
     └── bmp390.c
 ```
 
-## Basic Example
+## Architecture
 
-Once a driver instance is instantiated the sensor is ready for usage as shown in the below example.   This basic implementation of the driver utilizes default configuration settings and makes a measurement request from the sensor at user defined interval and prints the results.
+- The driver is implemented in C and uses a HAL (Hardware Abstraction Layer) for all bus communication, decoupling it from ESP-IDF-specific I2C and SPI APIs.
+- The main API is exposed via `bmp390.h`.
+- The driver is thread-safe and non-blocking where possible.
+- All device configuration and state are encapsulated in an opaque handle.
+
+### HAL (Hardware Abstraction Layer)
+
+- The driver uses a `hal_master_dev_handle_t` for bus operations, supporting I2C and SPI (and potentially other buses in the future).
+- The user must provide a valid HAL master device handle and a configuration struct during initialization.
+- All bus operations (read/write) are performed via the HAL interface, enabling portability and testability.
+
+## Configuration Structure
+
+The configuration is provided via a `bmp390_config_t` struct, which includes all parameters for device operation:
 
 ```c
-#include <bmp390.h>
+typedef struct {
+    hal_master_bif_t hal_bif; // Bus interface type (e.g., I2C)
+    void *hal_config;         // Pointer to bus-specific config (e.g., i2c_device_config_t or spi_device_interface_config_t)
+    bmp390_power_modes_t power_mode;
+    bmp390_pressure_oversampling_t pressure_oversampling;
+    bmp390_temperature_oversampling_t temperature_oversampling;
+    bmp390_output_data_rate_t output_data_rate;
+    bmp390_iir_filters_t iir_filter;
+} bmp390_config_t;
+```
 
-void i2c0_bmp390_task( void *pvParameters ) {
-    // initialize the xLastWakeTime variable with the current time.
-    TickType_t      last_wake_time  = xTaskGetTickCount ();
-    //
-    // initialize i2c device configuration
-    bmp390_config_t dev_cfg         = BMP390_CONFIG_DEFAULT;
-    bmp390_handle_t dev_hdl;
-    //
-    // init device
-    bmp390_init(i2c0_bus_hdl, &dev_cfg, &dev_hdl);
-    if (dev_hdl == NULL) {
-        ESP_LOGE(APP_TAG, "bmp390 handle init failed");
-        assert(dev_hdl);
+### Default Configuration Macro
+
+Use the macro `BMP390_CONFIG_DEFAULT` to initialize a config struct with recommended defaults with I2C support:
+
+```c
+#define BMP390_CONFIG_DEFAULT { \
+   .hal_bif        = HAL_MASTER_BIF_I2C, \
+   .hal_config     = (void*)&(i2c_device_config_t) { \
+        .device_address = I2C_BMP390_DEV_ADDR_HI,     \
+        .scl_speed_hz   = I2C_BMP390_DEV_CLK_SPD      \
+    },                                                \
+    .power_mode = BMP390_POWER_MODE_NORMAL, \
+    .pressure_oversampling = BMP390_PRESSURE_OVERSAMPLING_32X, \
+    .temperature_oversampling = BMP390_TEMPERATURE_OVERSAMPLING_2X, \
+    .output_data_rate = BMP390_ODR_50_HZ, \
+    .iir_filter = BMP390_IIR_FILTER_3 \
     }
+```
 
-    // task loop entry point
-    for ( ;; ) {
-        ESP_LOGI(APP_TAG, "######################## BMP390 - START #########################");
-        //
-        // handle sensor
+## Initialization
 
-        float temperature, pressure;
-        esp_err_t result = bmp390_get_measurements(dev_hdl, &temperature, &pressure);
-        if(result != ESP_OK) {
-            ESP_LOGE(APP_TAG, "bmp390 device read failed (%s)", esp_err_to_name(result));
-        } else {
-            pressure = pressure / 100;
-            ESP_LOGI(APP_TAG, "air temperature:     %.2f °C", temperature);
-            ESP_LOGI(APP_TAG, "barometric pressure: %.2f hPa", pressure);
-        }
-        //
-        ESP_LOGI(APP_TAG, "######################## BMP390 - END ###########################");
-        //
-        //
-        // pause the task per defined wait period
-        vTaskDelaySecUntil( &last_wake_time, I2C0_TASK_SAMPLING_RATE );
-    }
-    //
-    // free resources
-    bmp390_delete( dev_hdl );
-    vTaskDelete( NULL );
+Call `bmp390_init()` with a HAL master bus handle, a pointer to a `bmp390_config_t`, and a pointer to a `bmp390_handle_t`:
+
+```c
+esp_err_t bmp390_init(const void* master_handle, const bmp390_config_t *bmp390_config, bmp390_handle_t *bmp390_handle);
+```
+
+## API Summary
+
+- `bmp390_init()` - Initialize the device
+- `bmp390_get_measurements()` - Read temperature and pressure
+- `bmp390_get_data_status()` - Check if new data is ready
+- `bmp390_get_power_mode()` / `bmp390_set_power_mode()`
+- `bmp390_get_pressure_oversampling()` / `bmp390_set_pressure_oversampling()`
+- `bmp390_get_temperature_oversampling()` / `bmp390_set_temperature_oversampling()`
+- `bmp390_get_output_data_rate()` / `bmp390_set_output_data_rate()`
+- `bmp390_get_iir_filter()` / `bmp390_set_iir_filter()`
+- `bmp390_reset()` - Reset the device
+- `bmp390_remove()` / `bmp390_delete()` - Remove or delete the device handle
+- `bmp390_get_fw_version()` / `bmp390_get_fw_version_number()`
+
+## Example Usage
+
+```c
+#include "bmp390.h"
+
+#define I2C0_MASTER_CONFIG_DEFAULT {                                \
+        .clk_source                     = I2C_CLK_SRC_DEFAULT,      \
+        .i2c_port                       = I2C0_MASTER_PORT,         \
+        .scl_io_num                     = I2C0_MASTER_SCL_IO,       \
+        .sda_io_num                     = I2C0_MASTER_SDA_IO,       \
+        .glitch_ignore_cnt              = 7,                        \
+        .flags.enable_internal_pullup   = true, }
+
+esp_err_t err = ESP_OK;
+
+i2c_master_bus_config_t  i2c0_bus_config = I2C0_MASTER_CONFIG_DEFAULT;
+i2c_master_bus_handle_t  i2c0_bus_handle = NULL;
+
+err = i2c_new_master_bus(&i2c0_bus_config, &i2c0_bus_handle);
+if (err != ESP_OK) assert(i2c0_bus_handle);
+
+bmp390_config_t config = BMP390_CONFIG_DEFAULT;
+bmp390_handle_t handle = NULL;
+
+err = bmp390_init(i2c0_bus_handle, &config, &handle);
+if (err == ESP_OK) {
+    float temp, press;
+    bmp390_get_measurements(handle, &temp, &press);
 }
 ```
+
+## Notes
+
+- The driver is designed for extensibility and portability.
+- The HAL interface allows for future support of other bus types.
+- All configuration and state are encapsulated in the device handle.
+- The driver is C99-compliant and safe for use in C projects.
+
+## References
+
+- [BMP390 Repository](https://github.com/K0I05/ESP32-S3_ESP-IDF_COMPONENTS/tree/main/components/peripherals/i2c/esp_bmp390)
+- [BMP390 Datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp390-ds002.pdf)
+- [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/index.html)
 
 Copyright (c) 2025 Eric Gionet (<gionet.c.eric@gmail.com>)
