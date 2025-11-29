@@ -65,6 +65,39 @@ typedef struct pressure_tendency_context_s {
 */
 static const char *TAG = "pressure_tendency";
 
+/**
+ * @brief Evaluates pressure change and determines tendency code.
+ * 
+ * @param delta The pressure change value
+ * @param code Pointer to store the resulting tendency code
+ * @param change Pointer to store the pressure change value
+ */
+static inline void evaluate_pressure_delta(const float delta, pressure_tendency_codes_t *const code, float *const change) {
+    /* evaluate delta aka 3-hr or 6-hr change in pressure */
+    /* if the absolute variance is less than 1 hPa, air pressure is steady */
+    /* if the delta is negative, and absolute variance is greater than 1 hPa, air pressure is falling */
+    /* if the delta is positive, and absolute variance is greater than 1 hPa, air pressure is rising */
+    if(fabs(delta) < 1) {
+        // steady
+        *code   = PRESSURE_TENDENCY_CODE_STEADY;
+        *change = delta;
+    } else {
+        if(delta < 0 && fabs(delta) > 1) {
+            /* falling */
+            *code   = PRESSURE_TENDENCY_CODE_FALLING;
+            *change = delta;
+        } else if(delta > 0 && fabs(delta) > 1) {
+            /* rising */
+            *code   = PRESSURE_TENDENCY_CODE_RISING;
+            *change = delta;
+        } else {
+            /* unknown condition */
+            *code   = PRESSURE_TENDENCY_CODE_UNKNOWN;
+            *change = NAN;
+        }
+    }
+}
+
 const char* pressure_tendency_code_to_string(const pressure_tendency_codes_t code) {
     switch(code) {
         case PRESSURE_TENDENCY_CODE_UNKNOWN:
@@ -171,31 +204,13 @@ esp_err_t pressure_tendency_analysis(pressure_tendency_handle_t handle,
     }
 
     /* subtract oldest pressure sample from latest pressure sample */
-    float delta = sample - pressure_tendency_context->sampling_buffer[0];
+    const float delta = sample - pressure_tendency_context->sampling_buffer[0];
 
     /* evaluate delta aka 3-hr or 6-hr change in pressure */
     /* if the absolute variance is less than 1 hPa, air pressure is steady */
     /* if the delta is negative, and absolute variance is greater than 1 hPa, air pressure is falling */
     /* if the delta is positive, and absolute variance is greater than 1 hPa, air pressure is rising */
-    if(fabs(delta) < 1) {
-        // steady
-        *code   = PRESSURE_TENDENCY_CODE_STEADY;
-        *change = delta;
-    } else {
-        if(delta < 0 && fabs(delta) > 1) {
-            /* falling */
-            *code   = PRESSURE_TENDENCY_CODE_FALLING;
-            *change = delta;
-        } else if(delta > 0 && fabs(delta) > 1) {
-            /* rising */
-            *code   = PRESSURE_TENDENCY_CODE_RISING;
-            *change = delta;
-        } else {
-            /* unknown condition */
-            *code   = PRESSURE_TENDENCY_CODE_UNKNOWN;
-            *change = NAN;
-        }
-    }
+    evaluate_pressure_delta(delta, code, change);
 
     return ESP_OK;
 }

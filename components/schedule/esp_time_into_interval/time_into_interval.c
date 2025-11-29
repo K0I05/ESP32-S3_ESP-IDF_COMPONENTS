@@ -78,7 +78,7 @@ static const char *TAG = "time_into_interval";
  * 
  * @param ms Delay period in milliseconds.
  */
-static inline void time_into_interval_task_delay_until(const uint64_t ms) {
+static inline void task_delay_until(const uint64_t ms) {
     const TickType_t delay_ticks = (ms / portTICK_PERIOD_MS);
     TickType_t previous_wake_time = xTaskGetTickCount();
     if(xTaskDelayUntil(&previous_wake_time, delay_ticks ) != pdTRUE) {
@@ -95,7 +95,7 @@ static inline void time_into_interval_task_delay_until(const uint64_t ms) {
  * @param[in] now_tm Current time tm structure.
  * @param[out] next_tm Next time tm structure.
  */
-static inline void time_into_interval_init_next_tm(const time_into_interval_types_t interval_type, const uint64_t interval_period_msec, const struct tm now_tm, struct tm *next_tm) {
+static inline void init_next_tm(const time_into_interval_types_t interval_type, const uint64_t interval_period_msec, const struct tm now_tm, struct tm *next_tm) {
     struct tm out_tm;
 
     // initialize next tm structure time-parts localtime based on interval-type
@@ -165,7 +165,7 @@ static inline void time_into_interval_init_next_tm(const time_into_interval_type
  * @param[in] interval_offset Time into interval offset for interval type.
  * @param[out] epoch_timestamp Unix epoch timestamp (UTC) of next event in milliseconds.
  */
-static inline esp_err_t time_into_interval_set_epoch_timestamp_event(const time_into_interval_types_t interval_type, const uint16_t interval_period, const uint16_t interval_offset, uint64_t *epoch_timestamp) {
+static inline esp_err_t set_epoch_timestamp_event(const time_into_interval_types_t interval_type, const uint16_t interval_period, const uint16_t interval_offset, uint64_t *epoch_timestamp) {
     struct timeval  now_tv;
     struct tm       now_tm;
     struct tm       next_tm;
@@ -196,7 +196,7 @@ static inline esp_err_t time_into_interval_set_epoch_timestamp_event(const time_
     localtime_r(&now_unix_time, &now_tm);
 
     // initialize next tm structure time-parts localtime based on interval-type
-    time_into_interval_init_next_tm(interval_type, interval_period_msec, now_tm, &next_tm);
+    init_next_tm(interval_type, interval_period_msec, now_tm, &next_tm);
 
     // initialize next unix time by adding the task event interval period and offset in milliseconds
     uint64_t next_unix_time_msec = (uint64_t)(mktime(&next_tm) * 1000U) + interval_period_msec + interval_offset_msec;
@@ -334,11 +334,11 @@ esp_err_t time_into_interval_init(const time_into_interval_config_t *time_into_i
     ctxt->mutex_handle    = xSemaphoreCreateMutex();
 
     /* set epoch timestamp of the next scheduled time-into-interval event */
-    ESP_GOTO_ON_ERROR( time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
-                                                                ctxt->interval_period, 
-                                                                ctxt->interval_offset, 
-                                                                &ctxt->epoch_timestamp), 
-                                                                err_out_handle, TAG, "unable to set epoch timestamp, time-into-interval handle initialization failed" );
+    ESP_GOTO_ON_ERROR( set_epoch_timestamp_event(ctxt->interval_type, 
+                                                ctxt->interval_period, 
+                                                ctxt->interval_offset, 
+                                                &ctxt->epoch_timestamp), 
+                                                err_out_handle, TAG, "unable to set epoch timestamp, time-into-interval handle initialization failed" );
 
     /* set output handle */
     *time_into_interval_handle = (time_into_interval_handle_t)ctxt;
@@ -378,10 +378,10 @@ bool time_into_interval(time_into_interval_handle_t handle) {
         state = true;
 
         /* set next event timestamp (UTC) */
-        time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
-                                                    ctxt->interval_period, 
-                                                    ctxt->interval_offset, 
-                                                    &ctxt->epoch_timestamp);
+        set_epoch_timestamp_event(ctxt->interval_type, 
+                                ctxt->interval_period, 
+                                ctxt->interval_offset, 
+                                &ctxt->epoch_timestamp);
     }
 
     /* unlock the mutex */
@@ -409,10 +409,10 @@ esp_err_t time_into_interval_delay(time_into_interval_handle_t handle) {
     if(delta_msec < 0) {
 
         // set epoch timestamp of the next scheduled task
-        time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
-                                                    ctxt->interval_period, 
-                                                    ctxt->interval_offset, 
-                                                    &ctxt->epoch_timestamp);
+        set_epoch_timestamp_event(ctxt->interval_type, 
+                                ctxt->interval_period, 
+                                ctxt->interval_offset, 
+                                &ctxt->epoch_timestamp);
 
         // compute time delta for next event
         delta_msec = ctxt->epoch_timestamp - now_unix_msec;
@@ -424,16 +424,16 @@ esp_err_t time_into_interval_delay(time_into_interval_handle_t handle) {
     xSemaphoreGive(ctxt->mutex_handle);
 
     /* wait for the next cycle */
-    time_into_interval_task_delay_until(delta_msec);
+    task_delay_until(delta_msec);
 
     /* lock the mutex */
     xSemaphoreTake(ctxt->mutex_handle, portMAX_DELAY);
 
     // set epoch timestamp of the next scheduled task
-    time_into_interval_set_epoch_timestamp_event(ctxt->interval_type, 
-                                                ctxt->interval_period, 
-                                                ctxt->interval_offset, 
-                                                &ctxt->epoch_timestamp);
+    set_epoch_timestamp_event(ctxt->interval_type, 
+                            ctxt->interval_period, 
+                            ctxt->interval_offset, 
+                            &ctxt->epoch_timestamp);
                                         
     /* unlock the mutex */
     xSemaphoreGive(ctxt->mutex_handle);

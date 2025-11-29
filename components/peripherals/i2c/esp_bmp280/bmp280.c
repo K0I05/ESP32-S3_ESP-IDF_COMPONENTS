@@ -148,7 +148,7 @@ typedef struct bmp280_cal_factors_s {
  */
 typedef struct bmp280_device_s {
     bmp280_config_t                         config;             /*!< bmp280 device configuration */  
-    i2c_master_dev_handle_t                 i2c_handle;         /*!< bmp280 i2c device handle */
+    void*                                   hal_handle;         /*!< bmp280 HAL communication bus handle */
     bmp280_cal_factors_t                   *cal_factors;        /*!< bmp280 device calibration factors */
     uint8_t                                 sensor_type;        /*!< sensor type, should be bmp280 */
 } bmp280_device_t;
@@ -160,23 +160,102 @@ typedef struct bmp280_device_s {
 static const char *TAG = "bmp280";
 
 
+
 /**
- * @brief BMP280 I2C HAL read from register address transaction.  This is a write and then read process.
+ * @brief HAL device probe on master communication bus.
  * 
- * @param device BMP280 device descriptor.
+ * @param master_handle Pointer to HAL master communication bus handle.
+ * @param device Pointer to BMP280 device descriptor.
+ * @return esp_err_t ESP_OK on success.  ESP_ERR_NOT_FOUND: probe failed, 
+ * doesn't find the device with specific address you gave.  ESP_ERR_TIMEOUT: 
+ * Operation timeout(larger than xfer_timeout_ms) because the bus is busy or 
+ * hardware crash.
+ */
+static inline esp_err_t hal_master_probe(const void* master_handle, bmp280_device_t *const device) {
+    /* cast to i2c master bus handle */
+    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK(hal_master && device );
+
+    /* attempt to probe device on i2c master bus */
+    esp_err_t ret = i2c_master_probe(hal_master, device->config.i2c_address, I2C_XFR_TIMEOUT_MS);
+    ESP_RETURN_ON_ERROR(ret, TAG, "device does not exist at address 0x%02x, device probe on HAL master communication bus failed", device->config.i2c_address);
+
+    return ESP_OK;
+}
+
+/**
+ * @brief HAL device initialization on master communication bus.
+ * 
+ * @param master_handle Pointer to HAL master communication bus handle.
+ * @param device Pointer to BMP280 device descriptor.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_master_init(const void* master_handle, bmp280_device_t *const device) {
+    /* cast to i2c master bus handle */
+    i2c_master_bus_handle_t hal_master = (i2c_master_bus_handle_t)master_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( hal_master && device );
+
+    /* set i2c device configuration */
+    const i2c_device_config_t i2c_dev_conf = {
+        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
+        .device_address     = device->config.i2c_address,
+        .scl_speed_hz       = device->config.i2c_clock_speed
+    };
+
+    /* attempt to add device to i2c master bus */
+    ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Remove device from HAL master communication bus and free resources.
+ * 
+ * @param device_handle Pointer to HAL communication device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_master_remove(const void* device_handle) {
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( hal_device );
+
+    /* remove device from i2c master bus */
+    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+        return ret;
+    }
+    hal_device = NULL;
+
+    return ESP_OK;
+}
+
+/**
+ * @brief HAL read from register address transaction.  This is a write and then read process.
+ * 
+ * @param device_handle Pointer to HAL communication device handle.
  * @param reg_addr BMP280 register address to read from.
  * @param buffer BMP280 read transaction return buffer.
  * @param size Length of buffer to store results from read transaction.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_read_from(bmp280_device_t *const device, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
+static inline esp_err_t hal_master_read_from(const void* device_handle, const uint8_t reg_addr, uint8_t *buffer, const uint8_t size) {
     const bit8_uint8_buffer_t tx = { reg_addr };
 
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( device );
+    ESP_ARG_CHECK( hal_device );
 
     /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "bmp280_i2c_read_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read from failed" );
 
     return ESP_OK;
 }
@@ -189,15 +268,18 @@ static inline esp_err_t bmp280_i2c_read_from(bmp280_device_t *const device, cons
  * @param word BMP280 read transaction return word.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device, const uint8_t reg_addr, uint16_t *const word) {
+static inline esp_err_t hal_master_read_word_from(const void* device_handle, const uint8_t reg_addr, uint16_t *const word) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit16_uint8_buffer_t rx = { 0 };
 
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( device );
+    ESP_ARG_CHECK( hal_device );
 
     /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp280_i2c_read_word_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read word from failed" );
 
     /* set output parameter */
     *word = (uint16_t)rx[0] | ((uint16_t)rx[1] << 8);
@@ -213,15 +295,18 @@ static inline esp_err_t bmp280_i2c_read_word_from(bmp280_device_t *const device,
  * @param byte BMP280 read transaction return byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_read_byte_from(bmp280_device_t *const device, const uint8_t reg_addr, uint8_t *const byte) {
+static inline esp_err_t hal_master_read_byte_from(const void* device_handle, const uint8_t reg_addr, uint8_t *const byte) {
     const bit8_uint8_buffer_t tx = { reg_addr };
     bit8_uint8_buffer_t rx = { 0 };
 
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( device );
+    ESP_ARG_CHECK( hal_device );
 
     /* attempt i2c write/read transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(device->i2c_handle, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "bmp280_i2c_read_byte_from failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit_receive(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, rx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit_receive, HAL master read byte from failed" );
 
     /* set output parameter */
     *byte = rx[0];
@@ -237,14 +322,17 @@ static inline esp_err_t bmp280_i2c_read_byte_from(bmp280_device_t *const device,
  * @param byte BMP280 write transaction input byte.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_write_byte_to(bmp280_device_t *const device, const uint8_t reg_addr, const uint8_t byte) {
+static inline esp_err_t hal_master_write_byte_to(const void* device_handle, const uint8_t reg_addr, const uint8_t byte) {
     const bit16_uint8_buffer_t tx = { reg_addr, byte };
 
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
     /* validate arguments */
-    ESP_ARG_CHECK( device );
+    ESP_ARG_CHECK( hal_device );
 
     /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( i2c_master_transmit(device->i2c_handle, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, i2c write failed" );
+    ESP_RETURN_ON_ERROR( i2c_master_transmit(hal_device, tx, BIT16_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, HAL master write byte to failed" );
                         
     return ESP_OK;
 }
@@ -300,29 +388,29 @@ static inline float compensate_pressure(bmp280_device_t *const device, const int
 }
 
 /**
- * @brief BMP280 I2C HAL read calibration factor registers.  see datasheet for details.
+ * @brief HAL read calibration factor registers from BMP280.  see datasheet for details.
  *
  * @param[in] device BMP280 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_cal_factor_registers(bmp280_device_t *const device) {
+static inline esp_err_t hal_get_cal_factor_registers(bmp280_device_t *const device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
     /* bmp280 attempt to request T1-T3 calibration values from device */
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x88, &device->cal_factors->dig_T1) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x8a, (uint16_t *)&device->cal_factors->dig_T2) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x8c, (uint16_t *)&device->cal_factors->dig_T3) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x88, &device->cal_factors->dig_T1) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x8a, (uint16_t *)&device->cal_factors->dig_T2) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x8c, (uint16_t *)&device->cal_factors->dig_T3) );
     /* bmp280 attempt to request P1-P9 calibration values from device */
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x8e, &device->cal_factors->dig_P1) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x90, (uint16_t *)&device->cal_factors->dig_P2) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x92, (uint16_t *)&device->cal_factors->dig_P3) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x94, (uint16_t *)&device->cal_factors->dig_P4) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x96, (uint16_t *)&device->cal_factors->dig_P5) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x98, (uint16_t *)&device->cal_factors->dig_P6) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x9a, (uint16_t *)&device->cal_factors->dig_P7) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x9c, (uint16_t *)&device->cal_factors->dig_P8) );
-    ESP_ERROR_CHECK( bmp280_i2c_read_word_from(device, 0x9e, (uint16_t *)&device->cal_factors->dig_P9) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x8e, &device->cal_factors->dig_P1) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x90, (uint16_t *)&device->cal_factors->dig_P2) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x92, (uint16_t *)&device->cal_factors->dig_P3) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x94, (uint16_t *)&device->cal_factors->dig_P4) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x96, (uint16_t *)&device->cal_factors->dig_P5) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x98, (uint16_t *)&device->cal_factors->dig_P6) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x9a, (uint16_t *)&device->cal_factors->dig_P7) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x9c, (uint16_t *)&device->cal_factors->dig_P8) );
+    ESP_ERROR_CHECK( hal_master_read_word_from(device->hal_handle, 0x9e, (uint16_t *)&device->cal_factors->dig_P9) );
 
     /*
     ESP_LOGD(TAG, "Calibration data received:");
@@ -344,98 +432,98 @@ static inline esp_err_t bmp280_i2c_get_cal_factor_registers(bmp280_device_t *con
 }
 
 /**
- * @brief BMP280 I2C HAL read chip identification register.
+ * @brief HAL read chip identification register from BMP280.
  * 
  * @param[in] device BMP280 device descriptor.
  * @param[out] reg BMP280 chip identification register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_chip_id_register(bmp280_device_t *const device, uint8_t *const reg) {
+static inline esp_err_t hal_get_chip_id_register(bmp280_device_t *const device, uint8_t *const reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device && reg );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_read_byte_from(device, BMP280_REG_ID, reg), TAG, "read chip identifier register failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_master_read_byte_from(device->hal_handle, BMP280_REG_ID, reg), TAG, "read chip identifier register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL read status register.
+ * @brief HAL read status register from BMP280.
  * 
  * @param device BMP280 device descriptor.
  * @param[out] reg BMP280 status register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_status_register(bmp280_device_t *const device, bmp280_status_register_t *const reg) {
+static inline esp_err_t hal_get_status_register(bmp280_device_t *const device, bmp280_status_register_t *const reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device && reg );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_read_byte_from(device, BMP280_REG_STATUS, &reg->reg), TAG, "read status register failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_master_read_byte_from(device->hal_handle, BMP280_REG_STATUS, &reg->reg), TAG, "read status register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL read control measurement register.
+ * @brief HAL read control measurement register from BMP280.
  * 
  * @param[in] device BMP280 device descriptor.
  * @param[out] reg BMP280 control measurement register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_control_measurement_register(bmp280_device_t *const device, bmp280_control_measurement_register_t *const reg) {
+static inline esp_err_t hal_get_control_measurement_register(bmp280_device_t *const device, bmp280_control_measurement_register_t *const reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device && reg );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_read_byte_from(device, BMP280_REG_CTRL, &reg->reg), TAG, "read control measurement register failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_master_read_byte_from(device->hal_handle, BMP280_REG_CTRL, &reg->reg), TAG, "read control measurement register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL write control measurement register. 
+ * @brief HAL write control measurement register to BMP280. 
  * 
  * @param[in] device BMP280 device descriptor.
  * @param[in] reg BMP280 control measurement register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_set_control_measurement_register(bmp280_device_t *const device, const bmp280_control_measurement_register_t reg) {
+static inline esp_err_t hal_set_control_measurement_register(bmp280_device_t *const device, const bmp280_control_measurement_register_t reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_write_byte_to(device, BMP280_REG_CTRL, reg.reg), TAG, "write control measurement register failed" );
+    /* attempt write transaction */
+    ESP_RETURN_ON_ERROR( hal_master_write_byte_to(device->hal_handle, BMP280_REG_CTRL, reg.reg), TAG, "write control measurement register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL read configuration register.
+ * @brief HAL read configuration register from BMP280.
  * 
  * @param[in] device BMP280 device descriptor.
  * @param[out] reg BMP280 configuration register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_config_register(bmp280_device_t *const device, bmp280_configuration_register_t *const reg) {
+static inline esp_err_t hal_get_config_register(bmp280_device_t *const device, bmp280_configuration_register_t *const reg) {
     /* validate arguments */
     ESP_ARG_CHECK( device && reg );
 
-    /* attempt i2c read transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_read_byte_from(device, BMP280_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
+    /* attempt read transaction */
+    ESP_RETURN_ON_ERROR( hal_master_read_byte_from(device->hal_handle, BMP280_REG_CONFIG, &reg->reg), TAG, "read configuration register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL write configuration register. 
+ * @brief HAL write configuration register to BMP280. 
  * 
  * @param[in] device BMP280 device descriptor.
  * @param[in] reg BMP280 configuration register.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_set_config_register(bmp280_device_t *const device, const bmp280_configuration_register_t reg) {
+static inline esp_err_t hal_set_config_register(bmp280_device_t *const device, const bmp280_configuration_register_t reg) {
     bmp280_configuration_register_t config = { .reg = reg.reg};
 
     /* validate arguments */
@@ -444,24 +532,24 @@ static inline esp_err_t bmp280_i2c_set_config_register(bmp280_device_t *const de
     /* set reserved to 0 */
     config.bits.reserved = 0;
 
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_write_byte_to(device, BMP280_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
+    /* attempt write transaction */
+    ESP_RETURN_ON_ERROR( hal_master_write_byte_to(device->hal_handle, BMP280_REG_CONFIG, config.reg), TAG, "write configuration register failed" );
 
     return ESP_OK;
 }
 
 /**
- * @brief BMP280 I2C HAL write reset register to reset device with restart delay.
+ * @brief HAL write reset register to reset BMP280 with restart delay.
  * 
  * @param device BMP280 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_set_reset_register(bmp280_device_t *device) {
+static inline esp_err_t hal_set_reset_register(bmp280_device_t *device) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* attempt i2c write transaction */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_write_byte_to(device, BMP280_REG_RESET, BMP280_RESET_VALUE), TAG, "write reset register failed" );
+    /* attempt write transaction */
+    ESP_RETURN_ON_ERROR( hal_master_write_byte_to(device->hal_handle, BMP280_REG_RESET, BMP280_RESET_VALUE), TAG, "write reset register failed" );
 
     /* wait until finished copying NVP data */
     // forced delay before next transaction - see datasheet for details
@@ -471,14 +559,14 @@ static inline esp_err_t bmp280_i2c_set_reset_register(bmp280_device_t *device) {
 }
 
 /**
- * @brief BMP280 I2C HAL to get raw adc temperature and pressure signals.
+ * @brief HAL to get raw adc temperature and pressure signals from BMP280.
  * 
  * @param device BMP280 device descriptor.
  * @param[out] temperature Raw adc temperature signal.
  * @param[out] pressure Raw adc pressure signal.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int32_t *const temperature, int32_t *const pressure) {
+static inline esp_err_t hal_get_adc_signals(bmp280_device_t *device, int32_t *const temperature, int32_t *const pressure) {
     esp_err_t        ret           = ESP_OK;
     const uint64_t   start_time    = esp_timer_get_time();
     bool             data_is_ready = false;
@@ -492,7 +580,7 @@ static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int3
         bmp280_status_register_t status_reg = { 0 };
 
         /* attempt to read device status register */
-        ESP_GOTO_ON_ERROR( bmp280_i2c_get_status_register(device, &status_reg), err, TAG, "read status register for get fixed measurement failed" );
+        ESP_GOTO_ON_ERROR( hal_get_status_register(device, &status_reg), err, TAG, "read status register for get fixed measurement failed" );
 
         /* set data is ready flag */
         data_is_ready = !status_reg.bits.measuring;
@@ -506,7 +594,7 @@ static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int3
     } while (data_is_ready == false);
 
     // need to read in one sequence to ensure they match.
-    ESP_GOTO_ON_ERROR( bmp280_i2c_read_from(device, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
+    ESP_GOTO_ON_ERROR( hal_master_read_from(device, BMP280_REG_PRESSURE, rx, BIT48_UINT8_BUFFER_SIZE), err, TAG, "read temperature and pressure data failed" );
 
     /* concat adc pressure & temperature bytes */
     const int32_t adc_press = rx[0] << 12 | rx[1] << 4 | rx[2] >> 4;
@@ -523,12 +611,12 @@ static inline esp_err_t bmp280_i2c_get_adc_signals(bmp280_device_t *device, int3
 }
 
 /**
- * @brief BMP280 I2C HAL to setup and configuration of registers.
+ * @brief HAL to setup and configuration of BMP280 registers.
  * 
  * @param device BMP280 device descriptor.
  * @return esp_err_t ESP_OK on success.
  */
-static inline esp_err_t bmp280_i2c_setup_registers(bmp280_device_t *const device) {
+static inline esp_err_t hal_setup_registers(bmp280_device_t *const device) {
     bmp280_configuration_register_t       config_reg = { 0 };
     bmp280_control_measurement_register_t ctrl_meas_reg = { 0 };
 
@@ -536,13 +624,13 @@ static inline esp_err_t bmp280_i2c_setup_registers(bmp280_device_t *const device
     ESP_ARG_CHECK( device );
 
     /* attempt to read calibration factors from device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_cal_factor_registers(device), TAG, "read calibration factors for get registers failed" );
+    ESP_RETURN_ON_ERROR( hal_get_cal_factor_registers(device), TAG, "read calibration factors for get registers failed" );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for setup failed");
+    ESP_RETURN_ON_ERROR( hal_get_config_register(device, &config_reg), TAG, "read configuration register for setup failed");
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for setup failed");
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for setup failed");
 
     /* initialize configuration register from configuration params */
     config_reg.bits.standby_time = device->config.standby_time;
@@ -561,62 +649,55 @@ static inline esp_err_t bmp280_i2c_setup_registers(bmp280_device_t *const device
     }
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for setup failed");
+    ESP_RETURN_ON_ERROR( hal_set_config_register(device, config_reg), TAG, "write configuration register for setup failed");
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for setup failed");
+    ESP_RETURN_ON_ERROR( hal_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for setup failed");
 
     return ESP_OK;
 }
 
-esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle) {
+esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle) {
     /* validate arguments */
-    ESP_ARG_CHECK( master_handle && bmp280_config );
+    ESP_ARG_CHECK( hal_master_handle && bmp280_config );
 
     /* delay task before i2c transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP280_POWERUP_DELAY_MS));
 
-    /* validate device exists on the master bus */
-    esp_err_t ret = i2c_master_probe(master_handle, bmp280_config->i2c_address, I2C_XFR_TIMEOUT_MS);
-    ESP_GOTO_ON_ERROR(ret, err, TAG, "device does not exist at address 0x%02x, bmp280 device handle initialization failed", bmp280_config->i2c_address);
-
     /* validate memory availability for handle */
+    esp_err_t ret = ESP_OK;
     bmp280_device_t* device = (bmp280_device_t*)calloc(1, sizeof(bmp280_device_t));
-    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c0 bmp280 device for init");
+    ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for bmp280 device for init");
 
     /* validate memory availability for handle calibration factors */
     device->cal_factors = (bmp280_cal_factors_t*)calloc(1, sizeof(bmp280_cal_factors_t));
-    ESP_GOTO_ON_FALSE(device->cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for i2c bmp280 device calibration factors for init");
+    ESP_GOTO_ON_FALSE(device->cal_factors, ESP_ERR_NO_MEM, err_handle, TAG, "no memory for bmp280 device calibration factors for init");
 
     /* copy configuration */
     device->config = *bmp280_config;
 
-    /* set i2c device configuration */
-    const i2c_device_config_t i2c_dev_conf = {
-        .dev_addr_length    = I2C_ADDR_BIT_LEN_7,
-        .device_address     = device->config.i2c_address,
-        .scl_speed_hz       = device->config.i2c_clock_speed,
-    };
+    /* validate device exists on the hal master communication bus */
+    ret = hal_master_probe(hal_master_handle, device);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal device does not exist, device handle initialization failed");
 
-    /* validate device handle */
-    if (device->i2c_handle == NULL) {
-        ESP_GOTO_ON_ERROR(i2c_master_bus_add_device(master_handle, &i2c_dev_conf, &device->i2c_handle), err_handle, TAG, "i2c0 new bus failed for init");
-    }
+    /* initialize device onto the hal master communication bus */
+    ret = hal_master_init(hal_master_handle, device);
+    ESP_GOTO_ON_ERROR(ret, err_handle, TAG, "hal initialization failed, device handle initialization failed");
 
-    /* delay before next i2c transaction */
+    /* delay before next transaction */
     vTaskDelay(pdMS_TO_TICKS(BMP280_CMD_DELAY_MS));
 
     /* read and validate device type */
-    ESP_GOTO_ON_ERROR(bmp280_i2c_get_chip_id_register(device, &device->sensor_type), err_handle, TAG, "read chip identifier for init failed");
+    ESP_GOTO_ON_ERROR( hal_get_chip_id_register(device, &device->sensor_type), err_handle, TAG, "read chip identifier for init failed");
     if(device->sensor_type != BMP280_TYPE_BMP280) {
         ESP_GOTO_ON_FALSE(false, ESP_ERR_INVALID_VERSION, err_handle, TAG, "detected an invalid chip type for init, got: %02x", device->sensor_type);
     }
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for init failed" );
+    ESP_RETURN_ON_ERROR( hal_set_reset_register(device), TAG, "write reset register for init failed" );
 
     /* attempt to setup device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_setup_registers(device), TAG, "unable to setup device, init failed" );
+    ESP_RETURN_ON_ERROR( hal_setup_registers(device), TAG, "unable to setup device, init failed" );
 
     /* set output parameter */
     *bmp280_handle = (bmp280_handle_t)device;
@@ -626,10 +707,12 @@ esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config
 
     return ESP_OK;
 
+    /* something went wrong - after device descriptor instantiation */
     err_handle:
-        if (device && device->i2c_handle) {
-            i2c_master_bus_rm_device(device->i2c_handle);
-        }
+        /* remove device from hal master communication bus */
+        ret = hal_master_remove(device->hal_handle);
+
+        /* free device handle */
         free(device);
     err:
         return ret;
@@ -643,7 +726,7 @@ esp_err_t bmp280_get_measurements(bmp280_handle_t handle, float *const temperatu
     ESP_ARG_CHECK( device && temperature && pressure );
 
     // need to read in one sequence to ensure they match.
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_adc_signals(device, &adc_temp, &adc_press), TAG, "read temperature and pressure adc signals failed" );
+    ESP_RETURN_ON_ERROR( hal_get_adc_signals(device, &adc_temp, &adc_press), TAG, "read temperature and pressure adc signals failed" );
 
     /* compensate adc temperature & pressure and set output parameters */
     *temperature = compensate_temperature(device, adc_temp);
@@ -660,7 +743,7 @@ esp_err_t bmp280_get_data_status(bmp280_handle_t handle, bool *const ready) {
     ESP_ARG_CHECK( device );
 
     /* attempt to read device status register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_status_register(device, &status_reg), TAG, "read status register (data ready state) failed" );
+    ESP_RETURN_ON_ERROR( hal_get_status_register(device, &status_reg), TAG, "read status register (data ready state) failed" );
 
     /* set ready state */
     *ready = !status_reg.bits.measuring;
@@ -676,7 +759,7 @@ esp_err_t bmp280_get_power_mode(bmp280_handle_t handle, bmp280_power_modes_t *co
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get power mode failed" );
 
     /* set power mode */
     *power_mode = ctrl_meas_reg.bits.power_mode;
@@ -692,13 +775,13 @@ esp_err_t bmp280_set_power_mode(bmp280_handle_t handle, const bmp280_power_modes
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set power mode failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set power mode failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.power_mode = power_mode;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set power mode failed" );
+    ESP_RETURN_ON_ERROR( hal_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set power mode failed" );
 
     return ESP_OK;
 }
@@ -711,7 +794,7 @@ esp_err_t bmp280_get_pressure_oversampling(bmp280_handle_t handle, bmp280_pressu
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get pressure oversampling failed" );
 
     /* set oversampling */
     *oversampling = ctrl_meas_reg.bits.pressure_oversampling;
@@ -727,13 +810,13 @@ esp_err_t bmp280_set_pressure_oversampling(bmp280_handle_t handle, const bmp280_
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set pressure oversampling failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.pressure_oversampling = oversampling;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set pressure oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set pressure oversampling failed" );
 
     return ESP_OK;
 }
@@ -746,7 +829,7 @@ esp_err_t bmp280_get_temperature_oversampling(bmp280_handle_t handle, bmp280_tem
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for get temperature oversampling failed" );
 
     /* set oversampling */
     *oversampling = ctrl_meas_reg.bits.temperature_oversampling;
@@ -762,13 +845,13 @@ esp_err_t bmp280_set_temperature_oversampling(bmp280_handle_t handle, const bmp2
     ESP_ARG_CHECK( device );
 
     /* attempt to read control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_get_control_measurement_register(device, &ctrl_meas_reg), TAG, "read control measurement register for set temperature oversampling failed" );
 
     /* initialize control measurement register */
     ctrl_meas_reg.bits.temperature_oversampling = oversampling;
 
     /* attempt to write control measurement register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set temperature oversampling failed" );
+    ESP_RETURN_ON_ERROR( hal_set_control_measurement_register(device, ctrl_meas_reg), TAG, "write control measurement register for set temperature oversampling failed" );
 
     return ESP_OK;
 }
@@ -781,7 +864,7 @@ esp_err_t bmp280_get_standby_time(bmp280_handle_t handle, bmp280_standby_times_t
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for get stand-by time failed" );
+    ESP_RETURN_ON_ERROR( hal_get_config_register(device, &config_reg), TAG, "read configuration register for get stand-by time failed" );
 
     /* set standby time */
     *standby_time = config_reg.bits.standby_time;
@@ -797,13 +880,13 @@ esp_err_t bmp280_set_standby_time(bmp280_handle_t handle, const bmp280_standby_t
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( hal_get_config_register(device, &config_reg), TAG, "read configuration register for set stand-by time failed" );
 
     /* initialize configuration register */
     config_reg.bits.standby_time = standby_time;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for set stand-by time failed" );
+    ESP_RETURN_ON_ERROR( hal_set_config_register(device, config_reg), TAG, "write configuration register for set stand-by time failed" );
 
     return ESP_OK;
 }
@@ -816,7 +899,7 @@ esp_err_t bmp280_get_iir_filter(bmp280_handle_t handle, bmp280_iir_filters_t *co
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
+    ESP_RETURN_ON_ERROR( hal_get_config_register(device, &config_reg), TAG, "read configuration register for get IIR filter failed" );
 
     /* set standby time */
     *iir_filter = config_reg.bits.iir_filter;
@@ -832,13 +915,13 @@ esp_err_t bmp280_set_iir_filter(bmp280_handle_t handle, const bmp280_iir_filters
     ESP_ARG_CHECK( device );
 
     /* attempt to read configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_get_config_register(device, &config_reg), TAG, "read configuration register for set IIR filter failed" );
+    ESP_RETURN_ON_ERROR( hal_get_config_register(device, &config_reg), TAG, "read configuration register for set IIR filter failed" );
 
     /* initialize configuration register */
     config_reg.bits.iir_filter = iir_filter;
 
     /* attempt to write configuration register */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_config_register(device, config_reg), TAG, "write configuration register for set IIR filter failed" );
+    ESP_RETURN_ON_ERROR( hal_set_config_register(device, config_reg), TAG, "write configuration register for set IIR filter failed" );
 
     return ESP_OK;
 }
@@ -850,10 +933,10 @@ esp_err_t bmp280_reset(bmp280_handle_t handle) {
     ESP_ARG_CHECK( device );
 
     /* attempt to reset device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_set_reset_register(device), TAG, "write reset register for reset failed" );
+    ESP_RETURN_ON_ERROR( hal_set_reset_register(device), TAG, "write reset register for reset failed" );
 
     /* attempt to setup device */
-    ESP_RETURN_ON_ERROR( bmp280_i2c_setup_registers(device), TAG, "unable to setup device, reset failed" );
+    ESP_RETURN_ON_ERROR( hal_setup_registers(device), TAG, "unable to setup device, reset failed" );
 
     return ESP_OK;
 }
@@ -864,18 +947,8 @@ esp_err_t bmp280_remove(bmp280_handle_t handle) {
     /* validate arguments */
     ESP_ARG_CHECK( device );
 
-    /* validate handle instance */
-    if(device->i2c_handle) {
-        /* remove device from i2c master bus */
-        esp_err_t ret = i2c_master_bus_rm_device(device->i2c_handle);
-        if(ret != ESP_OK) {
-            ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-            return ret;
-        }
-        device->i2c_handle = NULL;
-    }
-
-    return ESP_OK;
+    /* remove device from hal bus */
+    return hal_master_remove(device->hal_handle);
 }
 
 esp_err_t bmp280_delete(bmp280_handle_t handle){

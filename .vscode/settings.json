@@ -25,6 +25,7 @@
   "svg.preview.background": "black",
   "files.associations": {
     "format": "c",
-    "cstdint": "c"
+    "cstdint": "c",
+    "esp_err.h": "c"
   }
 }

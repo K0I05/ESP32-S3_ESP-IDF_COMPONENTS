@@ -165,12 +165,12 @@ typedef void* bmp280_handle_t;
 /**
  * @brief Initializes an BMP280 device onto the master bus.
  *
- * @param[in] master_handle I2C master bus handle.
+ * @param[in] hal_master_handle HAL master bus handle.
  * @param[in] bmp280_config BMP280 device configuration.
  * @param[out] bmp280_handle BMP280 device handle.
  * @return esp_err_t ESP_OK on success.
  */
-esp_err_t bmp280_init(i2c_master_bus_handle_t master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle);
+esp_err_t bmp280_init(const void* hal_master_handle, const bmp280_config_t *bmp280_config, bmp280_handle_t *bmp280_handle);
 
 /**
  * @brief Reads temperature and pressure measurements from BMP280.

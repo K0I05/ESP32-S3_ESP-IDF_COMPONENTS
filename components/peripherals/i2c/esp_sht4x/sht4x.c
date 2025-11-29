@@ -87,7 +87,7 @@
  */
 typedef struct sht4x_device_s {
     sht4x_config_t  config;          /*!< sht4x device configuration */
-    void*           hal_handle;      /*!< sht4x HAL device handle */
+    void*           hal_handle;      /*!< sht4x HAL device communication handle */
     uint32_t        serial_number;   /*!< sht4x device serial number */
 } sht4x_device_t;
 
@@ -148,6 +148,30 @@ static inline esp_err_t hal_master_init(const void* master_handle, sht4x_device_
 
     /* attempt to add device to i2c master bus */
     ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Remove device from HAL master communication bus and free resources.
+ * 
+ * @param device_handle Pointer to HAL communication device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_master_remove(const void* device_handle) {
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( hal_device );
+
+    /* remove device from i2c master bus */
+    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+        return ret;
+    }
+    hal_device = NULL;
 
     return ESP_OK;
 }
@@ -214,30 +238,6 @@ static inline esp_err_t hal_master_write_command(const void* device_handle, cons
     /* attempt i2c write transaction */
     ESP_RETURN_ON_ERROR( i2c_master_transmit(hal_device, tx, BIT8_UINT8_BUFFER_SIZE, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_transmit, HAL write command to device failed" );
                         
-    return ESP_OK;
-}
-
-/**
- * @brief Remove device from HAL master communication bus and free resources.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_remove(const void* device_handle) {
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* remove device from i2c master bus */
-    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-        return ret;
-    }
-    hal_device = NULL;
-
     return ESP_OK;
 }
 
@@ -558,7 +558,7 @@ esp_err_t sht4x_init(const void* hal_master_handle, const sht4x_config_t *sht4x_
     vTaskDelay(pdMS_TO_TICKS(SHT4X_POWERUP_DELAY_MS));
 
     /* validate memory availability for handle */
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     sht4x_device_t* device = (sht4x_device_t*)calloc(1, sizeof(sht4x_device_t));
     ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for device, device handle initialization failed");
 

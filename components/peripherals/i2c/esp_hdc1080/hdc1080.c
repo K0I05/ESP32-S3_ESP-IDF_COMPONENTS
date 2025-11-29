@@ -122,7 +122,7 @@ typedef union __attribute__((packed)) hdc1080_serial_number_register_u {
  */
 typedef struct hdc1080_device_s {
     hdc1080_config_t                    config;                 /*!< hdc1080 device configuration */ 
-    void*                               hal_handle;             /*!< hdc1080 HAL device handle */
+    void*                               hal_handle;             /*!< hdc1080 HAL device communication handle */
     uint64_t                            serial_number;          /*!< hdc1080 device serial number */
     uint16_t                            manufacturer_id;        /*!< hdc1080 device manufacturer identifier */
     uint16_t                            id;                     /*!< hdc1080 device device identifier */
@@ -186,6 +186,30 @@ static inline esp_err_t hal_master_init(const void* master_handle, hdc1080_devic
 
     /* attempt to add device to i2c master bus */
     ESP_RETURN_ON_ERROR( i2c_master_bus_add_device(hal_master, &i2c_dev_conf, (i2c_master_dev_handle_t*)&(device->hal_handle)), TAG, "unable to add device to HAL master communication bus, HAL device initialization failed");
+
+    return ESP_OK;
+}
+
+/**
+ * @brief Remove device from HAL master communication bus and free resources.
+ * 
+ * @param device_handle Pointer to HAL communication device handle.
+ * @return esp_err_t ESP_OK on success.
+ */
+static inline esp_err_t hal_master_remove(const void* device_handle) {
+    /* cast to i2c master device handle */
+    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
+
+    /* validate arguments */
+    ESP_ARG_CHECK( hal_device );
+
+    /* remove device from i2c master bus */
+    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
+        return ret;
+    }
+    hal_device = NULL;
 
     return ESP_OK;
 }
@@ -287,30 +311,6 @@ static inline esp_err_t hal_master_read(const void* device_handle, uint8_t *buff
 
     /* attempt i2c read transaction */
     ESP_RETURN_ON_ERROR( i2c_master_receive(hal_device, buffer, size, I2C_XFR_TIMEOUT_MS), TAG, "i2c_master_receive, HAL device read failed" );
-
-    return ESP_OK;
-}
-
-/**
- * @brief Remove device from HAL master communication bus and free resources.
- * 
- * @param device_handle Pointer to HAL communication device handle.
- * @return esp_err_t ESP_OK on success.
- */
-static inline esp_err_t hal_master_remove(const void* device_handle) {
-    /* cast to i2c master device handle */
-    i2c_master_dev_handle_t hal_device = (i2c_master_dev_handle_t)device_handle;
-
-    /* validate arguments */
-    ESP_ARG_CHECK( hal_device );
-
-    /* remove device from i2c master bus */
-    esp_err_t ret = i2c_master_bus_rm_device(hal_device);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "i2c_master_bus_rm_device failed");
-        return ret;
-    }
-    hal_device = NULL;
 
     return ESP_OK;
 }
@@ -697,7 +697,7 @@ esp_err_t hdc1080_init(const void* hal_master_handle, const hdc1080_config_t *hd
     vTaskDelay(pdMS_TO_TICKS(HDC1080_POWERUP_DELAY_MS));
 
     /* validate memory availability for handle */
-    esp_err_t ret;
+    esp_err_t ret = ESP_OK;
     hdc1080_device_t* device = (hdc1080_device_t*)calloc(1, sizeof(hdc1080_device_t));
     ESP_GOTO_ON_FALSE(device, ESP_ERR_NO_MEM, err, TAG, "no memory for i2c hdc1080 device");
 
